@@ -282,7 +282,7 @@ func refreshWindows() tea.Msg {
 }
 
 func tickCmd() tea.Cmd {
-	return tea.Tick(time.Second*2, func(t time.Time) tea.Msg {
+	return tea.Tick(time.Second, func(t time.Time) tea.Msg {
 		return tickMsg(t)
 	})
 }
@@ -359,6 +359,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.streamer = msg.streamer
 		m.peerManager = msg.peerManager
 		m.startTime = time.Now()
+		m.showStats = true // Show stats by default when sharing starts
 		return m, tickCmd()
 
 	case captureErrorMsg:
@@ -871,6 +872,17 @@ func (m model) restartCaptureWithSettings(isFullscreen bool, windowID uint32) (t
 
 	m.starting = true
 
+	// Look up full window info for stats display
+	var windowInfo *WindowInfo
+	if !isFullscreen && windowID != 0 {
+		for _, source := range m.sources {
+			if !source.IsFullscreen && source.Window != nil && source.Window.ID == windowID {
+				windowInfo = source.Window
+				break
+			}
+		}
+	}
+
 	// Capture config values for the async command
 	fps := m.getSelectedFPS()
 	bitrate := QualityPresets[m.selectedQuality].Bitrate
@@ -878,7 +890,7 @@ func (m model) restartCaptureWithSettings(isFullscreen bool, windowID uint32) (t
 	peerManager := m.peerManager
 
 	// Return immediately with a command that does the heavy work async
-	return m, startCaptureAsync(peerManager, isFullscreen, windowID, fps, bitrate, codecType)
+	return m, startCaptureAsync(peerManager, isFullscreen, windowInfo, fps, bitrate, codecType)
 }
 
 // applyBitrateChange applies a new bitrate to the running streamer without restart
@@ -1126,8 +1138,14 @@ func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
 	codecType := m.getSelectedCodecType()
 	peerManager := m.peerManager // Capture pointer for async use
 
+	// Get full window info for stats display
+	var windowInfo *WindowInfo
+	if !isFullscreen && source.Window != nil {
+		windowInfo = source.Window
+	}
+
 	// Return immediately with a command that does the heavy work async
-	return m, startCaptureAsync(peerManager, isFullscreen, windowID, fps, bitrate, codecType)
+	return m, startCaptureAsync(peerManager, isFullscreen, windowInfo, fps, bitrate, codecType)
 }
 
 // startMultiWindowSharing starts sharing multiple selected windows
@@ -1441,24 +1459,21 @@ func startMultiCaptureAsync(pm *PeerManager, windows []WindowInfo, fps, focusBit
 
 // startCaptureAsync returns a command that starts capture in a goroutine
 // Uses unified Streamer with a single window (N=1)
-func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowID uint32, fps, bitrate int, codecType CodecType) tea.Cmd {
+func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowInfo *WindowInfo, fps, bitrate int, codecType CodecType) tea.Cmd {
 	return func() tea.Msg {
 		// Small delay to let ScreenCaptureKit settle after any previous stop
 		time.Sleep(100 * time.Millisecond)
 
 		// Fullscreen not supported in unified mode - use window selection
-		if isFullscreen {
+		if isFullscreen || windowInfo == nil {
 			return captureErrorMsg{err: "Full screen capture not supported. Please select individual windows instead."}
 		}
 
-		// Create multi-streamer with single stream
+		// Create streamer with single stream
 		ms := NewStreamer(peerManager, fps, bitrate, bitrate/2, false)
 
-		// Single window capture
-		windowInfo := WindowInfo{
-			ID: windowID,
-		}
-		_, err := ms.AddWindow(windowInfo)
+		// Single window capture - pass full WindowInfo for stats display
+		_, err := ms.AddWindow(*windowInfo)
 		if err != nil {
 			return captureErrorMsg{err: fmt.Sprintf("Failed to add window: %v", err)}
 		}
