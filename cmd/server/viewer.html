@@ -421,6 +421,100 @@
     .stats-value.good { color: var(--success); }
     .stats-value.warn { color: var(--warning); }
     .stats-value.bad { color: var(--error); }
+    
+    /* Password dialog */
+    #password-dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-primary);
+      z-index: 200;
+    }
+    
+    #password-dialog.visible {
+      display: flex;
+    }
+    
+    .password-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+    
+    .password-box h2 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .password-box p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    
+    .password-box .room-code {
+      font-family: "SF Mono", Monaco, monospace;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    
+    .password-input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .password-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 16px;
+      font-family: "SF Mono", Monaco, monospace;
+      outline: none;
+    }
+    
+    .password-input:focus {
+      border-color: var(--accent);
+    }
+    
+    .password-input.error {
+      border-color: var(--error);
+    }
+    
+    .password-submit {
+      padding: 12px 24px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: var(--bg-primary);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+    
+    .password-submit:hover {
+      opacity: 0.9;
+    }
+    
+    .password-error {
+      color: var(--error);
+      font-size: 13px;
+      height: 20px;
+    }
   </style>
 </head>
 <body>
@@ -466,6 +560,21 @@
     <h2 id="waiting-title">Connecting...</h2>
     <p id="waiting-subtitle">Establishing connection to sharer</p>
     <div id="waiting-room"></div>
+  </div>
+  
+  <!-- Password dialog -->
+  <div id="password-dialog">
+    <div class="password-box">
+      <h2>Password Required</h2>
+      <p>This room is password protected.<br>Room: <span class="room-code" id="password-room-code"></span></p>
+      <form id="password-form">
+        <div class="password-input-group">
+          <input type="text" id="password-input" class="password-input" placeholder="Enter password" autocomplete="off" autofocus>
+          <button type="submit" class="password-submit">Join</button>
+        </div>
+        <div class="password-error" id="password-error"></div>
+      </form>
+    </div>
   </div>
   
   <!-- Video container -->
@@ -581,10 +690,19 @@
     let lastStatsTime = 0;
     let showStats = false;
     let currentScale = 'fit';
+    let roomPassword = ''; // Stored password for reconnection
+    
+    // Password dialog elements
+    const passwordDialog = document.getElementById('password-dialog');
+    const passwordForm = document.getElementById('password-form');
+    const passwordInput = document.getElementById('password-input');
+    const passwordError = document.getElementById('password-error');
+    const passwordRoomCode = document.getElementById('password-room-code');
     
     // Initialize
     roomCodeEl.textContent = roomCode;
     waitingRoom.textContent = roomCode;
+    passwordRoomCode.textContent = roomCode;
     
     // ICE servers
     const iceServers = [
@@ -754,6 +872,42 @@
     // Double-click for fullscreen
     video.addEventListener('dblclick', toggleFullscreen);
     
+    // Password dialog functions
+    function showPasswordDialog(errorText = '') {
+      waitingEl.classList.add('hidden');
+      passwordDialog.classList.add('visible');
+      passwordInput.value = '';
+      passwordInput.classList.toggle('error', !!errorText);
+      passwordError.textContent = errorText;
+      passwordInput.focus();
+    }
+    
+    function hidePasswordDialog() {
+      passwordDialog.classList.remove('visible');
+      passwordInput.classList.remove('error');
+      passwordError.textContent = '';
+    }
+    
+    // Password form submission
+    passwordForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const password = passwordInput.value.trim();
+      if (!password) {
+        passwordInput.classList.add('error');
+        passwordError.textContent = 'Please enter a password';
+        return;
+      }
+      
+      roomPassword = password;
+      hidePasswordDialog();
+      waitingEl.classList.remove('hidden');
+      
+      // Re-send join with password
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'join', role: 'viewer', password: roomPassword }));
+      }
+    });
+    
     // WebRTC Stats collection
     function startStatsCollection() {
       if (statsInterval) clearInterval(statsInterval);
@@ -884,7 +1038,12 @@
         setStatus('Joining room...', 'connecting');
         setWaitingState('Joining Room', 'Waiting for sharer...');
         reconnectAttempts = 0;
-        ws.send(JSON.stringify({ type: 'join', role: 'viewer' }));
+        // Include password if we have one (from previous attempt or reconnection)
+        const joinMsg = { type: 'join', role: 'viewer' };
+        if (roomPassword) {
+          joinMsg.password = roomPassword;
+        }
+        ws.send(JSON.stringify(joinMsg));
       };
       
       ws.onmessage = async (event) => {
@@ -917,6 +1076,16 @@
             streamStats.style.display = 'none';
             setWaitingState('Reconnecting', 'Sharer has reconnected, establishing new stream...');
             waitingEl.classList.remove('hidden');
+            break;
+            
+          case 'password-required':
+            // Room requires password
+            showPasswordDialog();
+            break;
+            
+          case 'password-invalid':
+            // Wrong password
+            showPasswordDialog('Invalid password. Please try again.');
             break;
             
           case 'error':

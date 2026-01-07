@@ -14,6 +14,22 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+// reconnectMsg indicates the WebSocket needs reconnection
+type reconnectMsg struct {
+	attempt int
+	delay   time.Duration
+}
+
+// reconnectedMsg indicates WebSocket reconnection succeeded
+type reconnectedMsg struct {
+	conn *websocket.Conn
+}
+
+// reconnectFailedMsg indicates WebSocket reconnection failed
+type reconnectFailedMsg struct {
+	err string
+}
+
 // copyToClipboard copies text to the macOS clipboard using pbcopy
 func copyToClipboard(text string) error {
 	cmd := exec.Command("pbcopy")
@@ -161,6 +177,17 @@ type model struct {
 	showStats bool
 	stats     StreamStats
 
+	// Password protection
+	passwordEnabled bool
+	password        string
+
+	// Reconnection state (for remote signal server)
+	reconnecting     bool
+	reconnectAttempt int
+	reconnectDelay   time.Duration
+	maxReconnects    int
+	wsDisconnected   *bool // Pointer so goroutine can set it
+
 	// Components (persistent across source switches)
 	server      *SignalServer
 	peerManager *PeerManager
@@ -199,6 +226,7 @@ func initialModel(config Config) model {
 		codecCursor:     DefaultCodecIndex(),
 		selectedCodec:   DefaultCodecIndex(),
 		activeColumn:    columnSources,
+		maxReconnects:   10, // Max reconnection attempts
 	}
 }
 
@@ -302,7 +330,49 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.copyMessage = ""
 		}
 
+		// Check for WebSocket disconnection and trigger reconnection
+		if m.isRemote && m.serverStarted && m.wsDisconnected != nil && *m.wsDisconnected && !m.reconnecting {
+			*m.wsDisconnected = false
+			m.reconnecting = true
+			m.reconnectAttempt = 1
+			m.reconnectDelay = time.Second
+			cmds = append(cmds, m.attemptReconnect(1, time.Second))
+		}
+
 		return m, tea.Batch(cmds...)
+
+	case reconnectMsg:
+		// WebSocket disconnected, attempt reconnection
+		m.reconnecting = true
+		m.reconnectAttempt = msg.attempt
+		m.reconnectDelay = msg.delay
+		return m, m.attemptReconnect(msg.attempt, msg.delay)
+
+	case reconnectedMsg:
+		// Reconnection successful - store the new connection and set up signaling
+		m.reconnecting = false
+		m.reconnectAttempt = 0
+		m.lastError = ""
+		m.wsConn = msg.conn
+		// Reset disconnect flag
+		if m.wsDisconnected != nil {
+			*m.wsDisconnected = false
+		}
+		// Set up signaling via the new WebSocket with disconnect callback
+		disconnectFlag := m.wsDisconnected
+		setupRemoteSignalingWithCallback(m.wsConn, m.peerManager, func() {
+			if disconnectFlag != nil {
+				*disconnectFlag = true
+			}
+		})
+		return m, nil
+
+	case reconnectFailedMsg:
+		// Reconnection failed
+		m.reconnecting = false
+		m.lastError = msg.err
+		m.serverStarted = false
+		return m, nil
 	}
 
 	return m, nil
@@ -459,6 +529,18 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			} else {
 				m.copyMessage = "Copy failed"
 				m.copyMsgTime = time.Now()
+			}
+		}
+		return m, nil
+
+	case "p":
+		// Toggle password protection (only if not already sharing)
+		if !m.sharing && !m.serverStarted {
+			m.passwordEnabled = !m.passwordEnabled
+			if m.passwordEnabled {
+				m.password = GeneratePassword()
+			} else {
+				m.password = ""
 			}
 		}
 		return m, nil
@@ -721,10 +803,73 @@ func (m *model) initServer() error {
 	m.shareURL = fmt.Sprintf("http://%s:%d/%s", localIP, m.config.Port, m.roomCode)
 
 	// Set up signaling (connects server to peer manager)
-	setupSignaling(m.server, m.peerManager, m.roomCode)
+	setupSignaling(m.server, m.peerManager, m.roomCode, m.password)
 
 	m.serverStarted = true
 	return nil
+}
+
+// attemptReconnect tries to reconnect to the remote signal server
+func (m model) attemptReconnect(attempt int, delay time.Duration) tea.Cmd {
+	return func() tea.Msg {
+		// Wait for the delay
+		time.Sleep(delay)
+
+		// Try to reconnect
+		signalURL := m.config.SignalURL
+
+		// Normalize URL scheme
+		if strings.HasPrefix(signalURL, "http://") {
+			signalURL = "ws://" + strings.TrimPrefix(signalURL, "http://")
+		} else if strings.HasPrefix(signalURL, "https://") {
+			signalURL = "wss://" + strings.TrimPrefix(signalURL, "https://")
+		} else if !strings.HasPrefix(signalURL, "ws://") && !strings.HasPrefix(signalURL, "wss://") {
+			signalURL = "wss://" + signalURL
+		}
+
+		// Build WebSocket URL
+		wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + m.roomCode
+
+		// Try connecting with timeout
+		dialer := websocket.Dialer{
+			HandshakeTimeout: 5 * time.Second,
+		}
+		conn, _, err := dialer.Dial(wsURL, nil)
+		if err != nil {
+			// Calculate next delay with exponential backoff
+			nextDelay := delay * 2
+			if nextDelay > 30*time.Second {
+				nextDelay = 30 * time.Second
+			}
+
+			if attempt >= m.maxReconnects {
+				return reconnectFailedMsg{err: "Failed to reconnect after multiple attempts"}
+			}
+
+			return reconnectMsg{attempt: attempt + 1, delay: nextDelay}
+		}
+
+		// Join as sharer (with optional password)
+		joinMsg := SignalMessage{Type: "join", Role: "sharer", Password: m.password}
+		if err := conn.WriteJSON(joinMsg); err != nil {
+			conn.Close()
+			return reconnectMsg{attempt: attempt + 1, delay: delay * 2}
+		}
+
+		// Wait for join confirmation
+		var joinResp SignalMessage
+		if err := conn.ReadJSON(&joinResp); err != nil {
+			conn.Close()
+			return reconnectMsg{attempt: attempt + 1, delay: delay * 2}
+		}
+		if joinResp.Type == "error" {
+			conn.Close()
+			return reconnectFailedMsg{err: joinResp.Error}
+		}
+
+		// Success - return the new connection
+		return reconnectedMsg{conn: conn}
+	}
 }
 
 // initRemoteSignaling connects to the remote signal server
@@ -757,8 +902,8 @@ func (m *model) initRemoteSignaling() error {
 		return fmt.Errorf("failed to connect to signal server: %v", err)
 	}
 
-	// Join as sharer
-	joinMsg := SignalMessage{Type: "join", Role: "sharer"}
+	// Join as sharer (with optional password)
+	joinMsg := SignalMessage{Type: "join", Role: "sharer", Password: m.password}
 	if err := conn.WriteJSON(joinMsg); err != nil {
 		conn.Close()
 		return fmt.Errorf("failed to send join message: %v", err)
@@ -778,8 +923,17 @@ func (m *model) initRemoteSignaling() error {
 	m.wsConn = conn
 	m.isRemote = true
 
-	// Set up signaling via WebSocket
-	setupRemoteSignaling(conn, m.peerManager)
+	// Initialize disconnect flag if needed
+	if m.wsDisconnected == nil {
+		m.wsDisconnected = new(bool)
+	}
+	*m.wsDisconnected = false
+
+	// Set up signaling via WebSocket with disconnect callback
+	disconnectFlag := m.wsDisconnected
+	setupRemoteSignalingWithCallback(conn, m.peerManager, func() {
+		*disconnectFlag = true
+	})
 
 	return nil
 }
@@ -942,7 +1096,9 @@ func (m model) renderSharingStatus() string {
 	var b strings.Builder
 
 	// Mode indicator
-	if m.isRemote {
+	if m.reconnecting {
+		b.WriteString(errorStyle.Render(fmt.Sprintf("[RECONNECTING %d/%d]", m.reconnectAttempt, m.maxReconnects)))
+	} else if m.isRemote {
 		b.WriteString(selectedStyle.Render("[INTERNET]"))
 	} else {
 		b.WriteString(dimStyle.Render("[LOCAL]"))
@@ -960,6 +1116,12 @@ func (m model) renderSharingStatus() string {
 	if m.copyMessage != "" {
 		b.WriteString("  ")
 		b.WriteString(selectedStyle.Render(m.copyMessage))
+	}
+	// Show password if enabled
+	if m.passwordEnabled && m.password != "" {
+		b.WriteString("  ")
+		b.WriteString(statusStyle.Render("Pass: "))
+		b.WriteString(selectedStyle.Render(m.password))
 	}
 	b.WriteString("\n")
 
@@ -1379,6 +1541,15 @@ func (m model) renderHelp() string {
 	parts = append(parts, "enter select")
 	parts = append(parts, "f fullscreen")
 	parts = append(parts, "1-9 window")
+
+	// Password toggle (only if not sharing yet)
+	if !m.sharing && !m.serverStarted {
+		if m.passwordEnabled {
+			parts = append(parts, "p password ON")
+		} else {
+			parts = append(parts, "p password")
+		}
+	}
 
 	if m.serverStarted {
 		parts = append(parts, "c copy URL")

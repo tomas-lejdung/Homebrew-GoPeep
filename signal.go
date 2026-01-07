@@ -24,6 +24,7 @@ type SignalMessage struct {
 	Candidate string `json:"candidate,omitempty"` // ICE candidate
 	Error     string `json:"error,omitempty"`     // error message
 	PeerID    string `json:"peerId,omitempty"`    // peer identifier for routing
+	Password  string `json:"password,omitempty"`  // room password (for joining protected rooms)
 }
 
 // Client represents a connected WebSocket client
@@ -38,10 +39,11 @@ type Client struct {
 
 // Room holds connected clients for a session
 type Room struct {
-	code    string
-	sharer  *Client
-	viewers map[*Client]bool
-	mu      sync.RWMutex
+	code     string
+	password string // optional password for room protection
+	sharer   *Client
+	viewers  map[*Client]bool
+	mu       sync.RWMutex
 }
 
 // SignalServer manages WebSocket connections and room routing
@@ -259,7 +261,14 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 			return
 		}
 		room.sharer = c
-		log.Printf("Sharer joined room %s", room.code)
+		// Set room password if provided by sharer
+		if msg.Password != "" {
+			room.password = msg.Password
+			log.Printf("Sharer joined room %s (password protected)", room.code)
+		} else {
+			room.password = "" // Clear any existing password
+			log.Printf("Sharer joined room %s", room.code)
+		}
 
 		// Send confirmation
 		confirmMsg := SignalMessage{Type: "joined", Role: "sharer", Room: room.code}
@@ -267,6 +276,17 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 		c.send <- data
 
 	} else if msg.Role == "viewer" {
+		// Check password if room is protected
+		if room.password != "" && msg.Password != room.password {
+			errMsg := SignalMessage{Type: "password-required", Error: "Password required"}
+			if msg.Password != "" {
+				errMsg = SignalMessage{Type: "password-invalid", Error: "Invalid password"}
+			}
+			data, _ := json.Marshal(errMsg)
+			c.send <- data
+			return
+		}
+
 		room.viewers[c] = true
 		log.Printf("Viewer joined room %s (total viewers: %d)", room.code, len(room.viewers))
 

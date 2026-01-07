@@ -61,3 +61,19 @@ func ValidateRoomCode(code string) bool {
 	// Basic validation - could be more strict
 	return len(parts[0]) > 0 && len(parts[1]) > 0 && len(parts[2]) > 0
 }
+
+// Password words - simple, memorable words for password generation
+var passwordWords = []string{
+	"tiger", "apple", "river", "cloud", "stone",
+	"flame", "ocean", "piano", "robot", "honey",
+	"grape", "lemon", "maple", "north", "solar",
+	"storm", "zebra", "delta", "omega", "lunar",
+	"coral", "frost", "bloom", "spark", "wave",
+}
+
+// GeneratePassword creates a memorable password in word-NN format (e.g., "tiger-42")
+func GeneratePassword() string {
+	word := passwordWords[rng.Intn(len(passwordWords))]
+	num := rng.Intn(100)
+	return fmt.Sprintf("%s-%02d", word, num)
+}

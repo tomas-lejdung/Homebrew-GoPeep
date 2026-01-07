@@ -329,7 +329,7 @@ func runShareMode(config Config) {
 	defer streamer.Stop()
 
 	// Set up signaling between server and peer manager
-	setupSignaling(server, peerManager, roomCode)
+	setupSignaling(server, peerManager, roomCode, "")
 
 	// Wait for interrupt
 	sigChan := make(chan os.Signal, 1)
@@ -603,7 +603,14 @@ func runRemoteShareMode(config Config) {
 }
 
 // setupRemoteSignaling connects the WebSocket to the peer manager
+// setupRemoteSignaling connects a WebSocket to the peer manager
+// onDisconnect is called when the WebSocket disconnects (optional, can be nil)
 func setupRemoteSignaling(conn *websocket.Conn, pm *PeerManager) {
+	setupRemoteSignalingWithCallback(conn, pm, nil)
+}
+
+// setupRemoteSignalingWithCallback connects a WebSocket to the peer manager with a disconnect callback
+func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *PeerManager, onDisconnect func()) {
 	// Counter for peer IDs
 	var peerCounter int
 	var peerMu sync.Mutex
@@ -619,6 +626,9 @@ func setupRemoteSignaling(conn *websocket.Conn, pm *PeerManager) {
 			if err := conn.ReadJSON(&msg); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					log.Printf("Signal server disconnected: %v", err)
+				}
+				if onDisconnect != nil {
+					onDisconnect()
 				}
 				return
 			}
@@ -679,7 +689,7 @@ func setupRemoteSignaling(conn *websocket.Conn, pm *PeerManager) {
 }
 
 // setupSignaling connects the signal server to the peer manager
-func setupSignaling(server *SignalServer, pm *PeerManager, roomCode string) {
+func setupSignaling(server *SignalServer, pm *PeerManager, roomCode string, password string) {
 	// Create a room for the sharer
 	room := server.getOrCreateRoom(roomCode)
 
@@ -693,6 +703,7 @@ func setupSignaling(server *SignalServer, pm *PeerManager, roomCode string) {
 
 	room.mu.Lock()
 	room.sharer = sharerClient
+	room.password = password // Set room password
 	room.mu.Unlock()
 
 	// Counter for peer IDs
