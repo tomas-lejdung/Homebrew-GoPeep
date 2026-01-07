@@ -1,0 +1,29 @@
+# Binaries
+gopeep
+gopeep-server
+*.exe
+
+# macOS-specific source files (CGO)
+capture_darwin.go
+encoder.go
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Git
+.git/
+.gitignore
+
+# Documentation
+*.md
+!README.md
+
+# Development files
+Makefile
+.env*
+
+# Test files
+*_test.go
