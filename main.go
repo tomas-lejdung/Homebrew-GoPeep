@@ -688,6 +688,255 @@ func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *PeerManager, onD
 	}()
 }
 
+// setupMultiSignaling connects the signal server to the multi peer manager
+func setupMultiSignaling(server *SignalServer, pm *MultiPeerManager, roomCode string, password string) {
+	room := server.getOrCreateRoom(roomCode)
+
+	sharerClient := &Client{
+		room:   roomCode,
+		role:   "sharer",
+		send:   make(chan []byte, 256),
+		server: server,
+	}
+
+	room.mu.Lock()
+	room.sharer = sharerClient
+	room.password = password
+	room.mu.Unlock()
+
+	var peerCounter int
+	var peerMu sync.Mutex
+
+	// Set up ICE callback
+	pm.SetICECallback(func(peerID string, candidate string) {
+		// Send ICE to specific viewer
+		iceMsg := SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
+		data, _ := json.Marshal(iceMsg)
+
+		room.mu.RLock()
+		for viewer := range room.viewers {
+			if viewer.peerID == peerID {
+				select {
+				case viewer.send <- data:
+				default:
+				}
+				break
+			}
+		}
+		room.mu.RUnlock()
+	})
+
+	// Set up focus change callback to broadcast to all viewers
+	pm.SetFocusChangeCallback(func(trackID string) {
+		log.Printf("Focus change callback triggered for track: %s", trackID)
+		focusMsg := SignalMessage{Type: "focus-change", FocusedTrack: trackID}
+		data, _ := json.Marshal(focusMsg)
+
+		room.mu.RLock()
+		viewerCount := len(room.viewers)
+		log.Printf("Broadcasting focus-change to %d viewers", viewerCount)
+		for viewer := range room.viewers {
+			select {
+			case viewer.send <- data:
+				log.Printf("Sent focus-change to viewer %s", viewer.peerID)
+			default:
+				log.Printf("Failed to send focus-change to viewer %s (buffer full)", viewer.peerID)
+			}
+		}
+		room.mu.RUnlock()
+	})
+
+	go func() {
+		for data := range sharerClient.send {
+			var msg SignalMessage
+			if err := json.Unmarshal(data, &msg); err != nil {
+				continue
+			}
+
+			switch msg.Type {
+			case "viewer-joined":
+				room.mu.RLock()
+				var newViewer *Client
+				for viewer := range room.viewers {
+					if viewer.peerID == "" {
+						newViewer = viewer
+						break
+					}
+				}
+				room.mu.RUnlock()
+
+				if newViewer == nil {
+					continue
+				}
+
+				peerMu.Lock()
+				peerCounter++
+				peerID := fmt.Sprintf("viewer-%d", peerCounter)
+				peerMu.Unlock()
+
+				newViewer.peerID = peerID
+
+				go func(viewer *Client, pid string) {
+					offer, err := pm.CreateOffer(pid)
+					if err != nil {
+						log.Printf("Failed to create offer: %v", err)
+						return
+					}
+
+					offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
+					data, _ := json.Marshal(offerMsg)
+
+					select {
+					case viewer.send <- data:
+					default:
+					}
+
+					// Send streams-info after offer
+					tracks := pm.GetTracks()
+					streams := make([]StreamInfo, len(tracks))
+					for i, t := range tracks {
+						streams[i] = StreamInfo{
+							TrackID:    t.TrackID,
+							WindowName: t.WindowName,
+							AppName:    t.AppName,
+							IsFocused:  t.IsFocused,
+							Width:      t.Width,
+							Height:     t.Height,
+						}
+					}
+					streamsMsg := SignalMessage{Type: "streams-info", Streams: streams}
+					data, _ = json.Marshal(streamsMsg)
+					select {
+					case viewer.send <- data:
+					default:
+					}
+				}(newViewer, peerID)
+
+			case "answer":
+				peerID := msg.PeerID
+				if peerID == "" {
+					continue
+				}
+				if err := pm.HandleAnswer(peerID, msg.SDP); err != nil {
+					log.Printf("Failed to handle answer for %s: %v", peerID, err)
+				}
+
+			case "ice":
+				peerID := msg.PeerID
+				if peerID == "" {
+					continue
+				}
+				if err := pm.AddICECandidate(peerID, msg.Candidate); err != nil {
+					log.Printf("Failed to add ICE candidate for %s: %v", peerID, err)
+				}
+			}
+		}
+	}()
+}
+
+// setupMultiRemoteSignaling connects WebSocket to multi peer manager
+func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDisconnect func()) {
+	var peerCounter int
+	var peerMu sync.Mutex
+	var connMu sync.Mutex // Protect WebSocket writes
+
+	pm.SetICECallback(func(peerID string, candidate string) {
+		iceMsg := SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
+		connMu.Lock()
+		conn.WriteJSON(iceMsg)
+		connMu.Unlock()
+	})
+
+	// Set up focus change callback to broadcast to all viewers
+	pm.SetFocusChangeCallback(func(trackID string) {
+		log.Printf("Remote focus change callback triggered for track: %s", trackID)
+		focusMsg := SignalMessage{Type: "focus-change", FocusedTrack: trackID}
+		connMu.Lock()
+		err := conn.WriteJSON(focusMsg)
+		connMu.Unlock()
+		if err != nil {
+			log.Printf("Failed to send focus-change: %v", err)
+		} else {
+			log.Printf("Sent focus-change message to signal server")
+		}
+	})
+
+	go func() {
+		for {
+			var msg SignalMessage
+			if err := conn.ReadJSON(&msg); err != nil {
+				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+					log.Printf("Signal server disconnected: %v", err)
+				}
+				if onDisconnect != nil {
+					onDisconnect()
+				}
+				return
+			}
+
+			switch msg.Type {
+			case "viewer-joined":
+				peerMu.Lock()
+				peerCounter++
+				peerID := fmt.Sprintf("viewer-%d", peerCounter)
+				peerMu.Unlock()
+
+				go func(pid string) {
+					offer, err := pm.CreateOffer(pid)
+					if err != nil {
+						log.Printf("Failed to create offer: %v", err)
+						return
+					}
+
+					offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
+					connMu.Lock()
+					conn.WriteJSON(offerMsg)
+					connMu.Unlock()
+
+					// Send streams-info after offer
+					tracks := pm.GetTracks()
+					streams := make([]StreamInfo, len(tracks))
+					for i, t := range tracks {
+						streams[i] = StreamInfo{
+							TrackID:    t.TrackID,
+							WindowName: t.WindowName,
+							AppName:    t.AppName,
+							IsFocused:  t.IsFocused,
+							Width:      t.Width,
+							Height:     t.Height,
+						}
+					}
+					streamsMsg := SignalMessage{Type: "streams-info", Streams: streams}
+					connMu.Lock()
+					conn.WriteJSON(streamsMsg)
+					connMu.Unlock()
+				}(peerID)
+
+			case "answer":
+				peerID := msg.PeerID
+				if peerID == "" {
+					continue
+				}
+				if err := pm.HandleAnswer(peerID, msg.SDP); err != nil {
+					log.Printf("Failed to handle answer for %s: %v", peerID, err)
+				}
+
+			case "ice":
+				peerID := msg.PeerID
+				if peerID == "" {
+					continue
+				}
+				if err := pm.AddICECandidate(peerID, msg.Candidate); err != nil {
+					log.Printf("Failed to add ICE candidate for %s: %v", peerID, err)
+				}
+
+			case "error":
+				log.Printf("Signal server error: %s", msg.Error)
+			}
+		}
+	}()
+}
+
 // setupSignaling connects the signal server to the peer manager
 func setupSignaling(server *SignalServer, pm *PeerManager, roomCode string, password string) {
 	// Create a room for the sharer

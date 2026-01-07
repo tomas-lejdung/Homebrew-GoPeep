@@ -23,6 +23,7 @@
       --warning: #f59e0b;
       --error: #ef4444;
       --border: rgba(255, 255, 255, 0.1);
+      --focus-ring: #60a5fa;
     }
     
     body {
@@ -37,40 +38,131 @@
       cursor: default;
     }
     
-    /* Video container */
+    /* Main container - flex column for main + thumbnails */
     #container {
       width: 100vw;
       height: 100vh;
       display: flex;
-      align-items: center;
-      justify-content: center;
+      flex-direction: column;
       background: var(--bg-primary);
     }
     
-    video {
-      background: #000;
-      outline: none;
+    /* Main video area */
+    #main-video-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      position: relative;
     }
     
-    video.scale-fit {
-      max-width: 100vw;
-      max-height: 100vh;
+    .main-video {
+      background: #000;
+      outline: none;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    
+    .main-video.scale-fit {
+      max-width: 100%;
+      max-height: 100%;
       width: auto;
       height: auto;
       object-fit: contain;
     }
     
-    video.scale-fill {
-      width: 100vw;
-      height: 100vh;
+    .main-video.scale-fill {
+      width: 100%;
+      height: 100%;
       object-fit: cover;
     }
     
-    video.scale-native {
+    .main-video.scale-native {
       width: auto;
       height: auto;
       max-width: none;
       max-height: none;
+    }
+    
+    /* Thumbnails bar */
+    #thumbnails-bar {
+      display: none; /* Hidden when single stream */
+      height: 120px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      padding: 10px 20px;
+      gap: 10px;
+      align-items: center;
+      overflow-x: auto;
+    }
+    
+    #thumbnails-bar.visible {
+      display: flex;
+    }
+    
+    .thumbnail-container {
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    
+    .thumbnail-container:hover {
+      border-color: var(--accent);
+      transform: scale(1.05);
+    }
+    
+    .thumbnail-container.focused {
+      border-color: var(--success);
+    }
+    
+    .thumbnail-container.active {
+      border-color: var(--accent);
+    }
+    
+    .thumbnail-video {
+      width: 160px;
+      height: 90px;
+      object-fit: cover;
+      background: #000;
+    }
+    
+    .thumbnail-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 4px 8px;
+      background: var(--bg-overlay);
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .thumbnail-container.focused .thumbnail-label {
+      color: var(--success);
+    }
+    
+    .thumbnail-focus-indicator {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      display: none;
+    }
+    
+    .thumbnail-container.focused .thumbnail-focus-indicator {
+      display: block;
     }
     
     /* Top status bar */
@@ -168,6 +260,20 @@
       gap: 12px;
     }
     
+    #stream-count {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    #stream-count.visible {
+      display: flex;
+    }
+    
     /* Control bar */
     #control-bar {
       position: fixed;
@@ -191,6 +297,11 @@
     #control-bar.visible {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+    
+    /* Adjust control bar position when thumbnails visible */
+    body.multi-stream #control-bar {
+      bottom: 144px;
     }
     
     .control-btn {
@@ -338,6 +449,10 @@
     #shortcuts-help.visible {
       opacity: 1;
       transform: translateX(-50%) translateY(0);
+    }
+    
+    body.multi-stream #shortcuts-help {
+      bottom: 200px;
     }
     
     .shortcut {
@@ -542,14 +657,13 @@
       </div>
     </div>
     <div id="status-right">
-      <div class="status-section" id="viewer-count" style="display: none;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
-          <circle cx="9" cy="7" r="4"></circle>
-          <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
-          <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+      <div id="stream-count">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
         </svg>
-        <span id="viewer-count-text">1</span>
+        <span id="stream-count-text">1</span>
       </div>
     </div>
   </div>
@@ -579,7 +693,13 @@
   
   <!-- Video container -->
   <div id="container">
-    <video id="video" autoplay playsinline muted class="scale-fit"></video>
+    <!-- Main video area -->
+    <div id="main-video-container">
+      <video id="main-video" class="main-video scale-fit" autoplay playsinline muted></video>
+    </div>
+    
+    <!-- Thumbnails bar for multi-stream -->
+    <div id="thumbnails-bar"></div>
   </div>
   
   <!-- Control bar -->
@@ -662,8 +782,9 @@
 
   <script>
     // Elements
-    const video = document.getElementById('video');
-    const container = document.getElementById('container');
+    const mainVideo = document.getElementById('main-video');
+    const mainVideoContainer = document.getElementById('main-video-container');
+    const thumbnailsBar = document.getElementById('thumbnails-bar');
     const statusBar = document.getElementById('status-bar');
     const statusDot = document.getElementById('status-dot');
     const statusText = document.getElementById('status-text');
@@ -676,6 +797,8 @@
     const shortcutsHelp = document.getElementById('shortcuts-help');
     const statsPanel = document.getElementById('stats-panel');
     const streamStats = document.getElementById('stream-stats');
+    const streamCountEl = document.getElementById('stream-count');
+    const streamCountText = document.getElementById('stream-count-text');
     
     // State
     const roomCode = window.location.pathname.substring(1);
@@ -690,7 +813,14 @@
     let lastStatsTime = 0;
     let showStats = false;
     let currentScale = 'fit';
-    let roomPassword = ''; // Stored password for reconnection
+    let roomPassword = '';
+    
+    // Multi-stream state
+    let streams = {}; // index (0,1,2,3) -> { stream, browserTrackId, info }
+    let streamOrder = []; // Array of stream indices in order received
+    let streamsInfo = []; // Info from sharer (video0, video1, etc.)
+    let viewerFocusedIndex = null; // What the viewer has selected (index)
+    let sharerFocusedIndex = null; // What the sharer has focused (index from OS)
     
     // Password dialog elements
     const passwordDialog = document.getElementById('password-dialog');
@@ -723,7 +853,7 @@
     }
     
     function hideUI() {
-      if (document.fullscreenElement || !video.srcObject) return;
+      if (document.fullscreenElement || !mainVideo.srcObject) return;
       document.body.classList.remove('show-ui');
       statusBar.classList.remove('visible');
       controlBar.classList.remove('visible');
@@ -741,7 +871,6 @@
       statusText.textContent = text;
       statusDot.className = 'status-dot ' + state;
       
-      // Update waiting screen
       if (state === 'connecting') {
         waitingTitle.textContent = text;
         waitingSubtitle.textContent = 'Please wait...';
@@ -754,6 +883,114 @@
     function setWaitingState(title, subtitle) {
       waitingTitle.textContent = title;
       waitingSubtitle.textContent = subtitle;
+    }
+    
+    // Multi-stream functions
+    function updateMultiStreamUI() {
+      const streamCount = streamOrder.length;
+      
+      // Update stream count display
+      streamCountText.textContent = streamCount;
+      streamCountEl.classList.toggle('visible', streamCount > 1);
+      
+      // Show/hide thumbnails bar
+      const showThumbnails = streamCount > 1;
+      thumbnailsBar.classList.toggle('visible', showThumbnails);
+      document.body.classList.toggle('multi-stream', showThumbnails);
+      
+      // Rebuild thumbnails
+      thumbnailsBar.innerHTML = '';
+      
+      if (showThumbnails) {
+        for (const idx of streamOrder) {
+          if (idx === viewerFocusedIndex) continue; // Skip the main video
+          
+          const data = streams[idx];
+          if (!data) continue;
+          
+          const container = document.createElement('div');
+          container.className = 'thumbnail-container';
+          if (idx === sharerFocusedIndex) {
+            container.classList.add('focused');
+          }
+          if (idx === viewerFocusedIndex) {
+            container.classList.add('active');
+          }
+          container.dataset.streamIndex = idx;
+          
+          const video = document.createElement('video');
+          video.className = 'thumbnail-video';
+          video.autoplay = true;
+          video.playsinline = true;
+          video.muted = true;
+          video.srcObject = data.stream;
+          
+          const label = document.createElement('div');
+          label.className = 'thumbnail-label';
+          const info = data.info;
+          label.textContent = info?.windowName || info?.appName || `Stream ${idx + 1}`;
+          
+          const focusIndicator = document.createElement('div');
+          focusIndicator.className = 'thumbnail-focus-indicator';
+          
+          container.appendChild(video);
+          container.appendChild(label);
+          container.appendChild(focusIndicator);
+          
+          container.addEventListener('click', () => switchToStream(idx));
+          
+          thumbnailsBar.appendChild(container);
+        }
+      }
+    }
+    
+    function switchToStream(index) {
+      if (!streams[index]) return;
+      
+      // Swap the focused stream
+      viewerFocusedIndex = index;
+      
+      // Update main video
+      mainVideo.srcObject = streams[index].stream;
+      
+      // Update thumbnails
+      updateMultiStreamUI();
+    }
+    
+    function handleStreamsInfo(infoArray) {
+      // Store the streams info array
+      streamsInfo = infoArray || [];
+      
+      // Map info to streams by index (video0 -> index 0, video1 -> index 1, etc.)
+      for (const info of streamsInfo) {
+        // Extract index from trackId (e.g., "video0" -> 0)
+        const match = info.trackId.match(/video(\d+)/);
+        if (match) {
+          const idx = parseInt(match[1], 10);
+          if (streams[idx]) {
+            streams[idx].info = info;
+          }
+          if (info.isFocused) {
+            sharerFocusedIndex = idx;
+          }
+        }
+      }
+      updateMultiStreamUI();
+    }
+    
+    function handleFocusChange(focusedTrack) {
+      console.log('Focus change received:', focusedTrack);
+      // Extract index from trackId
+      const match = focusedTrack.match(/video(\d+)/);
+      if (match) {
+        sharerFocusedIndex = parseInt(match[1], 10);
+        console.log('Set sharerFocusedIndex to:', sharerFocusedIndex);
+      }
+      
+      // Optionally auto-switch to sharer's focused window
+      // Uncomment to enable: switchToStream(sharerFocusedIndex);
+      
+      updateMultiStreamUI();
     }
     
     // Fullscreen
@@ -780,26 +1017,26 @@
       try {
         if (document.pictureInPictureElement) {
           await document.exitPictureInPicture();
-        } else if (video.srcObject) {
-          await video.requestPictureInPicture();
+        } else if (mainVideo.srcObject) {
+          await mainVideo.requestPictureInPicture();
         }
       } catch (e) {
         console.log('PiP error:', e);
       }
     }
     
-    video.addEventListener('enterpictureinpicture', () => {
+    mainVideo.addEventListener('enterpictureinpicture', () => {
       document.getElementById('btn-pip').classList.add('active');
     });
     
-    video.addEventListener('leavepictureinpicture', () => {
+    mainVideo.addEventListener('leavepictureinpicture', () => {
       document.getElementById('btn-pip').classList.remove('active');
     });
     
     // Scale mode
     function setScale(mode) {
       currentScale = mode;
-      video.className = 'scale-' + mode;
+      mainVideo.className = 'main-video scale-' + mode;
       
       document.querySelectorAll('.scale-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.scale === mode);
@@ -831,7 +1068,6 @@
     
     // Keyboard shortcuts
     document.addEventListener('keydown', (e) => {
-      // Ignore if typing in input
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       
       switch (e.key.toLowerCase()) {
@@ -870,7 +1106,7 @@
     });
     
     // Double-click for fullscreen
-    video.addEventListener('dblclick', toggleFullscreen);
+    mainVideo.addEventListener('dblclick', toggleFullscreen);
     
     // Password dialog functions
     function showPasswordDialog(errorText = '') {
@@ -902,7 +1138,6 @@
       hidePasswordDialog();
       waitingEl.classList.remove('hidden');
       
-      // Re-send join with password
       if (ws && ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type: 'join', role: 'viewer', password: roomPassword }));
       }
@@ -930,23 +1165,20 @@
           });
           
           if (videoStats) {
-            // Resolution
             const res = `${videoStats.frameWidth || '--'}x${videoStats.frameHeight || '--'}`;
             document.getElementById('stat-resolution').textContent = res;
             document.getElementById('stats-resolution').textContent = res;
             
-            // Frame rate
             const fps = videoStats.framesPerSecond ? Math.round(videoStats.framesPerSecond) : '--';
             document.getElementById('stat-fps').textContent = fps;
             document.getElementById('stats-framerate').textContent = fps !== '--' ? `${fps} fps` : '--';
             
-            // Bitrate calculation
             const now = Date.now();
             const bytesReceived = videoStats.bytesReceived || 0;
             if (lastStatsTime > 0 && lastBytesReceived > 0) {
               const timeDiff = (now - lastStatsTime) / 1000;
               const bytesDiff = bytesReceived - lastBytesReceived;
-              const bitrate = (bytesDiff * 8) / timeDiff / 1000; // kbps
+              const bitrate = (bytesDiff * 8) / timeDiff / 1000;
               
               let bitrateStr;
               if (bitrate >= 1000) {
@@ -960,7 +1192,6 @@
             lastBytesReceived = bytesReceived;
             lastStatsTime = now;
             
-            // Packets lost
             const packetsLost = videoStats.packetsLost || 0;
             const packetsReceived = videoStats.packetsReceived || 0;
             const lossPercent = packetsReceived > 0 ? ((packetsLost / (packetsLost + packetsReceived)) * 100).toFixed(1) : 0;
@@ -968,13 +1199,11 @@
             lossEl.textContent = `${packetsLost} (${lossPercent}%)`;
             lossEl.className = 'stats-value ' + (lossPercent > 5 ? 'bad' : lossPercent > 1 ? 'warn' : 'good');
             
-            // Jitter
             const jitter = videoStats.jitter ? (videoStats.jitter * 1000).toFixed(1) + ' ms' : '--';
             document.getElementById('stats-jitter').textContent = jitter;
           }
           
           if (candidatePairStats) {
-            // Latency (RTT)
             const rtt = candidatePairStats.currentRoundTripTime;
             const latencyEl = document.getElementById('stats-latency');
             if (rtt !== undefined) {
@@ -985,7 +1214,6 @@
               latencyEl.textContent = '--';
             }
             
-            // Connection type (P2P vs Relay)
             const connTypeEl = document.getElementById('stats-connection-type');
             const localCandidateId = candidatePairStats.localCandidateId;
             let connectionType = 'Unknown';
@@ -1038,7 +1266,6 @@
         setStatus('Joining room...', 'connecting');
         setWaitingState('Joining Room', 'Waiting for sharer...');
         reconnectAttempts = 0;
-        // Include password if we have one (from previous attempt or reconnection)
         const joinMsg = { type: 'join', role: 'viewer' };
         if (roomPassword) {
           joinMsg.password = roomPassword;
@@ -1064,41 +1291,57 @@
             await handleICE(msg.candidate);
             break;
             
+          case 'streams-info':
+            handleStreamsInfo(msg.streams || []);
+            break;
+            
+          case 'focus-change':
+            handleFocusChange(msg.focusedTrack);
+            break;
+            
           case 'sharer-ready':
-            // Sharer has reconnected, clean up old connection and wait for new offer
             setStatus('Sharer reconnected', 'connecting');
             if (pc) {
               pc.close();
               pc = null;
               stopStatsCollection();
             }
-            video.srcObject = null;
+            streams = {};
+            streamOrder = [];
+            streamsInfo = [];
+            viewerFocusedIndex = null;
+            sharerFocusedIndex = null;
+            mainVideo.srcObject = null;
             streamStats.style.display = 'none';
+            updateMultiStreamUI();
             setWaitingState('Reconnecting', 'Sharer has reconnected, establishing new stream...');
             waitingEl.classList.remove('hidden');
             break;
             
           case 'password-required':
-            // Room requires password
             showPasswordDialog();
             break;
             
           case 'password-invalid':
-            // Wrong password
             showPasswordDialog('Invalid password. Please try again.');
             break;
             
           case 'error':
             setStatus(msg.error, 'error');
-            // If sharer disconnected, clean up and wait for reconnection
             if (msg.error === 'Sharer disconnected') {
               if (pc) {
                 pc.close();
                 pc = null;
                 stopStatsCollection();
               }
-              video.srcObject = null;
+              streams = {};
+              streamOrder = [];
+              streamsInfo = [];
+              viewerFocusedIndex = null;
+              sharerFocusedIndex = null;
+              mainVideo.srcObject = null;
               streamStats.style.display = 'none';
+              updateMultiStreamUI();
               setWaitingState('Sharer Reconnecting', 'Please wait...');
               waitingEl.classList.remove('hidden');
             }
@@ -1139,16 +1382,50 @@
         stopStatsCollection();
       }
       
+      // Reset stream state
+      streams = {};
+      streamOrder = [];
+      streamsInfo = [];
+      viewerFocusedIndex = null;
+      sharerFocusedIndex = null;
+      
       pc = new RTCPeerConnection({ iceServers });
       
       pc.ontrack = (event) => {
-        setStatus('Connected', 'connected');
-        waitingEl.classList.add('hidden');
-        streamStats.style.display = 'flex';
-        video.srcObject = event.streams[0];
-        video.play().catch(e => console.log('Autoplay blocked:', e));
-        startStatsCollection();
-        showUI();
+        const track = event.track;
+        const stream = event.streams[0];
+        
+        console.log('Received track:', track.id, track.kind, 'stream:', stream.id);
+        
+        if (track.kind === 'video') {
+          // Assign index based on order received
+          const streamIndex = streamOrder.length;
+          
+          // Store the stream by index
+          streams[streamIndex] = {
+            stream: stream,
+            browserTrackId: track.id,
+            info: null
+          };
+          streamOrder.push(streamIndex);
+          
+          console.log('Added stream at index:', streamIndex, 'total streams:', streamOrder.length);
+          
+          // If this is the first video, make it the focused one
+          if (viewerFocusedIndex === null) {
+            viewerFocusedIndex = streamIndex;
+            mainVideo.srcObject = stream;
+            
+            setStatus('Connected', 'connected');
+            waitingEl.classList.add('hidden');
+            streamStats.style.display = 'flex';
+            mainVideo.play().catch(e => console.log('Autoplay blocked:', e));
+            startStatsCollection();
+            showUI();
+          }
+          
+          updateMultiStreamUI();
+        }
       };
       
       pc.onicecandidate = (event) => {

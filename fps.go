@@ -15,15 +15,13 @@ type FPSPreset struct {
 // FPS presets from lowest to highest
 var FPSPresets = []FPSPreset{
 	{Value: 15, Name: "15", Description: "low power"},
-	{Value: 24, Name: "24", Description: "cinematic"},
 	{Value: 30, Name: "30", Description: "standard"},
 	{Value: 60, Name: "60", Description: "smooth"},
-	{Value: 120, Name: "120", Description: "ultra smooth"},
 }
 
 // DefaultFPSIndex returns the index of the default FPS preset (30)
 func DefaultFPSIndex() int {
-	return 2 // 30 fps
+	return 1 // 30 fps
 }
 
 // FPSByValue finds an FPS preset by value

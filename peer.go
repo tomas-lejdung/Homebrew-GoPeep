@@ -330,6 +330,9 @@ func (pm *PeerManager) GetViewerInfo() []ViewerInfo {
 
 // WriteVideoSample writes a video sample to all connected peers
 func (pm *PeerManager) WriteVideoSample(data []byte, duration time.Duration) error {
+	if pm == nil || pm.videoTrack == nil {
+		return fmt.Errorf("peer manager or video track not initialized")
+	}
 	return pm.videoTrack.WriteSample(media.Sample{
 		Data:     data,
 		Duration: duration,
@@ -549,7 +552,7 @@ func (s *Streamer) streamLoop() {
 		case <-s.stopChan:
 			return
 		case <-ticker.C:
-			if s.captureFuncBGRA == nil {
+			if s.captureFuncBGRA == nil || s.peerManager == nil {
 				continue
 			}
 

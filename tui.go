@@ -30,6 +30,11 @@ type reconnectFailedMsg struct {
 	err string
 }
 
+// osFocusChangedMsg indicates OS window focus changed
+type osFocusChangedMsg struct {
+	windowID uint32
+}
+
 // copyToClipboard copies text to the macOS clipboard using pbcopy
 func copyToClipboard(text string) error {
 	cmd := exec.Command("pbcopy")
@@ -123,6 +128,12 @@ type captureStartedMsg struct {
 	streamer *Streamer
 }
 
+// multiCaptureStartedMsg indicates multi-window capture started successfully
+type multiCaptureStartedMsg struct {
+	multiStreamer    *MultiStreamer
+	multiPeerManager *MultiPeerManager
+}
+
 // captureErrorMsg indicates capture failed to start
 type captureErrorMsg struct {
 	err string
@@ -143,7 +154,14 @@ type model struct {
 	// Sources (fullscreen + windows)
 	sources        []SourceItem
 	sourceCursor   int
-	selectedSource int // -1 if not sharing
+	selectedSource int // -1 if not sharing (single-window mode)
+
+	// Multi-window mode
+	multiWindowMode  bool              // true if multi-window streaming is enabled
+	selectedWindows  map[uint32]bool   // window IDs selected for multi-window streaming
+	adaptiveBitrate  bool              // reduce bitrate for non-focused windows
+	multiStreamer    *MultiStreamer    // multi-window streamer
+	multiPeerManager *MultiPeerManager // multi-window peer manager
 
 	// Quality
 	qualityCursor   int
@@ -176,6 +194,9 @@ type model struct {
 	// Stats display
 	showStats bool
 	stats     StreamStats
+
+	// OS focus tracking
+	osFocusedWindowID uint32 // Currently OS-focused window ID
 
 	// Password protection
 	passwordEnabled bool
@@ -243,6 +264,8 @@ func initialModel(config Config) model {
 		config:          config,
 		sourceCursor:    0,
 		selectedSource:  -1,
+		selectedWindows: make(map[uint32]bool),
+		multiWindowMode: true, // Always use multi-window mode
 		qualityCursor:   DefaultQualityIndex(),
 		selectedQuality: DefaultQualityIndex(),
 		fpsCursor:       fpsIndex,
@@ -345,6 +368,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.startTime = time.Now()
 		return m, tickCmd()
 
+	case multiCaptureStartedMsg:
+		// Multi-window capture started successfully
+		m.starting = false
+		m.sharing = true
+		m.multiStreamer = msg.multiStreamer
+		m.multiPeerManager = msg.multiPeerManager
+		m.startTime = time.Now()
+		return m, tickCmd()
+
 	case captureErrorMsg:
 		// Capture failed - reset state fully
 		m.starting = false
@@ -355,6 +387,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.lastError = msg.err
 		return m, refreshWindows
 
+	case osFocusChangedMsg:
+		// OS focus changed - update the tracked window ID
+		m.osFocusedWindowID = msg.windowID
+		return m, nil
+
 	case tickMsg:
 		// Periodic refresh
 		var cmds []tea.Cmd
@@ -363,10 +400,28 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Refresh windows list
 		cmds = append(cmds, refreshWindows)
 
+		// Poll for topmost window among all visible windows (z-order based)
+		// Collect all window IDs from sources
+		var allWindowIDs []uint32
+		for _, source := range m.sources {
+			if !source.IsFullscreen && source.Window != nil {
+				allWindowIDs = append(allWindowIDs, source.Window.ID)
+			}
+		}
+		if len(allWindowIDs) > 0 {
+			topmostWindow := GetTopmostWindow(allWindowIDs)
+			if topmostWindow != m.osFocusedWindowID {
+				m.osFocusedWindowID = topmostWindow
+			}
+		}
+
 		// Update viewer count and stats if sharing
-		if m.sharing && m.peerManager != nil {
-			// Use peer manager's connection count (works for both local and remote)
-			m.viewerCount = m.peerManager.GetConnectionCount()
+		if m.sharing {
+			if m.multiPeerManager != nil {
+				m.viewerCount = m.multiPeerManager.GetConnectionCount()
+			} else if m.peerManager != nil {
+				m.viewerCount = m.peerManager.GetConnectionCount()
+			}
 		}
 		if m.sharing && m.streamer != nil {
 			m.stats = m.streamer.GetStats()
@@ -515,20 +570,59 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		}
 		return m, nil
 
-	case "enter", " ":
+	case "enter":
 		if m.activeColumn == columnSources {
-			// Select source and start sharing
-			if len(m.sources) > 0 && m.sourceCursor < len(m.sources) {
-				return m.startSharing(m.sourceCursor)
+			// Start sharing selected windows (or current window if none selected)
+			if len(m.selectedWindows) > 0 {
+				return m.startMultiWindowSharing()
+			}
+			// If no windows selected, select current window and start
+			if m.sourceCursor < len(m.sources) {
+				source := m.sources[m.sourceCursor]
+				if !source.IsFullscreen && source.Window != nil {
+					m.selectedWindows[source.Window.ID] = true
+					return m.startMultiWindowSharing()
+				} else if source.IsFullscreen {
+					// For fullscreen, use single-window mode
+					return m.startSharing(m.sourceCursor)
+				}
 			}
 		} else if m.activeColumn == columnQuality {
-			// Select quality
 			return m.applyQuality(m.qualityCursor)
 		} else if m.activeColumn == columnFPS {
-			// Select FPS
 			return m.applyFPS(m.fpsCursor)
 		} else if m.activeColumn == columnCodec {
-			// Select codec
+			return m.applyCodec(m.codecCursor)
+		}
+		return m, nil
+
+	case " ":
+		if m.activeColumn == columnSources {
+			// Toggle window selection (up to 4 windows)
+			if m.sourceCursor < len(m.sources) {
+				source := m.sources[m.sourceCursor]
+				if !source.IsFullscreen && source.Window != nil {
+					windowID := source.Window.ID
+
+					// Toggle selection
+					if m.selectedWindows[windowID] {
+						delete(m.selectedWindows, windowID)
+					} else if len(m.selectedWindows) < MaxCaptureInstances {
+						m.selectedWindows[windowID] = true
+					}
+
+					// If sharing, restart with new selection
+					if m.sharing && m.multiStreamer != nil {
+						return m.restartMultiStreamWithSelection()
+					}
+				}
+			}
+			return m, nil
+		} else if m.activeColumn == columnQuality {
+			return m.applyQuality(m.qualityCursor)
+		} else if m.activeColumn == columnFPS {
+			return m.applyFPS(m.fpsCursor)
+		} else if m.activeColumn == columnCodec {
 			return m.applyCodec(m.codecCursor)
 		}
 		return m, nil
@@ -600,6 +694,15 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+
+	case "a":
+		// Toggle adaptive bitrate
+		m.adaptiveBitrate = !m.adaptiveBitrate
+		// Update if already streaming
+		if m.multiStreamer != nil {
+			m.multiStreamer.SetAdaptiveBitrate(m.adaptiveBitrate)
+		}
+		return m, nil
 	}
 
 	return m, nil
@@ -650,17 +753,30 @@ func (m model) selectSourceByIndex(index int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// selectWindowByNumber selects a window by its display number (1-9)
+// selectWindowByNumber toggles window selection by its display number (1-9)
 // Windows are numbered starting from 1, excluding fullscreen
 func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 	// Find the nth non-fullscreen source
 	windowCount := 0
 	for i, source := range m.sources {
-		if !source.IsFullscreen {
+		if !source.IsFullscreen && source.Window != nil {
 			windowCount++
 			if windowCount == num {
 				m.sourceCursor = i
-				return m.startSharing(i)
+				windowID := source.Window.ID
+
+				// Toggle selection
+				if m.selectedWindows[windowID] {
+					delete(m.selectedWindows, windowID)
+				} else if len(m.selectedWindows) < MaxCaptureInstances {
+					m.selectedWindows[windowID] = true
+				}
+
+				// If sharing, restart with new selection
+				if m.sharing && m.multiStreamer != nil {
+					return m.restartMultiStreamWithSelection()
+				}
+				return m, nil
 			}
 		}
 	}
@@ -1050,6 +1166,257 @@ func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
 	return m, startCaptureAsync(peerManager, isFullscreen, windowID, fps, bitrate, codecType)
 }
 
+// startMultiWindowSharing starts sharing multiple selected windows
+func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
+	if len(m.selectedWindows) == 0 {
+		m.lastError = "No windows selected. Use SPACE to select windows."
+		return m, nil
+	}
+
+	if m.starting || m.sharing {
+		return m, nil
+	}
+
+	m.stopCapture(false)
+	m.stopMultiCapture()
+	m.lastError = ""
+
+	// Initialize server for multi-window mode
+	if err := m.initMultiServer(); err != nil {
+		m.lastError = err.Error()
+		return m, nil
+	}
+
+	m.starting = true
+
+	// Collect selected windows info
+	var selectedWindowInfos []WindowInfo
+	for _, source := range m.sources {
+		if !source.IsFullscreen && source.Window != nil {
+			if m.selectedWindows[source.Window.ID] {
+				selectedWindowInfos = append(selectedWindowInfos, *source.Window)
+			}
+		}
+	}
+
+	// Capture config values for async command
+	fps := m.getSelectedFPS()
+	focusBitrate := QualityPresets[m.selectedQuality].Bitrate
+	bgBitrate := focusBitrate / 3 // Background windows get 1/3 bitrate
+	if bgBitrate < 500 {
+		bgBitrate = 500
+	}
+	adaptiveBR := m.adaptiveBitrate
+	codecType := m.getSelectedCodecType()
+	multiPeerManager := m.multiPeerManager
+
+	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fps, focusBitrate, bgBitrate, adaptiveBR, codecType)
+}
+
+// restartMultiStreamWithSelection restarts multi-stream with updated window selection
+func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
+	// Stop current multi streamer
+	if m.multiStreamer != nil {
+		m.multiStreamer.Stop()
+		m.multiStreamer = nil
+	}
+
+	// If no windows selected, just stop completely
+	if len(m.selectedWindows) == 0 {
+		// Full cleanup
+		if m.multiPeerManager != nil {
+			m.multiPeerManager.Close()
+			m.multiPeerManager = nil
+		}
+		if m.wsConn != nil {
+			m.wsConn.Close()
+			m.wsConn = nil
+		}
+		m.sharing = false
+		m.serverStarted = false
+		return m, nil
+	}
+
+	// Close multi peer manager to reset tracks (but keep server/websocket)
+	if m.multiPeerManager != nil {
+		m.multiPeerManager.Close()
+		m.multiPeerManager = nil
+	}
+
+	// We need to fully restart the server connection for new tracks
+	// Close existing websocket if any
+	if m.wsConn != nil {
+		m.wsConn.Close()
+		m.wsConn = nil
+	}
+
+	// Mark as not sharing/server to reinitialize
+	m.sharing = false
+	m.serverStarted = false
+
+	// Start fresh with new selection
+	return m.startMultiWindowSharing()
+}
+
+// initMultiServer initializes the server for multi-window mode
+func (m *model) initMultiServer() error {
+	if m.serverStarted && m.multiPeerManager != nil {
+		return nil
+	}
+
+	// Generate room code if not set
+	if m.roomCode == "" {
+		m.roomCode = GenerateRoomCode()
+	}
+
+	// Create multi peer manager
+	iceConfig := ICEConfig{
+		TURNServer: m.config.TURNServer,
+		TURNUser:   m.config.TURNUser,
+		TURNPass:   m.config.TURNPass,
+		ForceRelay: m.config.ForceRelay,
+	}
+	codecType := m.getSelectedCodecType()
+
+	var err error
+	m.multiPeerManager, err = NewMultiPeerManager(iceConfig, codecType)
+	if err != nil {
+		return fmt.Errorf("failed to create multi peer manager: %v", err)
+	}
+
+	// Try remote signal server first
+	if !m.config.LocalMode && m.config.SignalURL != "" {
+		if err := m.initMultiRemoteSignaling(); err == nil {
+			m.serverStarted = true
+			return nil
+		}
+	}
+
+	// Local mode
+	m.isRemote = false
+	m.server = NewSignalServer()
+	addr := fmt.Sprintf(":%d", m.config.Port)
+
+	go func() {
+		m.server.StartServer(addr)
+	}()
+
+	time.Sleep(100 * time.Millisecond)
+
+	localIP := getLocalIP()
+	m.shareURL = fmt.Sprintf("http://%s:%d/%s", localIP, m.config.Port, m.roomCode)
+
+	// Set up signaling for multi-window
+	setupMultiSignaling(m.server, m.multiPeerManager, m.roomCode, m.password)
+
+	m.serverStarted = true
+	return nil
+}
+
+// initMultiRemoteSignaling connects to remote signal server for multi-window
+func (m *model) initMultiRemoteSignaling() error {
+	signalURL := m.config.SignalURL
+
+	if strings.HasPrefix(signalURL, "http://") {
+		signalURL = "ws://" + strings.TrimPrefix(signalURL, "http://")
+	} else if strings.HasPrefix(signalURL, "https://") {
+		signalURL = "wss://" + strings.TrimPrefix(signalURL, "https://")
+	} else if !strings.HasPrefix(signalURL, "ws://") && !strings.HasPrefix(signalURL, "wss://") {
+		signalURL = "wss://" + signalURL
+	}
+
+	wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + m.roomCode
+
+	viewerURL := strings.Replace(signalURL, "wss://", "https://", 1)
+	viewerURL = strings.Replace(viewerURL, "ws://", "http://", 1)
+	m.shareURL = strings.TrimSuffix(viewerURL, "/") + "/" + m.roomCode
+
+	dialer := websocket.Dialer{
+		HandshakeTimeout: 5 * time.Second,
+	}
+	conn, _, err := dialer.Dial(wsURL, nil)
+	if err != nil {
+		return fmt.Errorf("failed to connect to signal server: %v", err)
+	}
+
+	joinMsg := SignalMessage{Type: "join", Role: "sharer", Password: m.password}
+	if err := conn.WriteJSON(joinMsg); err != nil {
+		conn.Close()
+		return fmt.Errorf("failed to send join message: %v", err)
+	}
+
+	var joinResp SignalMessage
+	if err := conn.ReadJSON(&joinResp); err != nil {
+		conn.Close()
+		return fmt.Errorf("failed to read join response: %v", err)
+	}
+	if joinResp.Type == "error" {
+		conn.Close()
+		return fmt.Errorf("failed to join room: %s", joinResp.Error)
+	}
+
+	m.wsConn = conn
+	m.isRemote = true
+
+	if m.wsDisconnected == nil {
+		m.wsDisconnected = new(bool)
+	}
+	*m.wsDisconnected = false
+
+	disconnectFlag := m.wsDisconnected
+	setupMultiRemoteSignaling(conn, m.multiPeerManager, func() {
+		*disconnectFlag = true
+	})
+
+	return nil
+}
+
+// stopMultiCapture stops multi-window capture
+func (m *model) stopMultiCapture() {
+	if m.multiStreamer != nil {
+		m.multiStreamer.Stop()
+		m.multiStreamer = nil
+	}
+	if m.multiPeerManager != nil {
+		m.multiPeerManager.Close()
+		m.multiPeerManager = nil
+	}
+}
+
+// startMultiCaptureAsync starts multi-window capture asynchronously
+func startMultiCaptureAsync(pm *MultiPeerManager, windows []WindowInfo, fps, focusBitrate, bgBitrate int, adaptiveBR bool, codecType CodecType) tea.Cmd {
+	return func() tea.Msg {
+		time.Sleep(100 * time.Millisecond)
+
+		// Create multi streamer
+		ms := NewMultiStreamer(pm, fps, focusBitrate, bgBitrate, adaptiveBR)
+
+		// Add each window
+		for _, win := range windows {
+			_, err := ms.AddWindow(win)
+			if err != nil {
+				ms.Stop()
+				return captureErrorMsg{err: fmt.Sprintf("Failed to add window %s: %v", win.DisplayName(), err)}
+			}
+		}
+
+		// Set up focus change callback - this will be called when OS focus changes
+		// The callback needs access to the websocket or server to broadcast
+		// For now, the focus info is tracked in the tracks and sent with streams-info
+
+		// Start streaming
+		if err := ms.Start(); err != nil {
+			ms.Stop()
+			return captureErrorMsg{err: fmt.Sprintf("Failed to start multi-streamer: %v", err)}
+		}
+
+		return multiCaptureStartedMsg{
+			multiStreamer:    ms,
+			multiPeerManager: pm,
+		}
+	}
+}
+
 // startCaptureAsync returns a command that starts capture in a goroutine
 func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowID uint32, fps, bitrate int, codecType CodecType) tea.Cmd {
 	return func() tea.Msg {
@@ -1086,9 +1453,16 @@ func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowID uin
 // stopCapture stops the current capture but keeps server running.
 // If preserveState is true, keeps isFullscreen and activeWindowID for restart scenarios.
 func (m *model) stopCapture(preserveState bool) {
+	// Stop single-window streamer
 	if m.streamer != nil {
 		m.streamer.Stop()
 		m.streamer = nil
+	}
+
+	// Stop multi-window streamer
+	if m.multiStreamer != nil {
+		m.multiStreamer.Stop()
+		m.multiStreamer = nil
 	}
 
 	StopCapture()
@@ -1109,6 +1483,11 @@ func (m *model) cleanup() {
 	if m.peerManager != nil {
 		m.peerManager.Close()
 		m.peerManager = nil
+	}
+
+	if m.multiPeerManager != nil {
+		m.multiPeerManager.Close()
+		m.multiPeerManager = nil
 	}
 
 	if m.wsConn != nil {
@@ -1197,15 +1576,43 @@ func (m model) renderSharingStatus() string {
 	b.WriteString("\n")
 
 	// Show status based on state
-	if m.starting && m.selectedSource >= 0 && m.selectedSource < len(m.sources) {
-		// Starting capture (async)
+	if m.starting && len(m.selectedWindows) > 0 {
+		// Starting multi-window capture
+		b.WriteString(statusStyle.Render("Starting: "))
+		b.WriteString(normalStyle.Render(fmt.Sprintf("%d windows", len(m.selectedWindows))))
+		b.WriteString("  ")
+		b.WriteString(dimStyle.Render("please wait..."))
+	} else if m.starting && m.selectedSource >= 0 && m.selectedSource < len(m.sources) {
+		// Starting single-window capture (async)
 		source := m.sources[m.selectedSource]
 		b.WriteString(statusStyle.Render("Starting: "))
 		b.WriteString(normalStyle.Render(truncate(source.DisplayName, 30)))
 		b.WriteString("  ")
 		b.WriteString(dimStyle.Render("please wait..."))
+	} else if m.sharing && m.multiStreamer != nil {
+		// Multi-window sharing
+		streams := m.multiStreamer.GetStreamsInfo()
+		b.WriteString(statusStyle.Render("Sharing: "))
+		b.WriteString(selectedStyle.Render(fmt.Sprintf("%d windows", len(streams))))
+		if m.adaptiveBitrate {
+			b.WriteString(dimStyle.Render(" [adaptive]"))
+		}
+		b.WriteString("  ")
+
+		// Quality
+		b.WriteString(statusStyle.Render("Quality: "))
+		b.WriteString(normalStyle.Render(QualityPresets[m.selectedQuality].Name))
+		b.WriteString("  ")
+
+		// Viewer count
+		b.WriteString(statusStyle.Render("Viewers: "))
+		if m.viewerCount == 0 {
+			b.WriteString(dimStyle.Render("waiting..."))
+		} else {
+			b.WriteString(viewerStyle.Render(fmt.Sprintf("%d", m.viewerCount)))
+		}
 	} else if m.sharing && m.selectedSource >= 0 && m.selectedSource < len(m.sources) {
-		// Currently sharing
+		// Currently sharing single window
 		source := m.sources[m.selectedSource]
 		b.WriteString(statusStyle.Render("Sharing: "))
 		b.WriteString(selectedStyle.Render(truncate(source.DisplayName, 30)))
@@ -1296,6 +1703,16 @@ func (m model) renderColumns() string {
 func (m model) renderSourcesList() string {
 	var b strings.Builder
 
+	// Show selection count
+	if len(m.selectedWindows) > 0 {
+		modeText := fmt.Sprintf("Selected: %d/%d windows", len(m.selectedWindows), MaxCaptureInstances)
+		b.WriteString(selectedStyle.Render(modeText))
+		b.WriteString("\n")
+	} else {
+		b.WriteString(dimStyle.Render("Use SPACE to select windows (up to 4)"))
+		b.WriteString("\n")
+	}
+
 	if len(m.sources) == 0 {
 		b.WriteString(dimStyle.Render("No sources available"))
 		return b.String()
@@ -1310,14 +1727,29 @@ func (m model) renderSourcesList() string {
 
 		// Format label with appropriate shortcut key
 		var label string
+		var isSelected bool
+
 		if source.IsFullscreen {
+			// Fullscreen option
 			label = "[F] " + source.DisplayName
 		} else {
+			// Window with checkbox
 			windowNum++
+			checkbox := "[ ]"
+			if source.Window != nil && m.selectedWindows[source.Window.ID] {
+				checkbox = "[x]"
+				isSelected = true
+			}
+			// Check if this window has OS focus
+			hasFocus := source.Window != nil && source.Window.ID == m.osFocusedWindowID
+			focusIndicator := ""
+			if hasFocus {
+				focusIndicator = " *" // Asterisk indicates OS focus
+			}
 			if windowNum <= 9 {
-				label = fmt.Sprintf("[%d] %s", windowNum, truncate(source.DisplayName, 34))
+				label = fmt.Sprintf("%s [%d] %s%s", checkbox, windowNum, truncate(source.DisplayName, 26), focusIndicator)
 			} else {
-				label = "[ ] " + truncate(source.DisplayName, 34)
+				label = fmt.Sprintf("%s [ ] %s%s", checkbox, truncate(source.DisplayName, 26), focusIndicator)
 			}
 		}
 
@@ -1326,7 +1758,9 @@ func (m model) renderSourcesList() string {
 		isSharing := m.sharing && i == m.selectedSource
 		isStarting := m.starting && i == m.selectedSource
 
-		if isSharing {
+		if isSelected {
+			line = selectedStyle.Render(cursor + label)
+		} else if isSharing {
 			line = selectedStyle.Render(cursor + label)
 		} else if isStarting {
 			line = normalStyle.Render(cursor + label)
@@ -1609,9 +2043,18 @@ func (m model) renderHelp() string {
 
 	parts = append(parts, "tab/←→ switch column")
 	parts = append(parts, "↑/↓ navigate")
-	parts = append(parts, "enter select")
+	parts = append(parts, "space/1-9 toggle")
+	parts = append(parts, "enter start")
 	parts = append(parts, "f fullscreen")
-	parts = append(parts, "1-9 window")
+
+	// Adaptive bitrate toggle
+	if !m.sharing && !m.starting {
+		if m.adaptiveBitrate {
+			parts = append(parts, "a adaptive ON")
+		} else {
+			parts = append(parts, "a adaptive")
+		}
+	}
 
 	// Password toggle (only if not sharing yet)
 	if !m.sharing && !m.serverStarted {
@@ -1656,8 +2099,16 @@ func RunTUI(config Config) error {
 		return nil
 	}
 
-	// Disable logging in TUI mode (would corrupt the display)
-	log.SetOutput(io.Discard)
+	// Write logs to file instead of corrupting TUI display
+	logFile, err := os.Create("gopeep-debug.log")
+	if err != nil {
+		// Fall back to discarding if we can't create log file
+		log.SetOutput(io.Discard)
+	} else {
+		log.SetOutput(logFile)
+		log.Printf("=== GoPeep started at %s ===", time.Now().Format(time.RFC3339))
+		defer logFile.Close()
+	}
 
 	// Restore logging on exit
 	defer log.SetOutput(os.Stderr)
@@ -1667,8 +2118,8 @@ func RunTUI(config Config) error {
 		tea.WithAltScreen(),
 	)
 
-	_, err := p.Run()
-	return err
+	_, runErr := p.Run()
+	return runErr
 }
 
 func max(a, b int) int {

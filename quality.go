@@ -14,15 +14,15 @@ var QualityPresets = []QualityPreset{
 	{Name: "Low", Bitrate: 500, Description: "500 kbps"},
 	{Name: "Medium", Bitrate: 1500, Description: "1.5 Mbps"},
 	{Name: "High", Bitrate: 3000, Description: "3 Mbps"},
-	{Name: "Ultra", Bitrate: 6000, Description: "6 Mbps"},
-	{Name: "Extreme", Bitrate: 10000, Description: "10 Mbps"},
-	{Name: "Insane", Bitrate: 15000, Description: "15 Mbps"},
+	{Name: "Very High", Bitrate: 6000, Description: "6 Mbps"},
+	{Name: "Ultra", Bitrate: 10000, Description: "10 Mbps"},
+	{Name: "Extreme", Bitrate: 15000, Description: "15 Mbps"},
 	{Name: "Max", Bitrate: 20000, Description: "20 Mbps"},
 }
 
-// DefaultQualityIndex returns the index of the default quality preset (Medium)
+// DefaultQualityIndex returns the index of the default quality preset (Very High)
 func DefaultQualityIndex() int {
-	return 1 // Medium
+	return 3 // Very High (6 Mbps)
 }
 
 // QualityByName finds a quality preset by name (case-insensitive)
@@ -59,11 +59,11 @@ func ParseQualityFlag(value string) int {
 		return QualityPresets[1].Bitrate
 	case "hi", "high":
 		return QualityPresets[2].Bitrate
-	case "ultra":
+	case "very high", "veryhigh":
 		return QualityPresets[3].Bitrate
-	case "extreme":
+	case "ultra":
 		return QualityPresets[4].Bitrate
-	case "insane":
+	case "extreme":
 		return QualityPresets[5].Bitrate
 	case "max":
 		return QualityPresets[6].Bitrate
