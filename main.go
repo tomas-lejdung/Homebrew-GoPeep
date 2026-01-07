@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	sig "github.com/tomaslejdung/gopeep/pkg/signal"
 )
 
 // Note: TUI mode uses RunTUI() from tui.go
@@ -196,7 +197,7 @@ func listWindowsAndExit() {
 }
 
 func runSignalServer(port int) {
-	server := NewSignalServer()
+	server := sig.NewServer()
 	addr := fmt.Sprintf(":%d", port)
 
 	fmt.Printf("Starting signal server on http://localhost%s\n", addr)
@@ -252,13 +253,13 @@ func runShareMode(config Config) {
 	fmt.Printf("\nSharing: %s\n", targetWindow.DisplayName())
 
 	// Generate room code
-	roomCode := GenerateRoomCode()
+	roomCode := sig.GenerateRoomCode()
 
 	// Get local IP for URL
 	localIP := getLocalIP()
 
 	// Start signal server
-	server := NewSignalServer()
+	server := sig.NewServer()
 	addr := fmt.Sprintf(":%d", config.Port)
 
 	go func() {
@@ -418,7 +419,7 @@ func runShareModeWithFallback(config Config) {
 	}
 
 	// Generate room code
-	roomCode := GenerateRoomCode()
+	roomCode := sig.GenerateRoomCode()
 	wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + roomCode
 
 	fmt.Printf("Connecting to signal server %s...\n", config.SignalURL)
@@ -488,7 +489,7 @@ func runRemoteShareMode(config Config) {
 	fmt.Printf("\nSharing: %s\n", targetWindow.DisplayName())
 
 	// Generate room code
-	roomCode := GenerateRoomCode()
+	roomCode := sig.GenerateRoomCode()
 
 	// Parse signal URL and build WebSocket URL
 	signalURL := config.SignalURL
@@ -521,13 +522,13 @@ func runRemoteShareMode(config Config) {
 	defer conn.Close()
 
 	// Join as sharer
-	joinMsg := SignalMessage{Type: "join", Role: "sharer"}
+	joinMsg := sig.SignalMessage{Type: "join", Role: "sharer"}
 	if err := conn.WriteJSON(joinMsg); err != nil {
 		log.Fatalf("Failed to send join message: %v", err)
 	}
 
 	// Wait for join confirmation
-	var joinResp SignalMessage
+	var joinResp sig.SignalMessage
 	if err := conn.ReadJSON(&joinResp); err != nil {
 		log.Fatalf("Failed to read join response: %v", err)
 	}
@@ -622,7 +623,7 @@ func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *PeerManager, onD
 	// Read messages from signal server
 	go func() {
 		for {
-			var msg SignalMessage
+			var msg sig.SignalMessage
 			if err := conn.ReadJSON(&msg); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					log.Printf("Signal server disconnected: %v", err)
@@ -653,7 +654,7 @@ func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *PeerManager, onD
 					}
 
 					// Send offer to signal server (will be forwarded to viewer)
-					offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
+					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
 					if err := conn.WriteJSON(offerMsg); err != nil {
 						log.Printf("Failed to send offer: %v", err)
 					}
@@ -689,20 +690,8 @@ func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *PeerManager, onD
 }
 
 // setupMultiSignaling connects the signal server to the multi peer manager
-func setupMultiSignaling(server *SignalServer, pm *MultiPeerManager, roomCode string, password string) {
-	room := server.getOrCreateRoom(roomCode)
-
-	sharerClient := &Client{
-		room:   roomCode,
-		role:   "sharer",
-		send:   make(chan []byte, 256),
-		server: server,
-	}
-
-	room.mu.Lock()
-	room.sharer = sharerClient
-	room.password = password
-	room.mu.Unlock()
+func setupMultiSignaling(server *sig.Server, pm *MultiPeerManager, roomCode string, password string) {
+	localSharer := server.RegisterLocalSharer(roomCode, password)
 
 	var peerCounter int
 	var peerMu sync.Mutex
@@ -710,117 +699,51 @@ func setupMultiSignaling(server *SignalServer, pm *MultiPeerManager, roomCode st
 	// Set up ICE callback
 	pm.SetICECallback(func(peerID string, candidate string) {
 		// Send ICE to specific viewer
-		iceMsg := SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
-		data, _ := json.Marshal(iceMsg)
-
-		room.mu.RLock()
-		for viewer := range room.viewers {
-			if viewer.peerID == peerID {
-				select {
-				case viewer.send <- data:
-				default:
-				}
-				break
-			}
-		}
-		room.mu.RUnlock()
+		iceMsg := sig.SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
+		localSharer.SendToViewer(peerID, iceMsg)
 	})
 
 	// Set up focus change callback to broadcast to all viewers
 	pm.SetFocusChangeCallback(func(trackID string) {
 		log.Printf("Focus change callback triggered for track: %s", trackID)
-		focusMsg := SignalMessage{Type: "focus-change", FocusedTrack: trackID}
-		data, _ := json.Marshal(focusMsg)
-
-		room.mu.RLock()
-		viewerCount := len(room.viewers)
-		log.Printf("Broadcasting focus-change to %d viewers", viewerCount)
-		for viewer := range room.viewers {
-			select {
-			case viewer.send <- data:
-				log.Printf("Sent focus-change to viewer %s", viewer.peerID)
-			default:
-				log.Printf("Failed to send focus-change to viewer %s (buffer full)", viewer.peerID)
-			}
-		}
-		room.mu.RUnlock()
+		focusMsg := sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID}
+		localSharer.SendToAllViewers(focusMsg)
 	})
 
 	// Set up renegotiation callback to send new offers during track add/remove
 	pm.SetRenegotiateCallback(func(peerID string, offer string) {
 		log.Printf("Renegotiation: sending offer to peer %s", peerID)
-		offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
-		data, _ := json.Marshal(offerMsg)
-
-		room.mu.RLock()
-		for viewer := range room.viewers {
-			if viewer.peerID == peerID {
-				select {
-				case viewer.send <- data:
-					log.Printf("Renegotiation offer sent to %s", peerID)
-				default:
-					log.Printf("Failed to send renegotiation offer to %s (buffer full)", peerID)
-				}
-				break
-			}
-		}
-		room.mu.RUnlock()
+		offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
+		localSharer.SendToViewer(peerID, offerMsg)
 	})
 
 	// Set up stream change callbacks
 	pm.SetStreamChangeCallbacks(
-		func(info StreamInfo) {
+		func(info sig.StreamInfo) {
 			// Broadcast stream-added to all viewers
 			log.Printf("Broadcasting stream-added: %s", info.TrackID)
-			msg := SignalMessage{Type: "stream-added", StreamAdded: &info}
-			data, _ := json.Marshal(msg)
-
-			room.mu.RLock()
-			for viewer := range room.viewers {
-				select {
-				case viewer.send <- data:
-				default:
-				}
-			}
-			room.mu.RUnlock()
+			msg := sig.SignalMessage{Type: "stream-added", StreamAdded: &info}
+			localSharer.SendToAllViewers(msg)
 		},
 		func(trackID string) {
 			// Broadcast stream-removed to all viewers
 			log.Printf("Broadcasting stream-removed: %s", trackID)
-			msg := SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
-			data, _ := json.Marshal(msg)
-
-			room.mu.RLock()
-			for viewer := range room.viewers {
-				select {
-				case viewer.send <- data:
-				default:
-				}
-			}
-			room.mu.RUnlock()
+			msg := sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
+			localSharer.SendToAllViewers(msg)
 		},
 	)
 
 	go func() {
-		for data := range sharerClient.send {
-			var msg SignalMessage
+		for data := range localSharer.Messages() {
+			var msg sig.SignalMessage
 			if err := json.Unmarshal(data, &msg); err != nil {
 				continue
 			}
 
 			switch msg.Type {
 			case "viewer-joined":
-				room.mu.RLock()
-				var newViewer *Client
-				for viewer := range room.viewers {
-					if viewer.peerID == "" {
-						newViewer = viewer
-						break
-					}
-				}
-				room.mu.RUnlock()
-
-				if newViewer == nil {
+				found, assignPeerID := localSharer.GetUnassignedViewer()
+				if !found {
 					continue
 				}
 
@@ -829,28 +752,23 @@ func setupMultiSignaling(server *SignalServer, pm *MultiPeerManager, roomCode st
 				peerID := fmt.Sprintf("viewer-%d", peerCounter)
 				peerMu.Unlock()
 
-				newViewer.peerID = peerID
+				assignPeerID(peerID)
 
-				go func(viewer *Client, pid string) {
+				go func(pid string) {
 					offer, err := pm.CreateOffer(pid)
 					if err != nil {
 						log.Printf("Failed to create offer: %v", err)
 						return
 					}
 
-					offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
-					data, _ := json.Marshal(offerMsg)
-
-					select {
-					case viewer.send <- data:
-					default:
-					}
+					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
+					localSharer.SendToViewer(pid, offerMsg)
 
 					// Send streams-info after offer
 					tracks := pm.GetTracks()
-					streams := make([]StreamInfo, len(tracks))
+					streams := make([]sig.StreamInfo, len(tracks))
 					for i, t := range tracks {
-						streams[i] = StreamInfo{
+						streams[i] = sig.StreamInfo{
 							TrackID:    t.TrackID,
 							WindowName: t.WindowName,
 							AppName:    t.AppName,
@@ -859,13 +777,9 @@ func setupMultiSignaling(server *SignalServer, pm *MultiPeerManager, roomCode st
 							Height:     t.Height,
 						}
 					}
-					streamsMsg := SignalMessage{Type: "streams-info", Streams: streams}
-					data, _ = json.Marshal(streamsMsg)
-					select {
-					case viewer.send <- data:
-					default:
-					}
-				}(newViewer, peerID)
+					streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
+					localSharer.SendToViewer(pid, streamsMsg)
+				}(peerID)
 
 			case "answer":
 				peerID := msg.PeerID
@@ -905,7 +819,7 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 	var connMu sync.Mutex // Protect WebSocket writes
 
 	pm.SetICECallback(func(peerID string, candidate string) {
-		iceMsg := SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
+		iceMsg := sig.SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
 		connMu.Lock()
 		conn.WriteJSON(iceMsg)
 		connMu.Unlock()
@@ -914,7 +828,7 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 	// Set up focus change callback to broadcast to all viewers
 	pm.SetFocusChangeCallback(func(trackID string) {
 		log.Printf("Remote focus change callback triggered for track: %s", trackID)
-		focusMsg := SignalMessage{Type: "focus-change", FocusedTrack: trackID}
+		focusMsg := sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID}
 		connMu.Lock()
 		err := conn.WriteJSON(focusMsg)
 		connMu.Unlock()
@@ -928,7 +842,7 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 	// Set up renegotiation callback for dynamic track add/remove
 	pm.SetRenegotiateCallback(func(peerID string, offer string) {
 		log.Printf("Remote renegotiation: sending offer for peer %s", peerID)
-		offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
+		offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
 		connMu.Lock()
 		err := conn.WriteJSON(offerMsg)
 		connMu.Unlock()
@@ -939,16 +853,16 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 
 	// Set up stream change callbacks
 	pm.SetStreamChangeCallbacks(
-		func(info StreamInfo) {
+		func(info sig.StreamInfo) {
 			log.Printf("Remote: broadcasting stream-added: %s", info.TrackID)
-			msg := SignalMessage{Type: "stream-added", StreamAdded: &info}
+			msg := sig.SignalMessage{Type: "stream-added", StreamAdded: &info}
 			connMu.Lock()
 			conn.WriteJSON(msg)
 			connMu.Unlock()
 		},
 		func(trackID string) {
 			log.Printf("Remote: broadcasting stream-removed: %s", trackID)
-			msg := SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
+			msg := sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
 			connMu.Lock()
 			conn.WriteJSON(msg)
 			connMu.Unlock()
@@ -957,7 +871,7 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 
 	go func() {
 		for {
-			var msg SignalMessage
+			var msg sig.SignalMessage
 			if err := conn.ReadJSON(&msg); err != nil {
 				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
 					log.Printf("Signal server disconnected: %v", err)
@@ -982,16 +896,16 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 						return
 					}
 
-					offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
+					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
 					connMu.Lock()
 					conn.WriteJSON(offerMsg)
 					connMu.Unlock()
 
 					// Send streams-info after offer
 					tracks := pm.GetTracks()
-					streams := make([]StreamInfo, len(tracks))
+					streams := make([]sig.StreamInfo, len(tracks))
 					for i, t := range tracks {
-						streams[i] = StreamInfo{
+						streams[i] = sig.StreamInfo{
 							TrackID:    t.TrackID,
 							WindowName: t.WindowName,
 							AppName:    t.AppName,
@@ -1000,7 +914,7 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 							Height:     t.Height,
 						}
 					}
-					streamsMsg := SignalMessage{Type: "streams-info", Streams: streams}
+					streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
 					connMu.Lock()
 					conn.WriteJSON(streamsMsg)
 					connMu.Unlock()
@@ -1041,35 +955,17 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 }
 
 // setupSignaling connects the signal server to the peer manager
-func setupSignaling(server *SignalServer, pm *PeerManager, roomCode string, password string) {
-	// Create a room for the sharer
-	room := server.getOrCreateRoom(roomCode)
-
-	// Create a virtual "sharer" client
-	sharerClient := &Client{
-		room:   roomCode,
-		role:   "sharer",
-		send:   make(chan []byte, 256),
-		server: server,
-	}
-
-	room.mu.Lock()
-	room.sharer = sharerClient
-	room.password = password // Set room password
-	room.mu.Unlock()
+func setupSignaling(server *sig.Server, pm *PeerManager, roomCode string, password string) {
+	localSharer := server.RegisterLocalSharer(roomCode, password)
 
 	// Counter for peer IDs
 	var peerCounter int
 	var peerMu sync.Mutex
 
-	// Track which viewer client is waiting for an offer response
-	var pendingViewers []*Client
-	var pendingMu sync.Mutex
-
-	// Process messages from viewers (via the sharer client's channel)
+	// Process messages from viewers (via the localSharer's message channel)
 	go func() {
-		for data := range sharerClient.send {
-			var msg SignalMessage
+		for data := range localSharer.Messages() {
+			var msg sig.SignalMessage
 			if err := json.Unmarshal(data, &msg); err != nil {
 				continue
 			}
@@ -1077,17 +973,8 @@ func setupSignaling(server *SignalServer, pm *PeerManager, roomCode string, pass
 			switch msg.Type {
 			case "viewer-joined":
 				// New viewer connected, find the newest viewer without a peerID
-				room.mu.RLock()
-				var newViewer *Client
-				for viewer := range room.viewers {
-					if viewer.peerID == "" {
-						newViewer = viewer
-						break
-					}
-				}
-				room.mu.RUnlock()
-
-				if newViewer == nil {
+				found, assignPeerID := localSharer.GetUnassignedViewer()
+				if !found {
 					log.Printf("viewer-joined but no unassigned viewer found")
 					continue
 				}
@@ -1098,14 +985,9 @@ func setupSignaling(server *SignalServer, pm *PeerManager, roomCode string, pass
 				peerID := fmt.Sprintf("viewer-%d", peerCounter)
 				peerMu.Unlock()
 
-				newViewer.peerID = peerID
+				assignPeerID(peerID)
 
-				// Track pending viewer
-				pendingMu.Lock()
-				pendingViewers = append(pendingViewers, newViewer)
-				pendingMu.Unlock()
-
-				go func(viewer *Client, pid string) {
+				go func(pid string) {
 					offer, err := pm.CreateOffer(pid)
 					if err != nil {
 						log.Printf("Failed to create offer: %v", err)
@@ -1113,15 +995,9 @@ func setupSignaling(server *SignalServer, pm *PeerManager, roomCode string, pass
 					}
 
 					// Send offer only to THIS viewer with their peerID
-					offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
-					data, _ := json.Marshal(offerMsg)
-
-					select {
-					case viewer.send <- data:
-					default:
-						log.Printf("Failed to send offer to viewer %s", pid)
-					}
-				}(newViewer, peerID)
+					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
+					localSharer.SendToViewer(pid, offerMsg)
+				}(peerID)
 
 			case "answer":
 				// Viewer sent answer - use the peerID they echo back

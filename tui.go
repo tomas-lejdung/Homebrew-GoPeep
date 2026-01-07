@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gorilla/websocket"
+	sig "github.com/tomaslejdung/gopeep/pkg/signal"
 )
 
 // reconnectMsg indicates the WebSocket needs reconnection
@@ -210,7 +211,7 @@ type model struct {
 	wsDisconnected   *bool // Pointer so goroutine can set it
 
 	// Components (persistent across source switches)
-	server      *SignalServer
+	server      *sig.Server
 	peerManager *PeerManager
 	streamer    *Streamer
 	wsConn      *websocket.Conn // Remote signal server connection
@@ -688,7 +689,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if !m.sharing && !m.serverStarted {
 			m.passwordEnabled = !m.passwordEnabled
 			if m.passwordEnabled {
-				m.password = GeneratePassword()
+				m.password = sig.GeneratePassword()
 			} else {
 				m.password = ""
 			}
@@ -938,7 +939,7 @@ func (m *model) initServer() error {
 
 	// Generate room code only if not already set (preserve on codec restart)
 	if m.roomCode == "" {
-		m.roomCode = GenerateRoomCode()
+		m.roomCode = sig.GenerateRoomCode()
 	}
 
 	// Create peer manager with ICE config and selected codec
@@ -966,7 +967,7 @@ func (m *model) initServer() error {
 
 	// Local mode: start local signal server
 	m.isRemote = false
-	m.server = NewSignalServer()
+	m.server = sig.NewServer()
 	addr := fmt.Sprintf(":%d", m.config.Port)
 
 	go func() {
@@ -1028,14 +1029,14 @@ func (m model) attemptReconnect(attempt int, delay time.Duration) tea.Cmd {
 		}
 
 		// Join as sharer (with optional password)
-		joinMsg := SignalMessage{Type: "join", Role: "sharer", Password: m.password}
+		joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password}
 		if err := conn.WriteJSON(joinMsg); err != nil {
 			conn.Close()
 			return reconnectMsg{attempt: attempt + 1, delay: delay * 2}
 		}
 
 		// Wait for join confirmation
-		var joinResp SignalMessage
+		var joinResp sig.SignalMessage
 		if err := conn.ReadJSON(&joinResp); err != nil {
 			conn.Close()
 			return reconnectMsg{attempt: attempt + 1, delay: delay * 2}
@@ -1081,14 +1082,14 @@ func (m *model) initRemoteSignaling() error {
 	}
 
 	// Join as sharer (with optional password)
-	joinMsg := SignalMessage{Type: "join", Role: "sharer", Password: m.password}
+	joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password}
 	if err := conn.WriteJSON(joinMsg); err != nil {
 		conn.Close()
 		return fmt.Errorf("failed to send join message: %v", err)
 	}
 
 	// Wait for join confirmation
-	var joinResp SignalMessage
+	var joinResp sig.SignalMessage
 	if err := conn.ReadJSON(&joinResp); err != nil {
 		conn.Close()
 		return fmt.Errorf("failed to read join response: %v", err)
@@ -1324,7 +1325,7 @@ func (m *model) initMultiServer() error {
 
 	// Generate room code if not set
 	if m.roomCode == "" {
-		m.roomCode = GenerateRoomCode()
+		m.roomCode = sig.GenerateRoomCode()
 	}
 
 	// Create multi peer manager
@@ -1352,7 +1353,7 @@ func (m *model) initMultiServer() error {
 
 	// Local mode
 	m.isRemote = false
-	m.server = NewSignalServer()
+	m.server = sig.NewServer()
 	addr := fmt.Sprintf(":%d", m.config.Port)
 
 	go func() {
@@ -1397,13 +1398,13 @@ func (m *model) initMultiRemoteSignaling() error {
 		return fmt.Errorf("failed to connect to signal server: %v", err)
 	}
 
-	joinMsg := SignalMessage{Type: "join", Role: "sharer", Password: m.password}
+	joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password}
 	if err := conn.WriteJSON(joinMsg); err != nil {
 		conn.Close()
 		return fmt.Errorf("failed to send join message: %v", err)
 	}
 
-	var joinResp SignalMessage
+	var joinResp sig.SignalMessage
 	if err := conn.ReadJSON(&joinResp); err != nil {
 		conn.Close()
 		return fmt.Errorf("failed to read join response: %v", err)

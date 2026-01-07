@@ -10,6 +10,7 @@ import (
 
 	"github.com/pion/webrtc/v3"
 	"github.com/pion/webrtc/v3/pkg/media"
+	sig "github.com/tomaslejdung/gopeep/pkg/signal"
 )
 
 // StreamTrackInfo holds information about a single stream/track
@@ -49,7 +50,7 @@ type MultiPeerManager struct {
 
 	// Renegotiation callbacks
 	onRenegotiate   func(peerID string, offer string)
-	onStreamAdded   func(info StreamInfo)
+	onStreamAdded   func(info sig.StreamInfo)
 	onStreamRemoved func(trackID string)
 }
 
@@ -470,7 +471,7 @@ func (mpm *MultiPeerManager) SetRenegotiateCallback(callback func(peerID string,
 }
 
 // SetStreamChangeCallbacks sets callbacks for stream add/remove events
-func (mpm *MultiPeerManager) SetStreamChangeCallbacks(onAdded func(info StreamInfo), onRemoved func(trackID string)) {
+func (mpm *MultiPeerManager) SetStreamChangeCallbacks(onAdded func(info sig.StreamInfo), onRemoved func(trackID string)) {
 	mpm.onStreamAdded = onAdded
 	mpm.onStreamRemoved = onRemoved
 }
@@ -658,7 +659,7 @@ func (mpm *MultiPeerManager) HandleRenegotiateAnswer(peerID string, sdp string) 
 }
 
 // NotifyStreamAdded notifies that a stream was added
-func (mpm *MultiPeerManager) NotifyStreamAdded(info StreamInfo) {
+func (mpm *MultiPeerManager) NotifyStreamAdded(info sig.StreamInfo) {
 	if mpm.onStreamAdded != nil {
 		mpm.onStreamAdded(info)
 	}
@@ -707,7 +708,7 @@ type MultiStreamer struct {
 
 	// Callbacks
 	onFocusChange   func(trackID string)
-	onStreamsChange func(streams []StreamInfo)
+	onStreamsChange func(streams []sig.StreamInfo)
 }
 
 // NewMultiStreamer creates a new multi-streamer
@@ -732,7 +733,7 @@ func (ms *MultiStreamer) SetOnFocusChange(callback func(trackID string)) {
 }
 
 // SetOnStreamsChange sets the callback for streams info changes
-func (ms *MultiStreamer) SetOnStreamsChange(callback func(streams []StreamInfo)) {
+func (ms *MultiStreamer) SetOnStreamsChange(callback func(streams []sig.StreamInfo)) {
 	ms.onStreamsChange = callback
 }
 
@@ -950,10 +951,10 @@ func (ms *MultiStreamer) updateBitrates() {
 }
 
 // getStreamsInfo returns StreamInfo for all streams
-func (ms *MultiStreamer) getStreamsInfo() []StreamInfo {
-	streams := make([]StreamInfo, 0, len(ms.pipelines))
+func (ms *MultiStreamer) getStreamsInfo() []sig.StreamInfo {
+	streams := make([]sig.StreamInfo, 0, len(ms.pipelines))
 	for _, pipeline := range ms.pipelines {
-		streams = append(streams, StreamInfo{
+		streams = append(streams, sig.StreamInfo{
 			TrackID:    pipeline.trackInfo.TrackID,
 			WindowName: pipeline.trackInfo.WindowName,
 			AppName:    pipeline.trackInfo.AppName,
@@ -966,7 +967,7 @@ func (ms *MultiStreamer) getStreamsInfo() []StreamInfo {
 }
 
 // GetStreamsInfo returns current streams info (thread-safe)
-func (ms *MultiStreamer) GetStreamsInfo() []StreamInfo {
+func (ms *MultiStreamer) GetStreamsInfo() []sig.StreamInfo {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 	return ms.getStreamsInfo()
@@ -1092,7 +1093,7 @@ func (ms *MultiStreamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, 
 
 	// Notify about new stream BEFORE renegotiation so viewer knows to expect it
 	log.Printf("AddWindowDynamic: Notifying about new stream %s", trackInfo.TrackID)
-	ms.peerManager.NotifyStreamAdded(StreamInfo{
+	ms.peerManager.NotifyStreamAdded(sig.StreamInfo{
 		TrackID:    trackInfo.TrackID,
 		WindowName: trackInfo.WindowName,
 		AppName:    trackInfo.AppName,

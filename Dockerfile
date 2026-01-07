@@ -1,18 +1,19 @@
 # Build stage
-FROM golang:1.21-alpine AS builder
+FROM golang:1.24-alpine AS builder
 
 WORKDIR /app
 
-# Copy server module files (separate from main project)
-COPY cmd/server/go.mod cmd/server/go.sum ./
+# Copy module files
+COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code
-COPY cmd/server/*.go ./
-COPY cmd/server/viewer.html ./
+COPY *.go ./
+COPY pkg/ ./pkg/
+COPY cmd/ ./cmd/
 
-# Build static binary
-RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o gopeep-server .
+# Build static binary for the signal server
+RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o gopeep-server ./cmd/server
 
 # Runtime stage
 FROM alpine:3.20

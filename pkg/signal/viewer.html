@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GoPeep - Viewing</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    :root {
+      --bg-primary: #0a0a0a;
+      --bg-secondary: #1a1a1a;
+      --bg-overlay: rgba(0, 0, 0, 0.85);
+      --text-primary: #ffffff;
+      --text-secondary: #a0a0a0;
+      --text-dim: #666666;
+      --accent: #60a5fa;
+      --success: #10b981;
+      --warning: #f59e0b;
+      --error: #ef4444;
+      --border: rgba(255, 255, 255, 0.1);
+      --focus-ring: #60a5fa;
+    }
+    
+    body {
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      overflow: hidden;
+      cursor: none;
+    }
+    
+    body.show-ui {
+      cursor: default;
+    }
+    
+    /* Main container - flex column for main + thumbnails */
+    #container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg-primary);
+    }
+    
+    /* Main video area */
+    #main-video-container {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 0;
+      position: relative;
+    }
+    
+    .main-video {
+      background: #000;
+      outline: none;
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+    
+    .main-video.scale-fit {
+      max-width: 100%;
+      max-height: 100%;
+      width: auto;
+      height: auto;
+      object-fit: contain;
+    }
+    
+    .main-video.scale-fill {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+    
+    .main-video.scale-native {
+      width: auto;
+      height: auto;
+      max-width: none;
+      max-height: none;
+    }
+    
+    /* Thumbnails bar */
+    #thumbnails-bar {
+      display: none; /* Hidden when single stream */
+      height: 120px;
+      background: var(--bg-secondary);
+      border-top: 1px solid var(--border);
+      padding: 10px 20px;
+      gap: 10px;
+      align-items: center;
+      overflow-x: auto;
+    }
+    
+    #thumbnails-bar.visible {
+      display: flex;
+    }
+    
+    .thumbnail-container {
+      position: relative;
+      flex-shrink: 0;
+      cursor: pointer;
+      border-radius: 8px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: border-color 0.2s ease, transform 0.2s ease;
+    }
+    
+    .thumbnail-container:hover {
+      border-color: var(--accent);
+      transform: scale(1.05);
+    }
+    
+    .thumbnail-container.focused {
+      border-color: var(--success);
+    }
+    
+    .thumbnail-container.active {
+      border-color: var(--accent);
+    }
+    
+    .thumbnail-video {
+      width: 160px;
+      height: 90px;
+      object-fit: cover;
+      background: #000;
+    }
+    
+    .thumbnail-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 4px 8px;
+      background: var(--bg-overlay);
+      font-size: 11px;
+      color: var(--text-secondary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    
+    .thumbnail-container.focused .thumbnail-label {
+      color: var(--success);
+    }
+    
+    .thumbnail-focus-indicator {
+      position: absolute;
+      top: 4px;
+      right: 4px;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--success);
+      display: none;
+    }
+    
+    .thumbnail-container.focused .thumbnail-focus-indicator {
+      display: block;
+    }
+    
+    /* Top status bar */
+    #status-bar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 20px;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      font-size: 13px;
+      z-index: 100;
+      opacity: 0;
+      transform: translateY(-100%);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      border-bottom: 1px solid var(--border);
+    }
+    
+    #status-bar.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+    
+    .status-section {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--text-dim);
+      flex-shrink: 0;
+    }
+    
+    .status-dot.connecting {
+      background: var(--warning);
+      animation: pulse 1.5s ease-in-out infinite;
+    }
+    
+    .status-dot.connected {
+      background: var(--success);
+    }
+    
+    .status-dot.degraded {
+      background: var(--warning);
+    }
+    
+    .status-dot.error {
+      background: var(--error);
+    }
+    
+    @keyframes pulse {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.5; transform: scale(0.9); }
+    }
+    
+    #room-code {
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+      font-weight: 600;
+      color: var(--accent);
+      font-size: 14px;
+    }
+    
+    .divider {
+      width: 1px;
+      height: 20px;
+      background: var(--border);
+    }
+    
+    .stat-label {
+      color: var(--text-dim);
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    
+    .stat-value {
+      color: var(--text-primary);
+      font-family: "SF Mono", Monaco, monospace;
+      font-size: 12px;
+    }
+    
+    #status-right {
+      margin-left: auto;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    
+    #stream-count {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 8px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 4px;
+      font-size: 12px;
+    }
+    
+    #stream-count.visible {
+      display: flex;
+    }
+    
+    /* Control bar */
+    #control-bar {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(100px);
+      padding: 10px 16px;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      z-index: 100;
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      border: 1px solid var(--border);
+    }
+    
+    #control-bar.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    /* Adjust control bar position when thumbnails visible */
+    body.multi-stream #control-bar {
+      bottom: 144px;
+    }
+    
+    .control-btn {
+      width: 40px;
+      height: 40px;
+      border: none;
+      background: transparent;
+      color: var(--text-primary);
+      border-radius: 8px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.2s ease;
+    }
+    
+    .control-btn:hover {
+      background: rgba(255, 255, 255, 0.1);
+    }
+    
+    .control-btn:active {
+      background: rgba(255, 255, 255, 0.15);
+    }
+    
+    .control-btn.active {
+      color: var(--accent);
+    }
+    
+    .control-btn svg {
+      width: 20px;
+      height: 20px;
+    }
+    
+    .control-divider {
+      width: 1px;
+      height: 24px;
+      background: var(--border);
+      margin: 0 4px;
+    }
+    
+    /* Scale mode selector */
+    .scale-selector {
+      display: flex;
+      background: rgba(255, 255, 255, 0.05);
+      border-radius: 6px;
+      padding: 2px;
+    }
+    
+    .scale-btn {
+      padding: 6px 12px;
+      border: none;
+      background: transparent;
+      color: var(--text-secondary);
+      font-size: 11px;
+      font-weight: 500;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+    
+    .scale-btn:hover {
+      color: var(--text-primary);
+    }
+    
+    .scale-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+    
+    /* Waiting screen */
+    #waiting {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-primary);
+      z-index: 50;
+    }
+    
+    #waiting.hidden {
+      display: none;
+    }
+    
+    .spinner {
+      width: 48px;
+      height: 48px;
+      border: 3px solid var(--bg-secondary);
+      border-top-color: var(--accent);
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+      margin-bottom: 24px;
+    }
+    
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    
+    #waiting h2 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    #waiting p {
+      color: var(--text-secondary);
+      font-size: 14px;
+    }
+    
+    #waiting-room {
+      margin-top: 24px;
+      padding: 12px 20px;
+      background: var(--bg-secondary);
+      border-radius: 8px;
+      font-family: "SF Mono", Monaco, monospace;
+      color: var(--accent);
+      font-size: 16px;
+      font-weight: 600;
+    }
+    
+    /* Keyboard shortcuts help */
+    #shortcuts-help {
+      position: fixed;
+      bottom: 80px;
+      left: 50%;
+      transform: translateX(-50%) translateY(20px);
+      padding: 12px 20px;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 8px;
+      font-size: 12px;
+      color: var(--text-secondary);
+      opacity: 0;
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+      border: 1px solid var(--border);
+      z-index: 99;
+    }
+    
+    #shortcuts-help.visible {
+      opacity: 1;
+      transform: translateX(-50%) translateY(0);
+    }
+    
+    body.multi-stream #shortcuts-help {
+      bottom: 200px;
+    }
+    
+    .shortcut {
+      display: inline-flex;
+      align-items: center;
+      gap: 16px;
+    }
+    
+    .shortcut + .shortcut {
+      margin-left: 20px;
+    }
+    
+    kbd {
+      display: inline-block;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 4px;
+      font-family: "SF Mono", Monaco, monospace;
+      font-size: 11px;
+      color: var(--text-primary);
+      margin-right: 6px;
+    }
+    
+    /* Stats panel */
+    #stats-panel {
+      position: fixed;
+      top: 60px;
+      right: 20px;
+      padding: 16px;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: 8px;
+      font-size: 12px;
+      opacity: 0;
+      transform: translateX(20px);
+      transition: opacity 0.3s ease, transform 0.3s ease;
+      pointer-events: none;
+      border: 1px solid var(--border);
+      z-index: 100;
+      min-width: 180px;
+    }
+    
+    #stats-panel.visible {
+      opacity: 1;
+      transform: translateX(0);
+      pointer-events: auto;
+    }
+    
+    .stats-title {
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-dim);
+      margin-bottom: 12px;
+    }
+    
+    .stats-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 4px 0;
+    }
+    
+    .stats-row + .stats-row {
+      border-top: 1px solid var(--border);
+      margin-top: 4px;
+      padding-top: 8px;
+    }
+    
+    .stats-label {
+      color: var(--text-secondary);
+    }
+    
+    .stats-value {
+      font-family: "SF Mono", Monaco, monospace;
+      color: var(--text-primary);
+    }
+    
+    .stats-value.good { color: var(--success); }
+    .stats-value.warn { color: var(--warning); }
+    .stats-value.bad { color: var(--error); }
+    
+    /* Password dialog */
+    #password-dialog {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-primary);
+      z-index: 200;
+    }
+    
+    #password-dialog.visible {
+      display: flex;
+    }
+    
+    .password-box {
+      background: var(--bg-secondary);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 32px;
+      text-align: center;
+      max-width: 400px;
+      width: 90%;
+    }
+    
+    .password-box h2 {
+      font-size: 20px;
+      font-weight: 500;
+      margin-bottom: 8px;
+    }
+    
+    .password-box p {
+      color: var(--text-secondary);
+      font-size: 14px;
+      margin-bottom: 24px;
+    }
+    
+    .password-box .room-code {
+      font-family: "SF Mono", Monaco, monospace;
+      color: var(--accent);
+      font-weight: 600;
+    }
+    
+    .password-input-group {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 16px;
+    }
+    
+    .password-input {
+      flex: 1;
+      padding: 12px 16px;
+      background: var(--bg-primary);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text-primary);
+      font-size: 16px;
+      font-family: "SF Mono", Monaco, monospace;
+      outline: none;
+    }
+    
+    .password-input:focus {
+      border-color: var(--accent);
+    }
+    
+    .password-input.error {
+      border-color: var(--error);
+    }
+    
+    .password-submit {
+      padding: 12px 24px;
+      background: var(--accent);
+      border: none;
+      border-radius: 8px;
+      color: var(--bg-primary);
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: opacity 0.2s ease;
+    }
+    
+    .password-submit:hover {
+      opacity: 0.9;
+    }
+    
+    .password-error {
+      color: var(--error);
+      font-size: 13px;
+      height: 20px;
+    }
+  </style>
+</head>
+<body>
+  <!-- Top status bar -->
+  <div id="status-bar">
+    <div class="status-section">
+      <div class="status-dot connecting" id="status-dot"></div>
+      <span id="status-text">Connecting...</span>
+    </div>
+    <div class="divider"></div>
+    <span id="room-code"></span>
+    <div id="stream-stats" style="display: none;">
+      <div class="divider"></div>
+      <div class="status-section">
+        <span class="stat-label">RES</span>
+        <span class="stat-value" id="stat-resolution">--</span>
+      </div>
+      <div class="status-section">
+        <span class="stat-label">FPS</span>
+        <span class="stat-value" id="stat-fps">--</span>
+      </div>
+      <div class="status-section">
+        <span class="stat-label">BITRATE</span>
+        <span class="stat-value" id="stat-bitrate">--</span>
+      </div>
+    </div>
+    <div id="status-right">
+      <div id="stream-count">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        <span id="stream-count-text">1</span>
+      </div>
+    </div>
+  </div>
+  
+  <!-- Waiting screen -->
+  <div id="waiting">
+    <div class="spinner"></div>
+    <h2 id="waiting-title">Connecting...</h2>
+    <p id="waiting-subtitle">Establishing connection to sharer</p>
+    <div id="waiting-room"></div>
+  </div>
+  
+  <!-- Password dialog -->
+  <div id="password-dialog">
+    <div class="password-box">
+      <h2>Password Required</h2>
+      <p>This room is password protected.<br>Room: <span class="room-code" id="password-room-code"></span></p>
+      <form id="password-form">
+        <div class="password-input-group">
+          <input type="text" id="password-input" class="password-input" placeholder="Enter password" autocomplete="off" autofocus>
+          <button type="submit" class="password-submit">Join</button>
+        </div>
+        <div class="password-error" id="password-error"></div>
+      </form>
+    </div>
+  </div>
+  
+  <!-- Video container -->
+  <div id="container">
+    <!-- Main video area -->
+    <div id="main-video-container">
+      <video id="main-video" class="main-video scale-fit" autoplay playsinline muted></video>
+    </div>
+    
+    <!-- Thumbnails bar for multi-stream -->
+    <div id="thumbnails-bar"></div>
+  </div>
+  
+  <!-- Control bar -->
+  <div id="control-bar">
+    <button class="control-btn" id="btn-fullscreen" title="Fullscreen (F)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"></path>
+      </svg>
+    </button>
+    <button class="control-btn" id="btn-pip" title="Picture-in-Picture (P)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+        <rect x="12" y="9" width="8" height="6" rx="1" fill="currentColor" opacity="0.3"></rect>
+      </svg>
+    </button>
+    <div class="control-divider"></div>
+    <div class="scale-selector">
+      <button class="scale-btn active" data-scale="fit">Fit</button>
+      <button class="scale-btn" data-scale="fill">Fill</button>
+      <button class="scale-btn" data-scale="native">Native</button>
+    </div>
+    <div class="control-divider"></div>
+    <button class="control-btn" id="btn-stats" title="Stats (I)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <line x1="12" y1="16" x2="12" y2="12"></line>
+        <line x1="12" y1="8" x2="12.01" y2="8"></line>
+      </svg>
+    </button>
+    <button class="control-btn" id="btn-help" title="Keyboard Shortcuts (?)">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <circle cx="12" cy="12" r="10"></circle>
+        <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"></path>
+        <line x1="12" y1="17" x2="12.01" y2="17"></line>
+      </svg>
+    </button>
+  </div>
+  
+  <!-- Keyboard shortcuts help -->
+  <div id="shortcuts-help">
+    <span class="shortcut"><kbd>F</kbd> Fullscreen</span>
+    <span class="shortcut"><kbd>P</kbd> Picture-in-Picture</span>
+    <span class="shortcut"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Scale</span>
+    <span class="shortcut"><kbd>I</kbd> Stats</span>
+    <span class="shortcut"><kbd>Esc</kbd> Exit</span>
+  </div>
+  
+  <!-- Stats panel -->
+  <div id="stats-panel">
+    <div class="stats-title">Connection Stats</div>
+    <div class="stats-row">
+      <span class="stats-label">Connection</span>
+      <span class="stats-value" id="stats-connection-type">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Resolution</span>
+      <span class="stats-value" id="stats-resolution">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Frame Rate</span>
+      <span class="stats-value" id="stats-framerate">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Bitrate</span>
+      <span class="stats-value" id="stats-bitrate">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Latency</span>
+      <span class="stats-value" id="stats-latency">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Packets Lost</span>
+      <span class="stats-value" id="stats-packets-lost">--</span>
+    </div>
+    <div class="stats-row">
+      <span class="stats-label">Jitter</span>
+      <span class="stats-value" id="stats-jitter">--</span>
+    </div>
+  </div>
+
+  <script>
+    // Elements
+    const mainVideo = document.getElementById('main-video');
+    const mainVideoContainer = document.getElementById('main-video-container');
+    const thumbnailsBar = document.getElementById('thumbnails-bar');
+    const statusBar = document.getElementById('status-bar');
+    const statusDot = document.getElementById('status-dot');
+    const statusText = document.getElementById('status-text');
+    const roomCodeEl = document.getElementById('room-code');
+    const waitingEl = document.getElementById('waiting');
+    const waitingTitle = document.getElementById('waiting-title');
+    const waitingSubtitle = document.getElementById('waiting-subtitle');
+    const waitingRoom = document.getElementById('waiting-room');
+    const controlBar = document.getElementById('control-bar');
+    const shortcutsHelp = document.getElementById('shortcuts-help');
+    const statsPanel = document.getElementById('stats-panel');
+    const streamStats = document.getElementById('stream-stats');
+    const streamCountEl = document.getElementById('stream-count');
+    const streamCountText = document.getElementById('stream-count-text');
+    
+    // State
+    const roomCode = window.location.pathname.substring(1);
+    let ws;
+    let pc;
+    let currentPeerId = null;
+    let reconnectAttempts = 0;
+    const maxReconnectAttempts = 5;
+    let uiTimeout;
+    let statsInterval;
+    let lastBytesReceived = 0;
+    let lastStatsTime = 0;
+    let showStats = false;
+    let currentScale = 'fit';
+    let roomPassword = '';
+    
+    // Multi-stream state
+    let streams = {}; // index (0,1,2,3) -> { stream, browserTrackId, info }
+    let streamOrder = []; // Array of stream indices in order received
+    let streamsInfo = []; // Info from sharer (video0, video1, etc.)
+    let viewerFocusedIndex = null; // What the viewer has selected (index)
+    let sharerFocusedIndex = null; // What the sharer has focused (index from OS)
+    
+    // Password dialog elements
+    const passwordDialog = document.getElementById('password-dialog');
+    const passwordForm = document.getElementById('password-form');
+    const passwordInput = document.getElementById('password-input');
+    const passwordError = document.getElementById('password-error');
+    const passwordRoomCode = document.getElementById('password-room-code');
+    
+    // Initialize
+    console.log('GoPeep Viewer initializing...');
+    console.log('Room code:', roomCode);
+    roomCodeEl.textContent = roomCode;
+    waitingRoom.textContent = roomCode;
+    passwordRoomCode.textContent = roomCode;
+    
+    // ICE servers
+    const iceServers = [
+      { urls: 'stun:stun.l.google.com:19302' },
+      { urls: 'stun:stun1.l.google.com:19302' },
+      { urls: 'stun:stun2.l.google.com:19302' }
+    ];
+    
+    // UI visibility
+    function showUI() {
+      document.body.classList.add('show-ui');
+      statusBar.classList.add('visible');
+      controlBar.classList.add('visible');
+      if (showStats) statsPanel.classList.add('visible');
+      
+      clearTimeout(uiTimeout);
+      uiTimeout = setTimeout(hideUI, 3000);
+    }
+    
+    function hideUI() {
+      if (document.fullscreenElement || !mainVideo.srcObject) return;
+      document.body.classList.remove('show-ui');
+      statusBar.classList.remove('visible');
+      controlBar.classList.remove('visible');
+      shortcutsHelp.classList.remove('visible');
+      if (!showStats) statsPanel.classList.remove('visible');
+    }
+    
+    // Event listeners for UI visibility
+    document.addEventListener('mousemove', showUI);
+    document.addEventListener('mousedown', showUI);
+    document.addEventListener('keydown', showUI);
+    
+    // Status updates
+    function setStatus(text, state) {
+      statusText.textContent = text;
+      statusDot.className = 'status-dot ' + state;
+      
+      if (state === 'connecting') {
+        waitingTitle.textContent = text;
+        waitingSubtitle.textContent = 'Please wait...';
+      } else if (state === 'error') {
+        waitingTitle.textContent = 'Connection Error';
+        waitingSubtitle.textContent = text;
+      }
+    }
+    
+    function setWaitingState(title, subtitle) {
+      waitingTitle.textContent = title;
+      waitingSubtitle.textContent = subtitle;
+    }
+    
+    // Multi-stream functions
+    let updateUITimeout = null;
+    let thumbnailElements = {}; // idx -> { container, video, label }
+    
+    function updateMultiStreamUI() {
+      // Debounce rapid updates
+      if (updateUITimeout) {
+        clearTimeout(updateUITimeout);
+      }
+      updateUITimeout = setTimeout(doUpdateMultiStreamUI, 50);
+    }
+    
+    function doUpdateMultiStreamUI() {
+      const streamCount = streamOrder.length;
+      
+      // Update stream count display
+      streamCountText.textContent = streamCount;
+      streamCountEl.classList.toggle('visible', streamCount > 1);
+      
+      // Show/hide thumbnails bar (show when more than 1 stream)
+      const showThumbnails = streamCount > 1;
+      thumbnailsBar.classList.toggle('visible', showThumbnails);
+      document.body.classList.toggle('multi-stream', showThumbnails);
+      
+      if (!showThumbnails) {
+        // Clean up all thumbnails
+        thumbnailsBar.innerHTML = '';
+        thumbnailElements = {};
+        return;
+      }
+      
+      // Sort streamOrder for consistent display
+      const sortedOrder = [...streamOrder].sort((a, b) => a - b);
+      
+      // Remove thumbnails for streams that no longer exist
+      for (const idx in thumbnailElements) {
+        if (!streams[idx] || !sortedOrder.includes(parseInt(idx))) {
+          thumbnailElements[idx].container.remove();
+          delete thumbnailElements[idx];
+        }
+      }
+      
+      // Update or create thumbnails
+      for (const idx of sortedOrder) {
+        const data = streams[idx];
+        if (!data || !data.stream) continue;
+        
+        let elem = thumbnailElements[idx];
+        
+        if (!elem) {
+          // Create new thumbnail
+          const container = document.createElement('div');
+          container.className = 'thumbnail-container';
+          container.dataset.streamIndex = idx;
+          
+          const video = document.createElement('video');
+          video.className = 'thumbnail-video';
+          video.autoplay = true;
+          video.playsinline = true;
+          video.muted = true;
+          
+          const label = document.createElement('div');
+          label.className = 'thumbnail-label';
+          
+          const focusIndicator = document.createElement('div');
+          focusIndicator.className = 'thumbnail-focus-indicator';
+          
+          container.appendChild(video);
+          container.appendChild(label);
+          container.appendChild(focusIndicator);
+          
+          container.addEventListener('click', () => switchToStream(idx));
+          
+          elem = { container, video, label };
+          thumbnailElements[idx] = elem;
+        }
+        
+        // Update video source if changed
+        if (elem.video.srcObject !== data.stream) {
+          elem.video.srcObject = data.stream;
+          elem.video.play().catch(e => console.log('Thumbnail play error for', idx, ':', e.message));
+        }
+        
+        // Update label
+        const info = data.info;
+        elem.label.textContent = info?.windowName || info?.appName || `Stream ${idx + 1}`;
+        
+        // Update classes
+        elem.container.classList.toggle('focused', idx === sharerFocusedIndex);
+        elem.container.classList.toggle('active', idx === viewerFocusedIndex);
+        
+        // Ensure it's in the DOM and in correct order
+        if (!elem.container.parentNode) {
+          thumbnailsBar.appendChild(elem.container);
+        }
+      }
+      
+      // Reorder thumbnails to match sortedOrder
+      for (const idx of sortedOrder) {
+        if (thumbnailElements[idx]) {
+          thumbnailsBar.appendChild(thumbnailElements[idx].container);
+        }
+      }
+    }
+    
+    function switchToStream(index) {
+      if (!streams[index]) {
+        console.log('switchToStream: stream', index, 'not found');
+        return;
+      }
+      
+      console.log('Switching to stream', index);
+      
+      // Swap the focused stream
+      viewerFocusedIndex = index;
+      
+      // Update main video
+      mainVideo.srcObject = streams[index].stream;
+      mainVideo.play().catch(e => console.log('Main video play error:', e.message));
+      
+      // Update thumbnails
+      updateMultiStreamUI();
+    }
+    
+    function handleStreamsInfo(infoArray) {
+      // Store the streams info array
+      streamsInfo = infoArray || [];
+      
+      // Map info to streams by index (video0 -> index 0, video1 -> index 1, etc.)
+      for (const info of streamsInfo) {
+        // Extract index from trackId (e.g., "video0" -> 0)
+        const match = info.trackId.match(/video(\d+)/);
+        if (match) {
+          const idx = parseInt(match[1], 10);
+          if (streams[idx]) {
+            streams[idx].info = info;
+          }
+          if (info.isFocused) {
+            sharerFocusedIndex = idx;
+          }
+        }
+      }
+      updateMultiStreamUI();
+    }
+    
+    function handleFocusChange(focusedTrack) {
+      console.log('Focus change received:', focusedTrack);
+      // Extract index from trackId
+      const match = focusedTrack.match(/video(\d+)/);
+      if (match) {
+        sharerFocusedIndex = parseInt(match[1], 10);
+        console.log('Set sharerFocusedIndex to:', sharerFocusedIndex);
+        
+        // Auto-switch main video to sharer's focused window
+        if (sharerFocusedIndex !== null && streams[sharerFocusedIndex]) {
+          switchToStream(sharerFocusedIndex);
+        }
+      }
+      
+      updateMultiStreamUI();
+    }
+    
+    // Handle renegotiation offer (when tracks are added/removed dynamically)
+    async function handleRenegotiationOffer(sdp) {
+      if (!pc) {
+        console.error('No peer connection for renegotiation');
+        return;
+      }
+      
+      console.log('Processing renegotiation offer, current signaling state:', pc.signalingState);
+      
+      // If we're not in stable state, we need to handle this carefully
+      // This can happen if we receive an offer while we have a pending local offer
+      if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-remote-offer') {
+        console.log('Not in stable state, waiting for state to stabilize...');
+        // Wait a bit and try again
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (pc.signalingState !== 'stable') {
+          console.error('Still not in stable state after wait:', pc.signalingState);
+          // Try to rollback if possible
+          try {
+            await pc.setLocalDescription({ type: 'rollback' });
+            console.log('Rolled back local description');
+          } catch (rollbackErr) {
+            console.error('Rollback failed:', rollbackErr);
+          }
+        }
+      }
+      
+      try {
+        console.log('Setting remote description for renegotiation');
+        await pc.setRemoteDescription({ type: 'offer', sdp });
+        console.log('Remote description set, creating answer');
+        const answer = await pc.createAnswer();
+        console.log('Answer created, setting local description');
+        await pc.setLocalDescription(answer);
+        
+        console.log('Sending renegotiation answer');
+        ws.send(JSON.stringify({
+          type: 'renegotiate-answer',
+          peerId: currentPeerId,
+          sdp: answer.sdp
+        }));
+        console.log('Renegotiation answer sent successfully');
+      } catch (e) {
+        console.error('Renegotiation failed:', e);
+        console.error('PC state:', pc.signalingState, pc.connectionState);
+      }
+    }
+    
+    // Handle stream removed notification
+    function handleStreamRemoved(trackID) {
+      if (!trackID) return;
+      
+      // Extract index from trackId (e.g., "video2" -> 2)
+      const match = trackID.match(/video(\d+)/);
+      if (!match) return;
+      
+      const removedIndex = parseInt(match[1], 10);
+      console.log('Removing stream at index:', removedIndex);
+      
+      // Remove from streams
+      delete streams[removedIndex];
+      
+      // Remove from streamOrder
+      streamOrder = streamOrder.filter(idx => idx !== removedIndex);
+      
+      // Remove from streamsInfo
+      streamsInfo = streamsInfo.filter(info => info.trackId !== trackID);
+      
+      // If this was the viewer's focused stream, switch to another
+      if (viewerFocusedIndex === removedIndex) {
+        if (streamOrder.length > 0) {
+          // Switch to first available stream
+          switchToStream(streamOrder[0]);
+        } else {
+          // No streams left
+          viewerFocusedIndex = null;
+          mainVideo.srcObject = null;
+          setStatus('Waiting for stream', 'connecting');
+          waitingEl.classList.remove('hidden');
+          setWaitingState('Stream ended', 'Waiting for new content...');
+          streamStats.style.display = 'none';
+        }
+      }
+      
+      // If sharer focus was on removed stream, clear it
+      if (sharerFocusedIndex === removedIndex) {
+        sharerFocusedIndex = null;
+      }
+      
+      updateMultiStreamUI();
+    }
+    
+    // Fullscreen
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(e => console.log('Fullscreen error:', e));
+      } else {
+        document.exitFullscreen();
+      }
+    }
+    
+    document.addEventListener('fullscreenchange', () => {
+      const btn = document.getElementById('btn-fullscreen');
+      if (document.fullscreenElement) {
+        btn.classList.add('active');
+        showUI();
+      } else {
+        btn.classList.remove('active');
+      }
+    });
+    
+    // Picture-in-Picture
+    async function togglePiP() {
+      try {
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture();
+        } else if (mainVideo.srcObject) {
+          await mainVideo.requestPictureInPicture();
+        }
+      } catch (e) {
+        console.log('PiP error:', e);
+      }
+    }
+    
+    mainVideo.addEventListener('enterpictureinpicture', () => {
+      document.getElementById('btn-pip').classList.add('active');
+    });
+    
+    mainVideo.addEventListener('leavepictureinpicture', () => {
+      document.getElementById('btn-pip').classList.remove('active');
+    });
+    
+    // Scale mode
+    function setScale(mode) {
+      currentScale = mode;
+      mainVideo.className = 'main-video scale-' + mode;
+      
+      document.querySelectorAll('.scale-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.scale === mode);
+      });
+    }
+    
+    document.querySelectorAll('.scale-btn').forEach(btn => {
+      btn.addEventListener('click', () => setScale(btn.dataset.scale));
+    });
+    
+    // Stats toggle
+    function toggleStats() {
+      showStats = !showStats;
+      statsPanel.classList.toggle('visible', showStats);
+      document.getElementById('btn-stats').classList.toggle('active', showStats);
+    }
+    
+    // Help toggle
+    function toggleHelp() {
+      shortcutsHelp.classList.toggle('visible');
+      document.getElementById('btn-help').classList.toggle('active', shortcutsHelp.classList.contains('visible'));
+    }
+    
+    // Button event listeners
+    document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+    document.getElementById('btn-pip').addEventListener('click', togglePiP);
+    document.getElementById('btn-stats').addEventListener('click', toggleStats);
+    document.getElementById('btn-help').addEventListener('click', toggleHelp);
+    
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+      
+      switch (e.key.toLowerCase()) {
+        case 'f':
+          toggleFullscreen();
+          break;
+        case 'p':
+          togglePiP();
+          break;
+        case 'i':
+          toggleStats();
+          break;
+        case '?':
+          toggleHelp();
+          break;
+        case '1':
+          setScale('fit');
+          break;
+        case '2':
+          setScale('fill');
+          break;
+        case '3':
+          setScale('native');
+          break;
+        case 'escape':
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          }
+          if (document.pictureInPictureElement) {
+            document.exitPictureInPicture();
+          }
+          shortcutsHelp.classList.remove('visible');
+          document.getElementById('btn-help').classList.remove('active');
+          break;
+      }
+    });
+    
+    // Double-click for fullscreen
+    mainVideo.addEventListener('dblclick', toggleFullscreen);
+    
+    // Password dialog functions
+    function showPasswordDialog(errorText = '') {
+      waitingEl.classList.add('hidden');
+      passwordDialog.classList.add('visible');
+      passwordInput.value = '';
+      passwordInput.classList.toggle('error', !!errorText);
+      passwordError.textContent = errorText;
+      passwordInput.focus();
+    }
+    
+    function hidePasswordDialog() {
+      passwordDialog.classList.remove('visible');
+      passwordInput.classList.remove('error');
+      passwordError.textContent = '';
+    }
+    
+    // Password form submission
+    passwordForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      const password = passwordInput.value.trim();
+      if (!password) {
+        passwordInput.classList.add('error');
+        passwordError.textContent = 'Please enter a password';
+        return;
+      }
+      
+      roomPassword = password;
+      hidePasswordDialog();
+      waitingEl.classList.remove('hidden');
+      
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'join', role: 'viewer', password: roomPassword }));
+      }
+    });
+    
+    // WebRTC Stats collection
+    function startStatsCollection() {
+      if (statsInterval) clearInterval(statsInterval);
+      
+      statsInterval = setInterval(async () => {
+        if (!pc) return;
+        
+        try {
+          const stats = await pc.getStats();
+          let videoStats = null;
+          let candidatePairStats = null;
+          
+          stats.forEach(report => {
+            if (report.type === 'inbound-rtp' && report.kind === 'video') {
+              videoStats = report;
+            }
+            if (report.type === 'candidate-pair' && report.state === 'succeeded') {
+              candidatePairStats = report;
+            }
+          });
+          
+          if (videoStats) {
+            const res = `${videoStats.frameWidth || '--'}x${videoStats.frameHeight || '--'}`;
+            document.getElementById('stat-resolution').textContent = res;
+            document.getElementById('stats-resolution').textContent = res;
+            
+            const fps = videoStats.framesPerSecond ? Math.round(videoStats.framesPerSecond) : '--';
+            document.getElementById('stat-fps').textContent = fps;
+            document.getElementById('stats-framerate').textContent = fps !== '--' ? `${fps} fps` : '--';
+            
+            const now = Date.now();
+            const bytesReceived = videoStats.bytesReceived || 0;
+            if (lastStatsTime > 0 && lastBytesReceived > 0) {
+              const timeDiff = (now - lastStatsTime) / 1000;
+              const bytesDiff = bytesReceived - lastBytesReceived;
+              const bitrate = (bytesDiff * 8) / timeDiff / 1000;
+              
+              let bitrateStr;
+              if (bitrate >= 1000) {
+                bitrateStr = (bitrate / 1000).toFixed(1) + ' Mbps';
+              } else {
+                bitrateStr = Math.round(bitrate) + ' kbps';
+              }
+              document.getElementById('stat-bitrate').textContent = bitrateStr;
+              document.getElementById('stats-bitrate').textContent = bitrateStr;
+            }
+            lastBytesReceived = bytesReceived;
+            lastStatsTime = now;
+            
+            const packetsLost = videoStats.packetsLost || 0;
+            const packetsReceived = videoStats.packetsReceived || 0;
+            const lossPercent = packetsReceived > 0 ? ((packetsLost / (packetsLost + packetsReceived)) * 100).toFixed(1) : 0;
+            const lossEl = document.getElementById('stats-packets-lost');
+            lossEl.textContent = `${packetsLost} (${lossPercent}%)`;
+            lossEl.className = 'stats-value ' + (lossPercent > 5 ? 'bad' : lossPercent > 1 ? 'warn' : 'good');
+            
+            const jitter = videoStats.jitter ? (videoStats.jitter * 1000).toFixed(1) + ' ms' : '--';
+            document.getElementById('stats-jitter').textContent = jitter;
+          }
+          
+          if (candidatePairStats) {
+            const rtt = candidatePairStats.currentRoundTripTime;
+            const latencyEl = document.getElementById('stats-latency');
+            if (rtt !== undefined) {
+              const latencyMs = Math.round(rtt * 1000);
+              latencyEl.textContent = latencyMs + ' ms';
+              latencyEl.className = 'stats-value ' + (latencyMs > 200 ? 'bad' : latencyMs > 100 ? 'warn' : 'good');
+            } else {
+              latencyEl.textContent = '--';
+            }
+            
+            const connTypeEl = document.getElementById('stats-connection-type');
+            const localCandidateId = candidatePairStats.localCandidateId;
+            let connectionType = 'Unknown';
+            
+            stats.forEach(report => {
+              if (report.type === 'local-candidate' && report.id === localCandidateId) {
+                switch (report.candidateType) {
+                  case 'relay':
+                    connectionType = 'Relay (TURN)';
+                    connTypeEl.className = 'stats-value warn';
+                    break;
+                  case 'host':
+                    connectionType = 'Direct (P2P)';
+                    connTypeEl.className = 'stats-value good';
+                    break;
+                  case 'srflx':
+                  case 'prflx':
+                    connectionType = 'NAT (P2P)';
+                    connTypeEl.className = 'stats-value good';
+                    break;
+                }
+              }
+            });
+            connTypeEl.textContent = connectionType;
+          }
+        } catch (e) {
+          console.log('Stats error:', e);
+        }
+      }, 1000);
+    }
+    
+    function stopStatsCollection() {
+      if (statsInterval) {
+        clearInterval(statsInterval);
+        statsInterval = null;
+      }
+    }
+    
+    // WebRTC Connection
+    async function connect() {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/${roomCode}`;
+      
+      console.log('Connecting to WebSocket:', wsUrl);
+      setStatus('Connecting...', 'connecting');
+      setWaitingState('Connecting...', 'Establishing connection to server');
+      
+      ws = new WebSocket(wsUrl);
+      
+      ws.onopen = () => {
+        console.log('WebSocket connected!');
+        setStatus('Joining room...', 'connecting');
+        setWaitingState('Joining Room', 'Waiting for sharer...');
+        reconnectAttempts = 0;
+        const joinMsg = { type: 'join', role: 'viewer' };
+        if (roomPassword) {
+          joinMsg.password = roomPassword;
+        }
+        ws.send(JSON.stringify(joinMsg));
+      };
+      
+      ws.onmessage = async (event) => {
+        const msg = JSON.parse(event.data);
+        console.log('WebSocket message received:', msg.type, msg);
+        
+        switch (msg.type) {
+          case 'joined':
+            setStatus('Waiting for sharer...', 'connecting');
+            setWaitingState('Waiting for Sharer', 'The stream will begin when the sharer starts');
+            break;
+            
+          case 'offer':
+            currentPeerId = msg.peerId;
+            // Check if this is a renegotiation (pc exists and is connected)
+            if (pc && pc.signalingState !== 'closed') {
+              console.log('Handling renegotiation offer');
+              await handleRenegotiationOffer(msg.sdp);
+            } else {
+              await handleOffer(msg.sdp);
+            }
+            break;
+            
+          case 'ice':
+            await handleICE(msg.candidate);
+            break;
+            
+          case 'streams-info':
+            handleStreamsInfo(msg.streams || []);
+            break;
+            
+          case 'focus-change':
+            handleFocusChange(msg.focusedTrack);
+            break;
+            
+          case 'stream-added':
+            console.log('Stream added:', msg.streamAdded);
+            if (msg.streamAdded) {
+              // Add to streamsInfo - track will be associated when it arrives via ontrack
+              streamsInfo.push(msg.streamAdded);
+            }
+            break;
+            
+          case 'stream-removed':
+            console.log('Stream removed:', msg.streamRemoved);
+            handleStreamRemoved(msg.streamRemoved);
+            break;
+            
+          case 'sharer-ready':
+            setStatus('Sharer reconnected', 'connecting');
+            if (pc) {
+              pc.close();
+              pc = null;
+              stopStatsCollection();
+            }
+            streams = {};
+            streamOrder = [];
+            streamsInfo = [];
+            viewerFocusedIndex = null;
+            sharerFocusedIndex = null;
+            mainVideo.srcObject = null;
+            streamStats.style.display = 'none';
+            updateMultiStreamUI();
+            setWaitingState('Reconnecting', 'Sharer has reconnected, establishing new stream...');
+            waitingEl.classList.remove('hidden');
+            break;
+            
+          case 'password-required':
+            showPasswordDialog();
+            break;
+            
+          case 'password-invalid':
+            showPasswordDialog('Invalid password. Please try again.');
+            break;
+            
+          case 'error':
+            setStatus(msg.error, 'error');
+            if (msg.error === 'Sharer disconnected') {
+              if (pc) {
+                pc.close();
+                pc = null;
+                stopStatsCollection();
+              }
+              streams = {};
+              streamOrder = [];
+              streamsInfo = [];
+              viewerFocusedIndex = null;
+              sharerFocusedIndex = null;
+              mainVideo.srcObject = null;
+              streamStats.style.display = 'none';
+              updateMultiStreamUI();
+              setWaitingState('Sharer Reconnecting', 'Please wait...');
+              waitingEl.classList.remove('hidden');
+            }
+            break;
+        }
+      };
+      
+      ws.onclose = () => {
+        setStatus('Disconnected', 'error');
+        stopStatsCollection();
+        attemptReconnect();
+      };
+      
+      ws.onerror = () => {
+        setStatus('Connection error', 'error');
+      };
+    }
+    
+    function attemptReconnect() {
+      if (reconnectAttempts < maxReconnectAttempts) {
+        reconnectAttempts++;
+        const delay = Math.min(1000 * Math.pow(2, reconnectAttempts - 1), 10000);
+        setStatus(`Reconnecting in ${delay/1000}s...`, 'connecting');
+        setWaitingState('Reconnecting...', `Attempt ${reconnectAttempts} of ${maxReconnectAttempts}`);
+        setTimeout(connect, delay);
+      } else {
+        setStatus('Failed to connect', 'error');
+        setWaitingState('Connection Failed', 'Please refresh the page to try again');
+      }
+    }
+    
+    async function handleOffer(sdp) {
+      setStatus('Establishing connection...', 'connecting');
+      
+      if (pc) {
+        pc.close();
+        pc = null;
+        stopStatsCollection();
+      }
+      
+      // Reset stream state
+      streams = {};
+      streamOrder = [];
+      streamsInfo = [];
+      viewerFocusedIndex = null;
+      sharerFocusedIndex = null;
+      
+      pc = new RTCPeerConnection({ iceServers });
+      
+      pc.ontrack = (event) => {
+        const track = event.track;
+        let stream = event.streams[0];
+        
+        // If no stream provided, create one from the track
+        if (!stream) {
+          console.log('No stream in event, creating new MediaStream for track');
+          stream = new MediaStream([track]);
+        }
+        
+        console.log('Received track:', track.id, track.kind, 'stream:', stream?.id, 'muted:', track.muted, 'readyState:', track.readyState);
+        console.log('Stream tracks:', stream.getTracks().map(t => t.id + '/' + t.kind + '/' + t.readyState));
+        console.log('Current streamOrder:', streamOrder, 'streamsInfo:', streamsInfo.map(i => i.trackId));
+        
+        // Listen for track unmute (tracks may arrive muted initially)
+        track.onunmute = () => {
+          console.log('Track unmuted:', track.id);
+          updateMultiStreamUI();
+        };
+        
+        track.onended = () => {
+          console.log('Track ended:', track.id);
+        };
+        
+        if (track.kind === 'video') {
+          // Check if we already have this exact stream (by stream ID, not track ID)
+          // Track IDs can be reused but stream IDs are unique per negotiation
+          for (const idx of streamOrder) {
+            if (streams[idx]?.stream?.id === stream.id) {
+              console.log('Stream already exists at index', idx, ', updating track reference');
+              // Update the track reference but don't add duplicate
+              streams[idx].browserTrackId = track.id;
+              // Also update the stream reference in case it changed
+              streams[idx].stream = stream;
+              updateMultiStreamUI();
+              return;
+            }
+          }
+          
+          // For dynamic additions, try to find matching streamsInfo entry
+          // The streamsInfo should have been received via stream-added message
+          let streamIndex = null;
+          
+          // Try to find an unassigned streamsInfo entry (sorted to get consistent order)
+          const sortedInfo = [...streamsInfo].sort((a, b) => {
+            const aMatch = a.trackId.match(/video(\d+)/);
+            const bMatch = b.trackId.match(/video(\d+)/);
+            return (aMatch ? parseInt(aMatch[1], 10) : 999) - (bMatch ? parseInt(bMatch[1], 10) : 999);
+          });
+          
+          for (const info of sortedInfo) {
+            const match = info.trackId.match(/video(\d+)/);
+            if (match) {
+              const infoIndex = parseInt(match[1], 10);
+              if (!streams[infoIndex]) {
+                streamIndex = infoIndex;
+                console.log('Matched track to streamsInfo index:', streamIndex, 'trackId:', info.trackId);
+                break;
+              }
+            }
+          }
+          
+          // If no match found, calculate next index based on existing streams
+          if (streamIndex === null) {
+            // Find max existing index and add 1
+            const existingIndices = streamOrder.length > 0 ? streamOrder : [-1];
+            streamIndex = Math.max(...existingIndices) + 1;
+            console.log('Using calculated next index:', streamIndex);
+          }
+          
+          // Store the stream
+          streams[streamIndex] = {
+            stream: stream,
+            browserTrackId: track.id,
+            info: streamsInfo.find(i => i.trackId === `video${streamIndex}`) || null
+          };
+          
+          if (!streamOrder.includes(streamIndex)) {
+            streamOrder.push(streamIndex);
+            streamOrder.sort((a, b) => a - b); // Keep sorted
+          }
+          
+          console.log('Added stream at index:', streamIndex, 'total streams:', streamOrder.length, 'track muted:', track.muted);
+          
+          // If no video is showing, show this one
+          if (viewerFocusedIndex === null || !mainVideo.srcObject) {
+            viewerFocusedIndex = streamIndex;
+            mainVideo.srcObject = stream;
+            
+            setStatus('Connected', 'connected');
+            waitingEl.classList.add('hidden');
+            streamStats.style.display = 'flex';
+            mainVideo.play().catch(e => console.log('Autoplay blocked:', e));
+            startStatsCollection();
+            showUI();
+          }
+          
+          updateMultiStreamUI();
+        }
+      };
+      
+      pc.onicecandidate = (event) => {
+        if (event.candidate) {
+          ws.send(JSON.stringify({
+            type: 'ice',
+            peerId: currentPeerId,
+            candidate: JSON.stringify(event.candidate)
+          }));
+        }
+      };
+      
+      pc.oniceconnectionstatechange = () => {
+        switch (pc.iceConnectionState) {
+          case 'connected':
+            setStatus('Connected', 'connected');
+            break;
+          case 'disconnected':
+            setStatus('Reconnecting...', 'connecting');
+            break;
+          case 'failed':
+            setStatus('Connection failed', 'error');
+            stopStatsCollection();
+            pc.close();
+            break;
+        }
+      };
+      
+      try {
+        await pc.setRemoteDescription({ type: 'offer', sdp });
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        
+        ws.send(JSON.stringify({
+          type: 'answer',
+          peerId: currentPeerId,
+          sdp: answer.sdp
+        }));
+      } catch (err) {
+        console.error('Error handling offer:', err);
+        setStatus('Connection error', 'error');
+      }
+    }
+    
+    async function handleICE(candidateStr) {
+      if (!pc) return;
+      try {
+        const candidate = JSON.parse(candidateStr);
+        await pc.addIceCandidate(candidate);
+      } catch (err) {
+        console.error('ICE error:', err);
+      }
+    }
+    
+    // Start
+    connect();
+  </script>
+</body>
+</html>
