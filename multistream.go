@@ -25,6 +25,19 @@ type StreamTrackInfo struct {
 	Height     int
 }
 
+// StreamPipelineStats holds real-time statistics for a single stream
+type StreamPipelineStats struct {
+	TrackID   string  // Stream identifier
+	AppName   string  // Application name (e.g., "VS Code")
+	Width     int     // Current resolution width
+	Height    int     // Current resolution height
+	FPS       float64 // Current frames per second
+	Bitrate   float64 // Current bitrate in kbps
+	Frames    uint64  // Total frames encoded
+	Bytes     uint64  // Total bytes sent
+	IsFocused bool    // Whether this stream has focus
+}
+
 // PeerInfo holds peer connection and associated RTP senders
 type PeerInfo struct {
 	PC            *webrtc.PeerConnection
@@ -686,9 +699,14 @@ type StreamPipeline struct {
 	adaptiveBR   bool
 	mu           sync.Mutex
 
-	// Stats
-	frameCount int64
-	byteCount  int64
+	// Stats tracking
+	frameCount     uint64    // Total frames encoded
+	byteCount      uint64    // Total bytes sent
+	lastFrameTime  time.Time // For FPS calculation
+	lastByteCount  uint64    // For bitrate calculation
+	lastStatsTime  time.Time // When we last calculated rates
+	currentFPS     float64   // Calculated FPS
+	currentBitrate float64   // Calculated bitrate in kbps
 }
 
 // MultiStreamer manages multiple stream pipelines
@@ -993,6 +1011,33 @@ func (ms *MultiStreamer) SetAdaptiveBitrate(enabled bool) {
 	}
 }
 
+// GetStats returns statistics for all active streams
+func (ms *MultiStreamer) GetStats() []StreamPipelineStats {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+
+	stats := make([]StreamPipelineStats, 0, len(ms.pipelines))
+	for _, pipeline := range ms.pipelines {
+		stats = append(stats, pipeline.GetStats())
+	}
+	return stats
+}
+
+// SetBitrate updates the bitrate for all active streams
+func (ms *MultiStreamer) SetBitrate(focusBitrate, bgBitrate int) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	ms.focusBitrate = focusBitrate
+	ms.bgBitrate = bgBitrate
+
+	for _, pipeline := range ms.pipelines {
+		pipeline.SetBitrate(focusBitrate, bgBitrate)
+	}
+
+	log.Printf("MultiStreamer bitrate updated: focus=%d kbps, bg=%d kbps", focusBitrate, bgBitrate)
+}
+
 // GetStreamingWindowIDs returns a map of currently streaming window IDs
 func (ms *MultiStreamer) GetStreamingWindowIDs() map[uint32]bool {
 	ms.mu.RLock()
@@ -1166,16 +1211,39 @@ func (p *StreamPipeline) run(pm *MultiPeerManager, mc *MultiCapture) {
 		return
 	}
 	p.running = true
+	p.lastStatsTime = time.Now()
+	p.lastByteCount = 0
 	p.mu.Unlock()
 
 	frameDuration := time.Second / time.Duration(p.fps)
 	ticker := time.NewTicker(frameDuration)
 	defer ticker.Stop()
 
+	// Stats update ticker (every second)
+	statsTicker := time.NewTicker(time.Second)
+	defer statsTicker.Stop()
+
+	var framesSinceLastStats uint64
+
 	for {
 		select {
 		case <-p.stopChan:
 			return
+		case <-statsTicker.C:
+			// Update FPS and bitrate calculations
+			p.mu.Lock()
+			now := time.Now()
+			elapsed := now.Sub(p.lastStatsTime).Seconds()
+			if elapsed > 0 {
+				p.currentFPS = float64(framesSinceLastStats) / elapsed
+				bytesDiff := p.byteCount - p.lastByteCount
+				p.currentBitrate = float64(bytesDiff) * 8 / elapsed / 1000 // kbps
+			}
+			p.lastStatsTime = now
+			p.lastByteCount = p.byteCount
+			framesSinceLastStats = 0
+			p.mu.Unlock()
+
 		case <-ticker.C:
 			frame, err := mc.GetLatestFrameBGRA(p.capture, 100*time.Millisecond)
 			if err != nil {
@@ -1192,14 +1260,35 @@ func (p *StreamPipeline) run(pm *MultiPeerManager, mc *MultiCapture) {
 				continue
 			}
 
+			p.mu.Lock()
 			p.frameCount++
-			p.byteCount += int64(len(data))
+			p.byteCount += uint64(len(data))
+			p.mu.Unlock()
+			framesSinceLastStats++
 
 			// Write to track
 			if err := pm.WriteVideoSample(p.trackInfo.TrackID, data, frameDuration); err != nil {
 				continue
 			}
 		}
+	}
+}
+
+// GetStats returns current statistics for this pipeline
+func (p *StreamPipeline) GetStats() StreamPipelineStats {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	return StreamPipelineStats{
+		TrackID:   p.trackInfo.TrackID,
+		AppName:   p.trackInfo.AppName,
+		Width:     p.trackInfo.Width,
+		Height:    p.trackInfo.Height,
+		FPS:       p.currentFPS,
+		Bitrate:   p.currentBitrate,
+		Frames:    p.frameCount,
+		Bytes:     p.byteCount,
+		IsFocused: p.trackInfo.IsFocused,
 	}
 }
 
@@ -1231,9 +1320,40 @@ func (p *StreamPipeline) updateBitrate() {
 
 	if newBitrate != p.bitrate {
 		p.bitrate = newBitrate
-		// Note: Changing bitrate on-the-fly requires encoder support
-		// For now, the bitrate change will take effect on next encoder restart
-		log.Printf("Track %s bitrate changed to %d kbps (focused: %v)",
-			p.trackInfo.TrackID, newBitrate, p.trackInfo.IsFocused)
+		// Apply new bitrate to encoder (will recreate on next frame)
+		if p.encoder != nil {
+			if err := p.encoder.SetBitrate(newBitrate); err != nil {
+				log.Printf("Failed to set bitrate for track %s: %v", p.trackInfo.TrackID, err)
+			} else {
+				log.Printf("Track %s bitrate changed to %d kbps (focused: %v)",
+					p.trackInfo.TrackID, newBitrate, p.trackInfo.IsFocused)
+			}
+		}
+	}
+}
+
+// SetBitrate updates the bitrate for this pipeline
+func (p *StreamPipeline) SetBitrate(focusBitrate, bgBitrate int) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	p.focusBitrate = focusBitrate
+	p.bgBitrate = bgBitrate
+
+	// Determine which bitrate to apply based on focus state
+	newBitrate := bgBitrate
+	if p.trackInfo.IsFocused {
+		newBitrate = focusBitrate
+	}
+
+	if newBitrate != p.bitrate {
+		p.bitrate = newBitrate
+		if p.encoder != nil {
+			if err := p.encoder.SetBitrate(newBitrate); err != nil {
+				log.Printf("Failed to set bitrate for track %s: %v", p.trackInfo.TrackID, err)
+			} else {
+				log.Printf("Track %s bitrate set to %d kbps", p.trackInfo.TrackID, newBitrate)
+			}
+		}
 	}
 }

@@ -185,14 +185,15 @@ import (
 
 // H264Encoder encodes RGBA frames to H.264 using x264 (software)
 type H264Encoder struct {
-	ctx         *C.H264EncoderContext
-	width       int
-	height      int
-	fps         int
-	bitrate     int
-	frameCount  int
-	mu          sync.Mutex
-	initialized bool
+	ctx           *C.H264EncoderContext
+	width         int
+	height        int
+	fps           int
+	bitrate       int
+	frameCount    int
+	mu            sync.Mutex
+	initialized   bool
+	needsRecreate bool // Flag to recreate encoder on next frame (for bitrate changes)
 }
 
 // NewH264Encoder creates a new H.264 software encoder using x264
@@ -306,15 +307,16 @@ func (e *H264Encoder) EncodeBGRAFrame(frame *BGRAFrame) ([]byte, error) {
 		}
 	}
 
-	// Check if dimensions match
-	if width != e.width || height != e.height {
-		// Reinitialize with new dimensions
+	// Check if dimensions changed or bitrate needs update
+	if width != e.width || height != e.height || e.needsRecreate {
+		// Reinitialize with new dimensions/bitrate
 		if e.ctx != nil {
 			C.destroy_h264_encoder(e.ctx)
 		}
 		if err := e.initWithDimensions(width, height); err != nil {
 			return nil, err
 		}
+		e.needsRecreate = false
 	}
 
 	// Force keyframe on first frame
@@ -358,4 +360,19 @@ func (e *H264Encoder) GetCodecType() CodecType {
 // IsHardwareAccelerated returns false for x264 (software encoding)
 func (e *H264Encoder) IsHardwareAccelerated() bool {
 	return false
+}
+
+// SetBitrate changes the target bitrate (kbps)
+// The encoder will be recreated on the next frame encode
+func (e *H264Encoder) SetBitrate(bitrate int) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.bitrate == bitrate {
+		return nil
+	}
+
+	e.bitrate = bitrate
+	e.needsRecreate = true
+	return nil
 }

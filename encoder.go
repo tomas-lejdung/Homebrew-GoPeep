@@ -198,15 +198,16 @@ import (
 
 // VPXEncoder encodes RGBA frames to VP8 or VP9
 type VPXEncoder struct {
-	ctx         *C.VPXEncoderContext
-	width       int
-	height      int
-	fps         int
-	bitrate     int
-	frameCount  int
-	mu          sync.Mutex
-	initialized bool
-	isVP9       bool
+	ctx           *C.VPXEncoderContext
+	width         int
+	height        int
+	fps           int
+	bitrate       int
+	frameCount    int
+	mu            sync.Mutex
+	initialized   bool
+	isVP9         bool
+	needsRecreate bool // Flag to recreate encoder on next frame (for bitrate changes)
 }
 
 // VP8Encoder is an alias for backwards compatibility
@@ -362,15 +363,16 @@ func (e *VPXEncoder) EncodeBGRAFrame(frame *BGRAFrame) ([]byte, error) {
 		}
 	}
 
-	// Check if dimensions match
-	if width != e.width || height != e.height {
-		// Reinitialize with new dimensions
+	// Check if dimensions changed or bitrate needs update
+	if width != e.width || height != e.height || e.needsRecreate {
+		// Reinitialize with new dimensions/bitrate
 		if e.ctx != nil {
 			C.destroy_vpx_encoder(e.ctx)
 		}
 		if err := e.initWithDimensions(width, height); err != nil {
 			return nil, err
 		}
+		e.needsRecreate = false
 	}
 
 	// Force keyframe on first frame
@@ -417,4 +419,19 @@ func (e *VPXEncoder) GetCodecType() CodecType {
 // IsHardwareAccelerated returns false for VPX (software encoding)
 func (e *VPXEncoder) IsHardwareAccelerated() bool {
 	return false
+}
+
+// SetBitrate changes the target bitrate (kbps)
+// The encoder will be recreated on the next frame encode
+func (e *VPXEncoder) SetBitrate(bitrate int) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.bitrate == bitrate {
+		return nil
+	}
+
+	e.bitrate = bitrate
+	e.needsRecreate = true
+	return nil
 }

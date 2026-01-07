@@ -79,6 +79,10 @@ type VideoEncoder interface {
 
 	// IsHardwareAccelerated returns true if using hardware encoding
 	IsHardwareAccelerated() bool
+
+	// SetBitrate changes the target bitrate (kbps) at runtime
+	// The encoder may need to recreate internal state on next encode
+	SetBitrate(bitrate int) error
 }
 
 // EncoderFactory creates encoders based on codec type

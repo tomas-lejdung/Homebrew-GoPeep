@@ -124,15 +124,10 @@ type viewerCountMsg int
 
 type tickMsg time.Time
 
-// captureStartedMsg indicates capture started successfully
+// captureStartedMsg indicates capture started successfully (unified for single/multi)
 type captureStartedMsg struct {
-	streamer *Streamer
-}
-
-// multiCaptureStartedMsg indicates multi-window capture started successfully
-type multiCaptureStartedMsg struct {
-	multiStreamer    *MultiStreamer
-	multiPeerManager *MultiPeerManager
+	streamer    *MultiStreamer
+	peerManager *MultiPeerManager
 }
 
 // captureErrorMsg indicates capture failed to start
@@ -157,12 +152,11 @@ type model struct {
 	sourceCursor   int
 	selectedSource int // -1 if not sharing (single-window mode)
 
-	// Multi-window mode
-	multiWindowMode  bool              // true if multi-window streaming is enabled
-	selectedWindows  map[uint32]bool   // window IDs selected for multi-window streaming
-	adaptiveBitrate  bool              // reduce bitrate for non-focused windows
-	multiStreamer    *MultiStreamer    // multi-window streamer
-	multiPeerManager *MultiPeerManager // multi-window peer manager
+	// Multi-window mode (always used now - single window is just len(selectedWindows)==1)
+	selectedWindows map[uint32]bool   // window IDs selected for streaming
+	adaptiveBitrate bool              // reduce bitrate for non-focused windows
+	streamer        *MultiStreamer    // unified streamer (handles 1 or more windows)
+	peerManager     *MultiPeerManager // unified peer manager
 
 	// Quality
 	qualityCursor   int
@@ -193,8 +187,8 @@ type model struct {
 	copyMsgTime    time.Time // when copy message was shown
 
 	// Stats display
-	showStats bool
-	stats     StreamStats
+	showStats   bool
+	streamStats []StreamPipelineStats // Per-stream stats from unified streamer
 
 	// OS focus tracking
 	osFocusedWindowID uint32 // Currently OS-focused window ID
@@ -211,11 +205,9 @@ type model struct {
 	wsDisconnected   *bool // Pointer so goroutine can set it
 
 	// Components (persistent across source switches)
-	server      *sig.Server
-	peerManager *PeerManager
-	streamer    *Streamer
-	wsConn      *websocket.Conn // Remote signal server connection
-	isRemote    bool            // Using remote signal server
+	server   *sig.Server
+	wsConn   *websocket.Conn // Remote signal server connection
+	isRemote bool            // Using remote signal server
 
 	// Server started flag
 	serverStarted bool
@@ -266,7 +258,6 @@ func initialModel(config Config) model {
 		sourceCursor:    0,
 		selectedSource:  -1,
 		selectedWindows: make(map[uint32]bool),
-		multiWindowMode: true, // Always use multi-window mode
 		qualityCursor:   DefaultQualityIndex(),
 		selectedQuality: DefaultQualityIndex(),
 		fpsCursor:       fpsIndex,
@@ -362,19 +353,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case captureStartedMsg:
-		// Capture started successfully
+		// Capture started successfully (unified for single/multi)
 		m.starting = false
 		m.sharing = true
 		m.streamer = msg.streamer
-		m.startTime = time.Now()
-		return m, tickCmd()
-
-	case multiCaptureStartedMsg:
-		// Multi-window capture started successfully
-		m.starting = false
-		m.sharing = true
-		m.multiStreamer = msg.multiStreamer
-		m.multiPeerManager = msg.multiPeerManager
+		m.peerManager = msg.peerManager
 		m.startTime = time.Now()
 		return m, tickCmd()
 
@@ -417,15 +400,11 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Update viewer count and stats if sharing
-		if m.sharing {
-			if m.multiPeerManager != nil {
-				m.viewerCount = m.multiPeerManager.GetConnectionCount()
-			} else if m.peerManager != nil {
-				m.viewerCount = m.peerManager.GetConnectionCount()
-			}
+		if m.sharing && m.peerManager != nil {
+			m.viewerCount = m.peerManager.GetConnectionCount()
 		}
 		if m.sharing && m.streamer != nil {
-			m.stats = m.streamer.GetStats()
+			m.streamStats = m.streamer.GetStats()
 		}
 
 		// Clear copy message after 2 seconds
@@ -472,7 +451,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Set up signaling via the new WebSocket with disconnect callback
 		disconnectFlag := m.wsDisconnected
-		setupRemoteSignalingWithCallback(m.wsConn, m.peerManager, func() {
+		setupMultiRemoteSignaling(m.wsConn, m.peerManager, func() {
 			if disconnectFlag != nil {
 				*disconnectFlag = true
 			}
@@ -613,7 +592,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					}
 
 					// If sharing, dynamically update without full restart
-					if m.sharing && m.multiStreamer != nil {
+					if m.sharing && m.streamer != nil {
 						return m.updateMultiStreamSelection()
 					}
 				}
@@ -700,8 +679,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Toggle adaptive bitrate
 		m.adaptiveBitrate = !m.adaptiveBitrate
 		// Update if already streaming
-		if m.multiStreamer != nil {
-			m.multiStreamer.SetAdaptiveBitrate(m.adaptiveBitrate)
+		if m.streamer != nil {
+			m.streamer.SetAdaptiveBitrate(m.adaptiveBitrate)
 		}
 		return m, nil
 	}
@@ -719,9 +698,9 @@ func (m model) applyQuality(index int) (tea.Model, tea.Cmd) {
 	m.selectedQuality = index
 	m.qualityCursor = index
 
-	// If we're sharing and quality changed, restart the streamer
+	// If we're sharing and quality changed, apply new bitrate dynamically
 	if m.sharing && oldQuality != m.selectedQuality {
-		return m.restartStreamer()
+		return m.applyBitrateChange()
 	}
 
 	return m, nil
@@ -774,7 +753,7 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 				}
 
 				// If sharing, dynamically update without full restart
-				if m.sharing && m.multiStreamer != nil {
+				if m.sharing && m.streamer != nil {
 					return m.updateMultiStreamSelection()
 				}
 				return m, nil
@@ -902,31 +881,15 @@ func (m model) restartCaptureWithSettings(isFullscreen bool, windowID uint32) (t
 	return m, startCaptureAsync(peerManager, isFullscreen, windowID, fps, bitrate, codecType)
 }
 
-// restartStreamer restarts the streamer with new quality settings
-func (m model) restartStreamer() (tea.Model, tea.Cmd) {
-	if !m.sharing || m.peerManager == nil {
+// applyBitrateChange applies a new bitrate to the running streamer without restart
+func (m model) applyBitrateChange() (tea.Model, tea.Cmd) {
+	if !m.sharing || m.streamer == nil {
 		return m, nil
 	}
 
-	// Stop current streamer (but not capture)
-	if m.streamer != nil {
-		m.streamer.Stop()
-		m.streamer = nil
-	}
-
-	// Create new streamer with updated bitrate and current codec
+	// Use SetBitrate to change bitrate dynamically (no restart needed)
 	bitrate := QualityPresets[m.selectedQuality].Bitrate
-	codecType := m.getSelectedCodecType()
-	fps := m.getSelectedFPS()
-	m.streamer = NewStreamerWithCodec(m.peerManager, fps, bitrate, codecType)
-	m.streamer.SetCaptureFunc(func() (*BGRAFrame, error) {
-		return GetLatestFrameBGRA(time.Second)
-	})
-
-	if err := m.streamer.Start(); err != nil {
-		m.lastError = fmt.Sprintf("Failed to restart streamer: %v", err)
-		return m, nil
-	}
+	m.streamer.SetBitrate(bitrate, bitrate/2)
 
 	return m, nil
 }
@@ -951,7 +914,7 @@ func (m *model) initServer() error {
 	}
 	codecType := m.getSelectedCodecType()
 	var err error
-	m.peerManager, err = NewPeerManagerWithCodec(iceConfig, codecType)
+	m.peerManager, err = NewMultiPeerManager(iceConfig, codecType)
 	if err != nil {
 		return fmt.Errorf("failed to create peer manager: %v", err)
 	}
@@ -982,7 +945,7 @@ func (m *model) initServer() error {
 	m.shareURL = fmt.Sprintf("http://%s:%d/%s", localIP, m.config.Port, m.roomCode)
 
 	// Set up signaling (connects server to peer manager)
-	setupSignaling(m.server, m.peerManager, m.roomCode, m.password)
+	setupMultiSignaling(m.server, m.peerManager, m.roomCode, m.password)
 
 	m.serverStarted = true
 	return nil
@@ -1110,7 +1073,7 @@ func (m *model) initRemoteSignaling() error {
 
 	// Set up signaling via WebSocket with disconnect callback
 	disconnectFlag := m.wsDisconnected
-	setupRemoteSignalingWithCallback(conn, m.peerManager, func() {
+	setupMultiRemoteSignaling(conn, m.peerManager, func() {
 		*disconnectFlag = true
 	})
 
@@ -1209,7 +1172,7 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 	}
 	adaptiveBR := m.adaptiveBitrate
 	codecType := m.getSelectedCodecType()
-	multiPeerManager := m.multiPeerManager
+	multiPeerManager := m.peerManager
 
 	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fps, focusBitrate, bgBitrate, adaptiveBR, codecType)
 }
@@ -1217,17 +1180,17 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 // restartMultiStreamWithSelection restarts multi-stream with updated window selection (legacy - full restart)
 func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
 	// Stop current multi streamer
-	if m.multiStreamer != nil {
-		m.multiStreamer.Stop()
-		m.multiStreamer = nil
+	if m.streamer != nil {
+		m.streamer.Stop()
+		m.streamer = nil
 	}
 
 	// If no windows selected, just stop completely
 	if len(m.selectedWindows) == 0 {
 		// Full cleanup
-		if m.multiPeerManager != nil {
-			m.multiPeerManager.Close()
-			m.multiPeerManager = nil
+		if m.peerManager != nil {
+			m.peerManager.Close()
+			m.peerManager = nil
 		}
 		if m.wsConn != nil {
 			m.wsConn.Close()
@@ -1239,9 +1202,9 @@ func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
 	}
 
 	// Close multi peer manager to reset tracks (but keep server/websocket)
-	if m.multiPeerManager != nil {
-		m.multiPeerManager.Close()
-		m.multiPeerManager = nil
+	if m.peerManager != nil {
+		m.peerManager.Close()
+		m.peerManager = nil
 	}
 
 	// We need to fully restart the server connection for new tracks
@@ -1262,12 +1225,12 @@ func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
 // updateMultiStreamSelection dynamically adds/removes windows without full restart
 func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
 	// If not currently streaming, fall back to starting fresh
-	if m.multiStreamer == nil || !m.sharing {
+	if m.streamer == nil || !m.sharing {
 		return m.startMultiWindowSharing()
 	}
 
 	// Get currently streaming windows
-	currentWindows := m.multiStreamer.GetStreamingWindowIDs()
+	currentWindows := m.streamer.GetStreamingWindowIDs()
 
 	// Handle special case: all windows removed
 	if len(m.selectedWindows) == 0 {
@@ -1301,7 +1264,7 @@ func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
 	// Remove windows first (to free up space for new ones)
 	for _, windowID := range windowsToRemove {
 		log.Printf("TUI: Removing window dynamically: %d", windowID)
-		if err := m.multiStreamer.RemoveWindowDynamic(windowID); err != nil {
+		if err := m.streamer.RemoveWindowDynamic(windowID); err != nil {
 			log.Printf("TUI: Failed to remove window %d: %v", windowID, err)
 		}
 	}
@@ -1309,7 +1272,7 @@ func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
 	// Add new windows
 	for _, window := range windowsToAdd {
 		log.Printf("TUI: Adding window dynamically: %d (%s)", window.ID, window.WindowName)
-		if _, err := m.multiStreamer.AddWindowDynamic(window); err != nil {
+		if _, err := m.streamer.AddWindowDynamic(window); err != nil {
 			log.Printf("TUI: Failed to add window %d: %v", window.ID, err)
 		}
 	}
@@ -1319,7 +1282,7 @@ func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
 
 // initMultiServer initializes the server for multi-window mode
 func (m *model) initMultiServer() error {
-	if m.serverStarted && m.multiPeerManager != nil {
+	if m.serverStarted && m.peerManager != nil {
 		return nil
 	}
 
@@ -1338,7 +1301,7 @@ func (m *model) initMultiServer() error {
 	codecType := m.getSelectedCodecType()
 
 	var err error
-	m.multiPeerManager, err = NewMultiPeerManager(iceConfig, codecType)
+	m.peerManager, err = NewMultiPeerManager(iceConfig, codecType)
 	if err != nil {
 		return fmt.Errorf("failed to create multi peer manager: %v", err)
 	}
@@ -1366,7 +1329,7 @@ func (m *model) initMultiServer() error {
 	m.shareURL = fmt.Sprintf("http://%s:%d/%s", localIP, m.config.Port, m.roomCode)
 
 	// Set up signaling for multi-window
-	setupMultiSignaling(m.server, m.multiPeerManager, m.roomCode, m.password)
+	setupMultiSignaling(m.server, m.peerManager, m.roomCode, m.password)
 
 	m.serverStarted = true
 	return nil
@@ -1423,7 +1386,7 @@ func (m *model) initMultiRemoteSignaling() error {
 	*m.wsDisconnected = false
 
 	disconnectFlag := m.wsDisconnected
-	setupMultiRemoteSignaling(conn, m.multiPeerManager, func() {
+	setupMultiRemoteSignaling(conn, m.peerManager, func() {
 		*disconnectFlag = true
 	})
 
@@ -1432,13 +1395,13 @@ func (m *model) initMultiRemoteSignaling() error {
 
 // stopMultiCapture stops multi-window capture
 func (m *model) stopMultiCapture() {
-	if m.multiStreamer != nil {
-		m.multiStreamer.Stop()
-		m.multiStreamer = nil
+	if m.streamer != nil {
+		m.streamer.Stop()
+		m.streamer = nil
 	}
-	if m.multiPeerManager != nil {
-		m.multiPeerManager.Close()
-		m.multiPeerManager = nil
+	if m.peerManager != nil {
+		m.peerManager.Close()
+		m.peerManager = nil
 	}
 }
 
@@ -1469,64 +1432,63 @@ func startMultiCaptureAsync(pm *MultiPeerManager, windows []WindowInfo, fps, foc
 			return captureErrorMsg{err: fmt.Sprintf("Failed to start multi-streamer: %v", err)}
 		}
 
-		return multiCaptureStartedMsg{
-			multiStreamer:    ms,
-			multiPeerManager: pm,
+		return captureStartedMsg{
+			streamer:    ms,
+			peerManager: pm,
 		}
 	}
 }
 
 // startCaptureAsync returns a command that starts capture in a goroutine
-func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowID uint32, fps, bitrate int, codecType CodecType) tea.Cmd {
+// Uses unified MultiStreamer with a single window (N=1)
+func startCaptureAsync(peerManager *MultiPeerManager, isFullscreen bool, windowID uint32, fps, bitrate int, codecType CodecType) tea.Cmd {
 	return func() tea.Msg {
 		// Small delay to let ScreenCaptureKit settle after any previous stop
 		time.Sleep(100 * time.Millisecond)
 
-		// Start capture (this blocks on ScreenCaptureKit)
-		var err error
+		// Fullscreen not supported in unified mode - use window selection
 		if isFullscreen {
-			err = StartDisplayCapture(0, 0, fps)
-		} else {
-			err = StartWindowCapture(windowID, 0, 0, fps)
+			return captureErrorMsg{err: "Full screen capture not supported. Please select individual windows instead."}
 		}
 
+		// Create multi-streamer with single stream
+		ms := NewMultiStreamer(peerManager, fps, bitrate, bitrate/2, false)
+
+		// Single window capture
+		windowInfo := WindowInfo{
+			ID: windowID,
+		}
+		_, err := ms.AddWindow(windowInfo)
 		if err != nil {
-			return captureErrorMsg{err: fmt.Sprintf("Failed to start capture: %v", err)}
+			return captureErrorMsg{err: fmt.Sprintf("Failed to add window: %v", err)}
 		}
 
-		// Create streamer
-		streamer := NewStreamerWithCodec(peerManager, fps, bitrate, codecType)
-		streamer.SetCaptureFunc(func() (*BGRAFrame, error) {
-			return GetLatestFrameBGRA(time.Second)
-		})
-
-		if err := streamer.Start(); err != nil {
-			StopCapture()
+		// Start streaming
+		if err := ms.Start(); err != nil {
+			ms.Stop()
 			return captureErrorMsg{err: fmt.Sprintf("Failed to start streamer: %v", err)}
 		}
 
-		return captureStartedMsg{streamer: streamer}
+		return captureStartedMsg{
+			streamer:    ms,
+			peerManager: peerManager,
+		}
 	}
 }
 
 // stopCapture stops the current capture but keeps server running.
 // If preserveState is true, keeps isFullscreen and activeWindowID for restart scenarios.
 func (m *model) stopCapture(preserveState bool) {
-	// Stop single-window streamer
+	// Stop unified streamer
 	if m.streamer != nil {
 		m.streamer.Stop()
 		m.streamer = nil
 	}
 
-	// Stop multi-window streamer
-	if m.multiStreamer != nil {
-		m.multiStreamer.Stop()
-		m.multiStreamer = nil
-	}
-
 	StopCapture()
 
 	m.sharing = false
+	m.streamStats = nil
 
 	if !preserveState {
 		m.selectedSource = -1
@@ -1539,14 +1501,10 @@ func (m *model) stopCapture(preserveState bool) {
 func (m *model) cleanup() {
 	m.stopCapture(false)
 
+	// Close unified peer manager
 	if m.peerManager != nil {
 		m.peerManager.Close()
 		m.peerManager = nil
-	}
-
-	if m.multiPeerManager != nil {
-		m.multiPeerManager.Close()
-		m.multiPeerManager = nil
 	}
 
 	if m.wsConn != nil {
@@ -1648,9 +1606,9 @@ func (m model) renderSharingStatus() string {
 		b.WriteString(normalStyle.Render(truncate(source.DisplayName, 30)))
 		b.WriteString("  ")
 		b.WriteString(dimStyle.Render("please wait..."))
-	} else if m.sharing && m.multiStreamer != nil {
+	} else if m.sharing && m.streamer != nil {
 		// Multi-window sharing
-		streams := m.multiStreamer.GetStreamsInfo()
+		streams := m.streamer.GetStreamsInfo()
 		b.WriteString(statusStyle.Render("Sharing: "))
 		b.WriteString(selectedStyle.Render(fmt.Sprintf("%d windows", len(streams))))
 		if m.adaptiveBitrate {
@@ -1684,14 +1642,7 @@ func (m model) renderSharingStatus() string {
 
 		// Codec with hardware indicator
 		b.WriteString(statusStyle.Render("Codec: "))
-		if m.streamer != nil {
-			codecName := string(m.streamer.GetCodecType())
-			if m.streamer.IsHardwareAccelerated() {
-				b.WriteString(selectedStyle.Render(codecName + " [HW]"))
-			} else {
-				b.WriteString(normalStyle.Render(codecName))
-			}
-		} else if m.selectedCodec >= 0 && m.selectedCodec < len(AvailableCodecs) {
+		if m.selectedCodec >= 0 && m.selectedCodec < len(AvailableCodecs) {
 			codec := AvailableCodecs[m.selectedCodec]
 			if codec.IsHardware {
 				b.WriteString(selectedStyle.Render(codec.Name + " [HW]"))
@@ -2015,50 +1966,63 @@ func (m model) renderStats() string {
 		Width(74)
 
 	var content strings.Builder
-	content.WriteString(boxTitleDimStyle.Render(" Stats "))
+	content.WriteString(boxTitleDimStyle.Render(" Streams "))
 	content.WriteString("\n")
 
 	// Uptime
 	uptime := time.Since(m.startTime).Truncate(time.Second)
 	content.WriteString(dimStyle.Render("Uptime: "))
 	content.WriteString(normalStyle.Render(formatDuration(uptime)))
-	content.WriteString("  ")
-
-	// Resolution
-	content.WriteString(dimStyle.Render("Resolution: "))
-	if m.stats.Width > 0 {
-		content.WriteString(normalStyle.Render(fmt.Sprintf("%dx%d", m.stats.Width, m.stats.Height)))
-	} else {
-		content.WriteString(dimStyle.Render("--"))
-	}
-	content.WriteString("  ")
-
-	// FPS
-	content.WriteString(dimStyle.Render("FPS: "))
-	if m.stats.ActualFPS > 0 {
-		content.WriteString(normalStyle.Render(fmt.Sprintf("%.1f/%d", m.stats.ActualFPS, m.stats.TargetFPS)))
-	} else {
-		content.WriteString(dimStyle.Render(fmt.Sprintf("--/%d", m.stats.TargetFPS)))
-	}
-	content.WriteString("  ")
-
-	// Bitrate
-	content.WriteString(dimStyle.Render("Bitrate: "))
-	if m.stats.ActualBPS > 0 {
-		actualMbps := float64(m.stats.ActualBPS) * 8 / 1_000_000
-		content.WriteString(normalStyle.Render(fmt.Sprintf("%.1f Mbps", actualMbps)))
-	} else {
-		content.WriteString(dimStyle.Render("--"))
-	}
 	content.WriteString("\n")
 
-	// Frames and bytes sent
-	content.WriteString(dimStyle.Render("Frames: "))
-	content.WriteString(normalStyle.Render(formatNumber(m.stats.FramesSent)))
-	content.WriteString("  ")
+	// Per-stream stats in compact format
+	if len(m.streamStats) == 0 {
+		content.WriteString(dimStyle.Render("No active streams"))
+	} else {
+		// Calculate totals
+		var totalFrames uint64
+		var totalBytes uint64
+		for _, stat := range m.streamStats {
+			totalFrames += stat.Frames
+			totalBytes += stat.Bytes
+		}
 
-	content.WriteString(dimStyle.Render("Data: "))
-	content.WriteString(normalStyle.Render(formatBytes(m.stats.BytesSent)))
+		// Show each stream
+		for i, stat := range m.streamStats {
+			// Stream number and app name (truncated)
+			appName := stat.AppName
+			if len(appName) > 12 {
+				appName = appName[:12]
+			}
+			if appName == "" {
+				appName = stat.TrackID
+			}
+
+			// Format: "1: AppName    1920x1080@30 | 2.1Mbps | 45.2MB *"
+			focusMarker := " "
+			if stat.IsFocused {
+				focusMarker = "*"
+			}
+
+			resStr := fmt.Sprintf("%dx%d@%.0f", stat.Width, stat.Height, stat.FPS)
+			bitrateStr := fmt.Sprintf("%.1fMbps", stat.Bitrate/1000)
+			dataStr := formatBytes(int64(stat.Bytes))
+
+			line := fmt.Sprintf("%d: %-12s %s | %s | %s %s",
+				i+1, appName, resStr, bitrateStr, dataStr, focusMarker)
+
+			if stat.IsFocused {
+				content.WriteString(selectedStyle.Render(line))
+			} else {
+				content.WriteString(normalStyle.Render(line))
+			}
+			content.WriteString("\n")
+		}
+
+		// Totals line
+		content.WriteString(dimStyle.Render(fmt.Sprintf("Total: %s frames, %s",
+			formatNumber(int64(totalFrames)), formatBytes(int64(totalBytes)))))
+	}
 
 	b.WriteString(statsBoxStyle.Render(content.String()))
 	return b.String()
