@@ -1,7 +1,7 @@
 class Gopeep < Formula
   desc "P2P screen sharing for pair programming using WebRTC"
-  homepage "https://github.com/tomas-lejdung/GoPeep"
-  url "https://github.com/tomas-lejdung/GoPeep.git", branch: "main"
+  homepage "https://github.com/tomas-lejdung/Homebrew-GoPeep"
+  url "https://github.com/tomas-lejdung/Homebrew-GoPeep.git", branch: "main"
   version "1.0.0"
   license "MIT"
 

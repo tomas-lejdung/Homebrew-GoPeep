@@ -16,7 +16,7 @@ P2P screen sharing for pair programming. Share your screen with anyone over the 
 ### Homebrew (Recommended)
 
 ```bash
-brew tap tomas-lejdung/gopeep https://github.com/tomas-lejdung/GoPeep
+brew tap tomas-lejdung/gopeep
 brew install gopeep
 ```
 
@@ -29,8 +29,8 @@ Requires Go 1.21+ and libvpx:
 brew install libvpx
 
 # Clone and build
-git clone https://github.com/tomas-lejdung/GoPeep.git
-cd GoPeep
+git clone https://github.com/tomas-lejdung/Homebrew-GoPeep.git
+cd Homebrew-GoPeep
 make build-release
 ```
 
