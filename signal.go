@@ -212,7 +212,7 @@ func (c *Client) handleMessage(msg SignalMessage) {
 	case "join":
 		c.handleJoin(room, msg)
 	case "offer":
-		c.forwardToViewers(room, msg)
+		c.handleOffer(room, msg)
 	case "answer":
 		c.forwardToSharer(room, msg)
 	case "ice":
@@ -220,6 +220,27 @@ func (c *Client) handleMessage(msg SignalMessage) {
 	default:
 		log.Printf("Unknown message type: %s", msg.Type)
 	}
+}
+
+// handleOffer assigns peerID to the first unassigned viewer and forwards the offer
+func (c *Client) handleOffer(room *Room, msg SignalMessage) {
+	room.mu.Lock()
+
+	// Find the first viewer without a peerID and assign this one
+	if msg.PeerID != "" {
+		for viewer := range room.viewers {
+			if viewer.peerID == "" {
+				viewer.peerID = msg.PeerID
+				log.Printf("Assigned peerID %s to viewer", msg.PeerID)
+				break
+			}
+		}
+	}
+
+	room.mu.Unlock()
+
+	// Now forward to the specific viewer (using forwardToViewers which checks peerID)
+	c.forwardToViewers(room, msg)
 }
 
 // handleJoin processes a join request
@@ -266,12 +287,29 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 	}
 }
 
-// forwardToViewers sends message to all viewers in the room
+// forwardToViewers sends message to viewers in the room
+// If msg.PeerID is set, only sends to that specific viewer
 func (c *Client) forwardToViewers(room *Room, msg SignalMessage) {
 	room.mu.RLock()
 	defer room.mu.RUnlock()
 
 	data, _ := json.Marshal(msg)
+
+	// If a specific peerID is specified, only send to that viewer
+	if msg.PeerID != "" {
+		for viewer := range room.viewers {
+			if viewer.peerID == msg.PeerID {
+				select {
+				case viewer.send <- data:
+				default:
+				}
+				return
+			}
+		}
+		return
+	}
+
+	// Otherwise broadcast to all viewers
 	for viewer := range room.viewers {
 		select {
 		case viewer.send <- data:
@@ -298,10 +336,14 @@ func (c *Client) forwardToSharer(room *Room, msg SignalMessage) {
 }
 
 // forwardICE forwards ICE candidates to appropriate peer(s)
+// Uses msg.PeerID to route to specific viewer when from sharer
 func (c *Client) forwardICE(room *Room, msg SignalMessage) {
 	if c.role == "sharer" {
+		// From sharer to viewer - use peerID to route to specific viewer
 		c.forwardToViewers(room, msg)
 	} else {
+		// From viewer to sharer - include this viewer's peerID
+		msg.PeerID = c.peerID
 		c.forwardToSharer(room, msg)
 	}
 }

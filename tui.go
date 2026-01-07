@@ -6,6 +6,7 @@ import (
 	"io"
 	"log"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -13,6 +14,25 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gorilla/websocket"
 )
+
+// copyToClipboard copies text to the macOS clipboard using pbcopy
+func copyToClipboard(text string) error {
+	cmd := exec.Command("pbcopy")
+	pipe, err := cmd.StdinPipe()
+	if err != nil {
+		return err
+	}
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+	if _, err := pipe.Write([]byte(text)); err != nil {
+		return err
+	}
+	if err := pipe.Close(); err != nil {
+		return err
+	}
+	return cmd.Wait()
+}
 
 // Column indices
 const (
@@ -113,6 +133,8 @@ type model struct {
 	viewerCount  int
 	lastError    string
 	startTime    time.Time // when sharing started
+	copyMessage  string    // temporary "Copied!" message
+	copyMsgTime  time.Time // when copy message was shown
 
 	// Stats display
 	showStats bool
@@ -222,11 +244,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		cmds = append(cmds, refreshWindows)
 
 		// Update viewer count and stats if sharing
-		if m.sharing && m.server != nil {
-			m.viewerCount = m.server.GetViewerCount(m.roomCode)
+		if m.sharing && m.peerManager != nil {
+			// Use peer manager's connection count (works for both local and remote)
+			m.viewerCount = m.peerManager.GetConnectionCount()
 		}
 		if m.sharing && m.streamer != nil {
 			m.stats = m.streamer.GetStats()
+		}
+
+		// Clear copy message after 2 seconds
+		if m.copyMessage != "" && time.Since(m.copyMsgTime) > 2*time.Second {
+			m.copyMessage = ""
 		}
 
 		return m, tea.Batch(cmds...)
@@ -317,6 +345,19 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "i":
 		// Toggle stats display
 		m.showStats = !m.showStats
+		return m, nil
+
+	case "c":
+		// Copy URL to clipboard
+		if m.shareURL != "" {
+			if err := copyToClipboard(m.shareURL); err == nil {
+				m.copyMessage = "Copied!"
+				m.copyMsgTime = time.Now()
+			} else {
+				m.copyMessage = "Copy failed"
+				m.copyMsgTime = time.Now()
+			}
+		}
 		return m, nil
 	}
 
@@ -617,6 +658,11 @@ func (m model) renderSharingStatus() string {
 
 	b.WriteString(statusStyle.Render("URL: "))
 	b.WriteString(urlStyle.Render(m.shareURL))
+	// Show copy message if present
+	if m.copyMessage != "" {
+		b.WriteString("  ")
+		b.WriteString(selectedStyle.Render(m.copyMessage))
+	}
 	b.WriteString("\n")
 
 	// Currently sharing
@@ -883,6 +929,10 @@ func (m model) renderHelp() string {
 	parts = append(parts, "↑/↓ navigate")
 	parts = append(parts, "enter select")
 	parts = append(parts, "1-7 quality")
+
+	if m.serverStarted {
+		parts = append(parts, "c copy URL")
+	}
 
 	if m.sharing {
 		parts = append(parts, "i stats")
