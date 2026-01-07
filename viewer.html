@@ -888,36 +888,58 @@
     }
     
     // Multi-stream functions
+    let updateUITimeout = null;
+    let thumbnailElements = {}; // idx -> { container, video, label }
+    
     function updateMultiStreamUI() {
+      // Debounce rapid updates
+      if (updateUITimeout) {
+        clearTimeout(updateUITimeout);
+      }
+      updateUITimeout = setTimeout(doUpdateMultiStreamUI, 50);
+    }
+    
+    function doUpdateMultiStreamUI() {
       const streamCount = streamOrder.length;
       
       // Update stream count display
       streamCountText.textContent = streamCount;
       streamCountEl.classList.toggle('visible', streamCount > 1);
       
-      // Show/hide thumbnails bar
+      // Show/hide thumbnails bar (show when more than 1 stream)
       const showThumbnails = streamCount > 1;
       thumbnailsBar.classList.toggle('visible', showThumbnails);
       document.body.classList.toggle('multi-stream', showThumbnails);
       
-      // Rebuild thumbnails
-      thumbnailsBar.innerHTML = '';
+      if (!showThumbnails) {
+        // Clean up all thumbnails
+        thumbnailsBar.innerHTML = '';
+        thumbnailElements = {};
+        return;
+      }
       
-      if (showThumbnails) {
-        for (const idx of streamOrder) {
-          if (idx === viewerFocusedIndex) continue; // Skip the main video
-          
-          const data = streams[idx];
-          if (!data) continue;
-          
+      // Sort streamOrder for consistent display
+      const sortedOrder = [...streamOrder].sort((a, b) => a - b);
+      
+      // Remove thumbnails for streams that no longer exist
+      for (const idx in thumbnailElements) {
+        if (!streams[idx] || !sortedOrder.includes(parseInt(idx))) {
+          thumbnailElements[idx].container.remove();
+          delete thumbnailElements[idx];
+        }
+      }
+      
+      // Update or create thumbnails
+      for (const idx of sortedOrder) {
+        const data = streams[idx];
+        if (!data || !data.stream) continue;
+        
+        let elem = thumbnailElements[idx];
+        
+        if (!elem) {
+          // Create new thumbnail
           const container = document.createElement('div');
           container.className = 'thumbnail-container';
-          if (idx === sharerFocusedIndex) {
-            container.classList.add('focused');
-          }
-          if (idx === viewerFocusedIndex) {
-            container.classList.add('active');
-          }
           container.dataset.streamIndex = idx;
           
           const video = document.createElement('video');
@@ -925,12 +947,9 @@
           video.autoplay = true;
           video.playsinline = true;
           video.muted = true;
-          video.srcObject = data.stream;
           
           const label = document.createElement('div');
           label.className = 'thumbnail-label';
-          const info = data.info;
-          label.textContent = info?.windowName || info?.appName || `Stream ${idx + 1}`;
           
           const focusIndicator = document.createElement('div');
           focusIndicator.className = 'thumbnail-focus-indicator';
@@ -941,19 +960,52 @@
           
           container.addEventListener('click', () => switchToStream(idx));
           
-          thumbnailsBar.appendChild(container);
+          elem = { container, video, label };
+          thumbnailElements[idx] = elem;
+        }
+        
+        // Update video source if changed
+        if (elem.video.srcObject !== data.stream) {
+          elem.video.srcObject = data.stream;
+          elem.video.play().catch(e => console.log('Thumbnail play error for', idx, ':', e.message));
+        }
+        
+        // Update label
+        const info = data.info;
+        elem.label.textContent = info?.windowName || info?.appName || `Stream ${idx + 1}`;
+        
+        // Update classes
+        elem.container.classList.toggle('focused', idx === sharerFocusedIndex);
+        elem.container.classList.toggle('active', idx === viewerFocusedIndex);
+        
+        // Ensure it's in the DOM and in correct order
+        if (!elem.container.parentNode) {
+          thumbnailsBar.appendChild(elem.container);
+        }
+      }
+      
+      // Reorder thumbnails to match sortedOrder
+      for (const idx of sortedOrder) {
+        if (thumbnailElements[idx]) {
+          thumbnailsBar.appendChild(thumbnailElements[idx].container);
         }
       }
     }
     
     function switchToStream(index) {
-      if (!streams[index]) return;
+      if (!streams[index]) {
+        console.log('switchToStream: stream', index, 'not found');
+        return;
+      }
+      
+      console.log('Switching to stream', index);
       
       // Swap the focused stream
       viewerFocusedIndex = index;
       
       // Update main video
       mainVideo.srcObject = streams[index].stream;
+      mainVideo.play().catch(e => console.log('Main video play error:', e.message));
       
       // Update thumbnails
       updateMultiStreamUI();
@@ -992,6 +1044,98 @@
         if (sharerFocusedIndex !== null && streams[sharerFocusedIndex]) {
           switchToStream(sharerFocusedIndex);
         }
+      }
+      
+      updateMultiStreamUI();
+    }
+    
+    // Handle renegotiation offer (when tracks are added/removed dynamically)
+    async function handleRenegotiationOffer(sdp) {
+      if (!pc) {
+        console.error('No peer connection for renegotiation');
+        return;
+      }
+      
+      console.log('Processing renegotiation offer, current signaling state:', pc.signalingState);
+      
+      // If we're not in stable state, we need to handle this carefully
+      // This can happen if we receive an offer while we have a pending local offer
+      if (pc.signalingState !== 'stable' && pc.signalingState !== 'have-remote-offer') {
+        console.log('Not in stable state, waiting for state to stabilize...');
+        // Wait a bit and try again
+        await new Promise(resolve => setTimeout(resolve, 100));
+        if (pc.signalingState !== 'stable') {
+          console.error('Still not in stable state after wait:', pc.signalingState);
+          // Try to rollback if possible
+          try {
+            await pc.setLocalDescription({ type: 'rollback' });
+            console.log('Rolled back local description');
+          } catch (rollbackErr) {
+            console.error('Rollback failed:', rollbackErr);
+          }
+        }
+      }
+      
+      try {
+        console.log('Setting remote description for renegotiation');
+        await pc.setRemoteDescription({ type: 'offer', sdp });
+        console.log('Remote description set, creating answer');
+        const answer = await pc.createAnswer();
+        console.log('Answer created, setting local description');
+        await pc.setLocalDescription(answer);
+        
+        console.log('Sending renegotiation answer');
+        ws.send(JSON.stringify({
+          type: 'renegotiate-answer',
+          peerId: currentPeerId,
+          sdp: answer.sdp
+        }));
+        console.log('Renegotiation answer sent successfully');
+      } catch (e) {
+        console.error('Renegotiation failed:', e);
+        console.error('PC state:', pc.signalingState, pc.connectionState);
+      }
+    }
+    
+    // Handle stream removed notification
+    function handleStreamRemoved(trackID) {
+      if (!trackID) return;
+      
+      // Extract index from trackId (e.g., "video2" -> 2)
+      const match = trackID.match(/video(\d+)/);
+      if (!match) return;
+      
+      const removedIndex = parseInt(match[1], 10);
+      console.log('Removing stream at index:', removedIndex);
+      
+      // Remove from streams
+      delete streams[removedIndex];
+      
+      // Remove from streamOrder
+      streamOrder = streamOrder.filter(idx => idx !== removedIndex);
+      
+      // Remove from streamsInfo
+      streamsInfo = streamsInfo.filter(info => info.trackId !== trackID);
+      
+      // If this was the viewer's focused stream, switch to another
+      if (viewerFocusedIndex === removedIndex) {
+        if (streamOrder.length > 0) {
+          // Switch to first available stream
+          switchToStream(streamOrder[0]);
+        } else {
+          // No streams left
+          viewerFocusedIndex = null;
+          mainVideo.srcObject = null;
+          setStatus('Waiting for stream', 'connecting');
+          waitingEl.classList.remove('hidden');
+          setWaitingState('Stream ended', 'Waiting for new content...');
+          streamStats.style.display = 'none';
+        }
+      }
+      
+      // If sharer focus was on removed stream, clear it
+      if (sharerFocusedIndex === removedIndex) {
+        sharerFocusedIndex = null;
       }
       
       updateMultiStreamUI();
@@ -1291,7 +1435,13 @@
             
           case 'offer':
             currentPeerId = msg.peerId;
-            await handleOffer(msg.sdp);
+            // Check if this is a renegotiation (pc exists and is connected)
+            if (pc && pc.signalingState !== 'closed') {
+              console.log('Handling renegotiation offer');
+              await handleRenegotiationOffer(msg.sdp);
+            } else {
+              await handleOffer(msg.sdp);
+            }
             break;
             
           case 'ice':
@@ -1304,6 +1454,19 @@
             
           case 'focus-change':
             handleFocusChange(msg.focusedTrack);
+            break;
+            
+          case 'stream-added':
+            console.log('Stream added:', msg.streamAdded);
+            if (msg.streamAdded) {
+              // Add to streamsInfo - track will be associated when it arrives via ontrack
+              streamsInfo.push(msg.streamAdded);
+            }
+            break;
+            
+          case 'stream-removed':
+            console.log('Stream removed:', msg.streamRemoved);
+            handleStreamRemoved(msg.streamRemoved);
             break;
             
           case 'sharer-ready':
@@ -1400,26 +1563,90 @@
       
       pc.ontrack = (event) => {
         const track = event.track;
-        const stream = event.streams[0];
+        let stream = event.streams[0];
         
-        console.log('Received track:', track.id, track.kind, 'stream:', stream.id);
+        // If no stream provided, create one from the track
+        if (!stream) {
+          console.log('No stream in event, creating new MediaStream for track');
+          stream = new MediaStream([track]);
+        }
+        
+        console.log('Received track:', track.id, track.kind, 'stream:', stream?.id, 'muted:', track.muted, 'readyState:', track.readyState);
+        console.log('Stream tracks:', stream.getTracks().map(t => t.id + '/' + t.kind + '/' + t.readyState));
+        console.log('Current streamOrder:', streamOrder, 'streamsInfo:', streamsInfo.map(i => i.trackId));
+        
+        // Listen for track unmute (tracks may arrive muted initially)
+        track.onunmute = () => {
+          console.log('Track unmuted:', track.id);
+          updateMultiStreamUI();
+        };
+        
+        track.onended = () => {
+          console.log('Track ended:', track.id);
+        };
         
         if (track.kind === 'video') {
-          // Assign index based on order received
-          const streamIndex = streamOrder.length;
+          // Check if we already have this exact stream (by stream ID, not track ID)
+          // Track IDs can be reused but stream IDs are unique per negotiation
+          for (const idx of streamOrder) {
+            if (streams[idx]?.stream?.id === stream.id) {
+              console.log('Stream already exists at index', idx, ', updating track reference');
+              // Update the track reference but don't add duplicate
+              streams[idx].browserTrackId = track.id;
+              // Also update the stream reference in case it changed
+              streams[idx].stream = stream;
+              updateMultiStreamUI();
+              return;
+            }
+          }
           
-          // Store the stream by index
+          // For dynamic additions, try to find matching streamsInfo entry
+          // The streamsInfo should have been received via stream-added message
+          let streamIndex = null;
+          
+          // Try to find an unassigned streamsInfo entry (sorted to get consistent order)
+          const sortedInfo = [...streamsInfo].sort((a, b) => {
+            const aMatch = a.trackId.match(/video(\d+)/);
+            const bMatch = b.trackId.match(/video(\d+)/);
+            return (aMatch ? parseInt(aMatch[1], 10) : 999) - (bMatch ? parseInt(bMatch[1], 10) : 999);
+          });
+          
+          for (const info of sortedInfo) {
+            const match = info.trackId.match(/video(\d+)/);
+            if (match) {
+              const infoIndex = parseInt(match[1], 10);
+              if (!streams[infoIndex]) {
+                streamIndex = infoIndex;
+                console.log('Matched track to streamsInfo index:', streamIndex, 'trackId:', info.trackId);
+                break;
+              }
+            }
+          }
+          
+          // If no match found, calculate next index based on existing streams
+          if (streamIndex === null) {
+            // Find max existing index and add 1
+            const existingIndices = streamOrder.length > 0 ? streamOrder : [-1];
+            streamIndex = Math.max(...existingIndices) + 1;
+            console.log('Using calculated next index:', streamIndex);
+          }
+          
+          // Store the stream
           streams[streamIndex] = {
             stream: stream,
             browserTrackId: track.id,
-            info: null
+            info: streamsInfo.find(i => i.trackId === `video${streamIndex}`) || null
           };
-          streamOrder.push(streamIndex);
           
-          console.log('Added stream at index:', streamIndex, 'total streams:', streamOrder.length);
+          if (!streamOrder.includes(streamIndex)) {
+            streamOrder.push(streamIndex);
+            streamOrder.sort((a, b) => a - b); // Keep sorted
+          }
           
-          // If this is the first video, make it the focused one
-          if (viewerFocusedIndex === null) {
+          console.log('Added stream at index:', streamIndex, 'total streams:', streamOrder.length, 'track muted:', track.muted);
+          
+          // If no video is showing, show this one
+          if (viewerFocusedIndex === null || !mainVideo.srcObject) {
             viewerFocusedIndex = streamIndex;
             mainVideo.srcObject = stream;
             

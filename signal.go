@@ -17,7 +17,7 @@ var viewerHTML embed.FS
 
 // SignalMessage represents a WebSocket signaling message
 type SignalMessage struct {
-	Type      string `json:"type"`                // join, offer, answer, ice, error, streams-info, focus-change
+	Type      string `json:"type"`                // join, offer, answer, ice, error, streams-info, focus-change, stream-added, stream-removed
 	Room      string `json:"room,omitempty"`      // room code
 	Role      string `json:"role,omitempty"`      // sharer or viewer
 	SDP       string `json:"sdp,omitempty"`       // SDP offer/answer
@@ -28,8 +28,10 @@ type SignalMessage struct {
 	TrackID   string `json:"trackId,omitempty"`   // track identifier for multi-stream
 
 	// Multi-stream fields
-	Streams      []StreamInfo `json:"streams,omitempty"`      // list of available streams
-	FocusedTrack string       `json:"focusedTrack,omitempty"` // currently focused stream track ID
+	Streams       []StreamInfo `json:"streams,omitempty"`       // list of available streams
+	FocusedTrack  string       `json:"focusedTrack,omitempty"`  // currently focused stream track ID
+	StreamAdded   *StreamInfo  `json:"streamAdded,omitempty"`   // info about newly added stream
+	StreamRemoved string       `json:"streamRemoved,omitempty"` // trackID of removed stream
 }
 
 // StreamInfo describes a single video stream (window)
@@ -230,11 +232,12 @@ func (c *Client) handleMessage(msg SignalMessage) {
 		c.handleJoin(room, msg)
 	case "offer":
 		c.handleOffer(room, msg)
-	case "answer":
+	case "answer", "renegotiate-answer":
+		// Forward answer (initial or renegotiation) to sharer
 		c.forwardToSharer(room, msg)
 	case "ice":
 		c.forwardICE(room, msg)
-	case "streams-info", "focus-change":
+	case "streams-info", "focus-change", "stream-added", "stream-removed":
 		// Forward stream metadata from sharer to all viewers
 		c.forwardToViewers(room, msg)
 	default:

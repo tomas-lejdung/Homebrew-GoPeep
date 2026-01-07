@@ -746,6 +746,61 @@ func setupMultiSignaling(server *SignalServer, pm *MultiPeerManager, roomCode st
 		room.mu.RUnlock()
 	})
 
+	// Set up renegotiation callback to send new offers during track add/remove
+	pm.SetRenegotiateCallback(func(peerID string, offer string) {
+		log.Printf("Renegotiation: sending offer to peer %s", peerID)
+		offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
+		data, _ := json.Marshal(offerMsg)
+
+		room.mu.RLock()
+		for viewer := range room.viewers {
+			if viewer.peerID == peerID {
+				select {
+				case viewer.send <- data:
+					log.Printf("Renegotiation offer sent to %s", peerID)
+				default:
+					log.Printf("Failed to send renegotiation offer to %s (buffer full)", peerID)
+				}
+				break
+			}
+		}
+		room.mu.RUnlock()
+	})
+
+	// Set up stream change callbacks
+	pm.SetStreamChangeCallbacks(
+		func(info StreamInfo) {
+			// Broadcast stream-added to all viewers
+			log.Printf("Broadcasting stream-added: %s", info.TrackID)
+			msg := SignalMessage{Type: "stream-added", StreamAdded: &info}
+			data, _ := json.Marshal(msg)
+
+			room.mu.RLock()
+			for viewer := range room.viewers {
+				select {
+				case viewer.send <- data:
+				default:
+				}
+			}
+			room.mu.RUnlock()
+		},
+		func(trackID string) {
+			// Broadcast stream-removed to all viewers
+			log.Printf("Broadcasting stream-removed: %s", trackID)
+			msg := SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
+			data, _ := json.Marshal(msg)
+
+			room.mu.RLock()
+			for viewer := range room.viewers {
+				select {
+				case viewer.send <- data:
+				default:
+				}
+			}
+			room.mu.RUnlock()
+		},
+	)
+
 	go func() {
 		for data := range sharerClient.send {
 			var msg SignalMessage
@@ -829,6 +884,15 @@ func setupMultiSignaling(server *SignalServer, pm *MultiPeerManager, roomCode st
 				if err := pm.AddICECandidate(peerID, msg.Candidate); err != nil {
 					log.Printf("Failed to add ICE candidate for %s: %v", peerID, err)
 				}
+
+			case "renegotiate-answer":
+				peerID := msg.PeerID
+				if peerID == "" {
+					continue
+				}
+				if err := pm.HandleRenegotiateAnswer(peerID, msg.SDP); err != nil {
+					log.Printf("Failed to handle renegotiate answer for %s: %v", peerID, err)
+				}
 			}
 		}
 	}()
@@ -860,6 +924,36 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 			log.Printf("Sent focus-change message to signal server")
 		}
 	})
+
+	// Set up renegotiation callback for dynamic track add/remove
+	pm.SetRenegotiateCallback(func(peerID string, offer string) {
+		log.Printf("Remote renegotiation: sending offer for peer %s", peerID)
+		offerMsg := SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
+		connMu.Lock()
+		err := conn.WriteJSON(offerMsg)
+		connMu.Unlock()
+		if err != nil {
+			log.Printf("Failed to send renegotiation offer: %v", err)
+		}
+	})
+
+	// Set up stream change callbacks
+	pm.SetStreamChangeCallbacks(
+		func(info StreamInfo) {
+			log.Printf("Remote: broadcasting stream-added: %s", info.TrackID)
+			msg := SignalMessage{Type: "stream-added", StreamAdded: &info}
+			connMu.Lock()
+			conn.WriteJSON(msg)
+			connMu.Unlock()
+		},
+		func(trackID string) {
+			log.Printf("Remote: broadcasting stream-removed: %s", trackID)
+			msg := SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
+			connMu.Lock()
+			conn.WriteJSON(msg)
+			connMu.Unlock()
+		},
+	)
 
 	go func() {
 		for {
@@ -928,6 +1022,15 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 				}
 				if err := pm.AddICECandidate(peerID, msg.Candidate); err != nil {
 					log.Printf("Failed to add ICE candidate for %s: %v", peerID, err)
+				}
+
+			case "renegotiate-answer":
+				peerID := msg.PeerID
+				if peerID == "" {
+					continue
+				}
+				if err := pm.HandleRenegotiateAnswer(peerID, msg.SDP); err != nil {
+					log.Printf("Failed to handle renegotiate answer for %s: %v", peerID, err)
 				}
 
 			case "error":

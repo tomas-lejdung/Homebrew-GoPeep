@@ -611,9 +611,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 						m.selectedWindows[windowID] = true
 					}
 
-					// If sharing, restart with new selection
+					// If sharing, dynamically update without full restart
 					if m.sharing && m.multiStreamer != nil {
-						return m.restartMultiStreamWithSelection()
+						return m.updateMultiStreamSelection()
 					}
 				}
 			}
@@ -772,9 +772,9 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 					m.selectedWindows[windowID] = true
 				}
 
-				// If sharing, restart with new selection
+				// If sharing, dynamically update without full restart
 				if m.sharing && m.multiStreamer != nil {
-					return m.restartMultiStreamWithSelection()
+					return m.updateMultiStreamSelection()
 				}
 				return m, nil
 			}
@@ -1213,7 +1213,7 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fps, focusBitrate, bgBitrate, adaptiveBR, codecType)
 }
 
-// restartMultiStreamWithSelection restarts multi-stream with updated window selection
+// restartMultiStreamWithSelection restarts multi-stream with updated window selection (legacy - full restart)
 func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
 	// Stop current multi streamer
 	if m.multiStreamer != nil {
@@ -1256,6 +1256,64 @@ func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
 
 	// Start fresh with new selection
 	return m.startMultiWindowSharing()
+}
+
+// updateMultiStreamSelection dynamically adds/removes windows without full restart
+func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
+	// If not currently streaming, fall back to starting fresh
+	if m.multiStreamer == nil || !m.sharing {
+		return m.startMultiWindowSharing()
+	}
+
+	// Get currently streaming windows
+	currentWindows := m.multiStreamer.GetStreamingWindowIDs()
+
+	// Handle special case: all windows removed
+	if len(m.selectedWindows) == 0 {
+		// Full cleanup via stopCapture
+		m.stopCapture(true)
+		return m, nil
+	}
+
+	// Find windows to add
+	var windowsToAdd []WindowInfo
+	for windowID := range m.selectedWindows {
+		if !currentWindows[windowID] {
+			// Find the WindowInfo for this ID from sources
+			for _, source := range m.sources {
+				if source.Window != nil && source.Window.ID == windowID {
+					windowsToAdd = append(windowsToAdd, *source.Window)
+					break
+				}
+			}
+		}
+	}
+
+	// Find windows to remove
+	var windowsToRemove []uint32
+	for windowID := range currentWindows {
+		if !m.selectedWindows[windowID] {
+			windowsToRemove = append(windowsToRemove, windowID)
+		}
+	}
+
+	// Remove windows first (to free up space for new ones)
+	for _, windowID := range windowsToRemove {
+		log.Printf("TUI: Removing window dynamically: %d", windowID)
+		if err := m.multiStreamer.RemoveWindowDynamic(windowID); err != nil {
+			log.Printf("TUI: Failed to remove window %d: %v", windowID, err)
+		}
+	}
+
+	// Add new windows
+	for _, window := range windowsToAdd {
+		log.Printf("TUI: Adding window dynamically: %d (%s)", window.ID, window.WindowName)
+		if _, err := m.multiStreamer.AddWindowDynamic(window); err != nil {
+			log.Printf("TUI: Failed to add window %d: %v", window.ID, err)
+		}
+	}
+
+	return m, nil
 }
 
 // initMultiServer initializes the server for multi-window mode

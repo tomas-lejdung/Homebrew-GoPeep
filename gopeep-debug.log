@@ -1,104 +1,214 @@
-2026/01/07 21:56:29 === GoPeep started at 2026-01-07T21:56:29+01:00 ===
-2026/01/07 21:56:34 Signal server starting on :8080
-2026/01/07 21:56:36 Focus detection loop started with 3 pipelines:
-2026/01/07 21:56:36   - Track video0: windowID=318244, name=OpenCode
-2026/01/07 21:56:36   - Track video1: windowID=317592, name=Scratch
-2026/01/07 21:56:36   - Track video2: windowID=312846, name=Tower/UpdateContainer
-2026/01/07 21:56:36 Topmost captured window changed to: 318244 (was 0)
-2026/01/07 21:56:36 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/07 21:56:36 Calling NotifyFocusChange for track: video0
-2026/01/07 21:56:36 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/07 21:56:36 Focus change callback triggered for track: video0
-2026/01/07 21:56:36 Broadcasting focus-change to 0 viewers
-2026/01/07 21:56:37 Topmost captured window changed to: 312846 (was 318244)
-2026/01/07 21:56:37 Focus set to track=video2, windowID=312846, name=Tower/UpdateContainer
-2026/01/07 21:56:37 Calling NotifyFocusChange for track: video2
-2026/01/07 21:56:37 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/07 21:56:37 Focus change callback triggered for track: video2
-2026/01/07 21:56:37 Broadcasting focus-change to 0 viewers
-2026/01/07 21:56:38 Viewer joined room CALM-RIVER-33 (total viewers: 1)
-2026/01/07 21:56:38 Peer viewer-1 connection state: connecting
-2026/01/07 21:56:39 Peer viewer-1 connection state: connected
-2026/01/07 21:56:44 Topmost captured window changed to: 317592 (was 312846)
-2026/01/07 21:56:44 Focus set to track=video1, windowID=317592, name=Scratch
-2026/01/07 21:56:44 Calling NotifyFocusChange for track: video1
-2026/01/07 21:56:44 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/07 21:56:44 Focus change callback triggered for track: video1
-2026/01/07 21:56:44 Broadcasting focus-change to 1 viewers
-2026/01/07 21:56:44 Sent focus-change to viewer viewer-1
-2026/01/07 21:56:45 Topmost captured window changed to: 312846 (was 317592)
-2026/01/07 21:56:45 Focus set to track=video2, windowID=312846, name=Tower/UpdateContainer
-2026/01/07 21:56:45 Calling NotifyFocusChange for track: video2
-2026/01/07 21:56:45 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/07 21:56:45 Focus change callback triggered for track: video2
-2026/01/07 21:56:45 Broadcasting focus-change to 1 viewers
-2026/01/07 21:56:45 Sent focus-change to viewer viewer-1
-2026/01/07 21:56:51 Topmost captured window changed to: 318244 (was 312846)
-2026/01/07 21:56:51 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/07 21:56:51 Calling NotifyFocusChange for track: video0
-2026/01/07 21:56:51 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/07 21:56:51 Focus change callback triggered for track: video0
-2026/01/07 21:56:51 Broadcasting focus-change to 1 viewers
-2026/01/07 21:56:51 Sent focus-change to viewer viewer-1
-2026/01/07 21:56:52 Topmost captured window changed to: 317592 (was 318244)
-2026/01/07 21:56:52 Focus set to track=video1, windowID=317592, name=Scratch
-2026/01/07 21:56:52 Calling NotifyFocusChange for track: video1
-2026/01/07 21:56:52 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/07 21:56:52 Focus change callback triggered for track: video1
-2026/01/07 21:56:52 Broadcasting focus-change to 1 viewers
-2026/01/07 21:56:52 Sent focus-change to viewer viewer-1
-2026/01/07 21:56:54 Topmost captured window changed to: 318244 (was 317592)
-2026/01/07 21:56:54 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/07 21:56:54 Calling NotifyFocusChange for track: video0
-2026/01/07 21:56:54 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/07 21:56:54 Focus change callback triggered for track: video0
-2026/01/07 21:56:54 Broadcasting focus-change to 1 viewers
-2026/01/07 21:56:54 Sent focus-change to viewer viewer-1
-2026/01/07 21:57:39 Topmost captured window changed to: 312846 (was 318244)
-2026/01/07 21:57:39 Focus set to track=video2, windowID=312846, name=Tower/UpdateContainer
-2026/01/07 21:57:39 Calling NotifyFocusChange for track: video2
-2026/01/07 21:57:39 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/07 21:57:39 Focus change callback triggered for track: video2
-2026/01/07 21:57:39 Broadcasting focus-change to 1 viewers
-2026/01/07 21:57:39 Sent focus-change to viewer viewer-1
-2026/01/07 21:58:17 Topmost captured window changed to: 318244 (was 312846)
-2026/01/07 21:58:17 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/07 21:58:17 Calling NotifyFocusChange for track: video0
-2026/01/07 21:58:17 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/07 21:58:17 Focus change callback triggered for track: video0
-2026/01/07 21:58:17 Broadcasting focus-change to 1 viewers
-2026/01/07 21:58:17 Sent focus-change to viewer viewer-1
-2026/01/07 21:58:28 Topmost captured window changed to: 312846 (was 318244)
-2026/01/07 21:58:28 Focus set to track=video2, windowID=312846, name=Tower/UpdateContainer
-2026/01/07 21:58:28 Calling NotifyFocusChange for track: video2
-2026/01/07 21:58:28 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/07 21:58:28 Focus change callback triggered for track: video2
-2026/01/07 21:58:28 Broadcasting focus-change to 1 viewers
-2026/01/07 21:58:28 Sent focus-change to viewer viewer-1
-2026/01/07 21:58:29 Topmost captured window changed to: 318244 (was 312846)
-2026/01/07 21:58:29 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/07 21:58:29 Calling NotifyFocusChange for track: video0
-2026/01/07 21:58:29 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/07 21:58:29 Focus change callback triggered for track: video0
-2026/01/07 21:58:29 Broadcasting focus-change to 1 viewers
-2026/01/07 21:58:29 Sent focus-change to viewer viewer-1
-2026/01/07 21:58:32 Topmost captured window changed to: 312846 (was 318244)
-2026/01/07 21:58:32 Focus set to track=video2, windowID=312846, name=Tower/UpdateContainer
-2026/01/07 21:58:32 Calling NotifyFocusChange for track: video2
-2026/01/07 21:58:32 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/07 21:58:32 Focus change callback triggered for track: video2
-2026/01/07 21:58:32 Broadcasting focus-change to 1 viewers
-2026/01/07 21:58:32 Sent focus-change to viewer viewer-1
-2026/01/07 21:58:38 Focus detection loop stopped
-2026/01/07 21:58:38 Peer viewer-1 connection state: closed
-2026/01/07 21:58:38 Signal server starting on :8080
-2026/01/07 21:58:40 Focus detection loop started with 2 pipelines:
-2026/01/07 21:58:40   - Track video0: windowID=318244, name=OpenCode
-2026/01/07 21:58:40   - Track video1: windowID=317592, name=Scratch
-2026/01/07 21:58:40 Topmost captured window changed to: 318244 (was 0)
-2026/01/07 21:58:40 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/07 21:58:40 Calling NotifyFocusChange for track: video0
-2026/01/07 21:58:40 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/07 21:58:40 Focus change callback triggered for track: video0
-2026/01/07 21:58:40 Broadcasting focus-change to 0 viewers
-2026/01/07 21:58:45 Focus detection loop stopped
+2026/01/07 23:03:06 === GoPeep started at 2026-01-07T23:03:06+01:00 ===
+2026/01/07 23:03:11 Signal server starting on :8080
+2026/01/07 23:03:12 Focus detection loop started with 2 pipelines:
+2026/01/07 23:03:12   - Track video0: windowID=318244, name=OpenCode
+2026/01/07 23:03:12   - Track video1: windowID=317592, name=Scratch
+2026/01/07 23:03:12 Topmost captured window changed to: 317592 (was 0)
+2026/01/07 23:03:12 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/07 23:03:12 Calling NotifyFocusChange for track: video1
+2026/01/07 23:03:12 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/07 23:03:12 Focus change callback triggered for track: video1
+2026/01/07 23:03:12 Broadcasting focus-change to 0 viewers
+2026/01/07 23:03:13 Viewer joined room BRAVE-MARSH-44 (total viewers: 1)
+2026/01/07 23:03:13 Peer viewer-1 connection state: connecting
+2026/01/07 23:03:14 Peer viewer-1 connection state: connected
+2026/01/07 23:03:22 TUI: Adding window dynamically: 314022 (gopeep)
+2026/01/07 23:03:23 AddWindowDynamic: Adding track video2 to all peers
+2026/01/07 23:03:23 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/07 23:03:23 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/07 23:03:23 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/07 23:03:23 AddWindowDynamic: Notifying about new stream video2
+2026/01/07 23:03:23 Broadcasting stream-added: video2
+2026/01/07 23:03:23 AddWindowDynamic: Triggering renegotiation for track video2
+2026/01/07 23:03:23 Added window dynamically: video2 (windowID=314022)
+2026/01/07 23:03:23 Renegotiating with 1 peers
+2026/01/07 23:03:23 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/07 23:03:23 Renegotiation: peer viewer-1 connection state: connected
+2026/01/07 23:03:23 Renegotiation: ICE gathering complete for viewer-1
+2026/01/07 23:03:23 Renegotiation: sending offer to peer viewer-1 (SDP length: 13085)
+2026/01/07 23:03:23 Renegotiation: sending offer to peer viewer-1
+2026/01/07 23:03:23 Renegotiation offer sent to viewer-1
+2026/01/07 23:03:23 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/07 23:03:23 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/07 23:03:25 Topmost captured window changed to: 314022 (was 317592)
+2026/01/07 23:03:25 Focus set to track=video2, windowID=314022, name=gopeep
+2026/01/07 23:03:25 Calling NotifyFocusChange for track: video2
+2026/01/07 23:03:25 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/07 23:03:25 Focus change callback triggered for track: video2
+2026/01/07 23:03:25 Broadcasting focus-change to 1 viewers
+2026/01/07 23:03:25 Sent focus-change to viewer viewer-1
+2026/01/07 23:03:27 TUI: Removing window dynamically: 314022
+2026/01/07 23:03:27 Removing window dynamically: video2 (windowID=314022)
+2026/01/07 23:03:27 Removed track video2 from peer viewer-1
+2026/01/07 23:03:27 Broadcasting stream-removed: video2
+2026/01/07 23:03:27 Renegotiating with 1 peers
+2026/01/07 23:03:27 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/07 23:03:27 Renegotiation: peer viewer-1 connection state: connected
+2026/01/07 23:03:27 Renegotiation: ICE gathering complete for viewer-1
+2026/01/07 23:03:27 Renegotiation: sending offer to peer viewer-1 (SDP length: 12903)
+2026/01/07 23:03:27 Renegotiation: sending offer to peer viewer-1
+2026/01/07 23:03:27 Renegotiation offer sent to viewer-1
+2026/01/07 23:03:27 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/07 23:03:27 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/07 23:03:27 Topmost captured window changed to: 317592 (was 314022)
+2026/01/07 23:03:27 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/07 23:03:27 Calling NotifyFocusChange for track: video1
+2026/01/07 23:03:27 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/07 23:03:27 Focus change callback triggered for track: video1
+2026/01/07 23:03:27 Broadcasting focus-change to 1 viewers
+2026/01/07 23:03:27 Sent focus-change to viewer viewer-1
+2026/01/07 23:03:29 TUI: Adding window dynamically: 312846 (Tower/Docker)
+2026/01/07 23:03:30 AddWindowDynamic: Adding track video3 to all peers
+2026/01/07 23:03:30 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/07 23:03:30 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/07 23:03:30 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/07 23:03:30 AddWindowDynamic: Notifying about new stream video3
+2026/01/07 23:03:30 Broadcasting stream-added: video3
+2026/01/07 23:03:30 AddWindowDynamic: Triggering renegotiation for track video3
+2026/01/07 23:03:30 Added window dynamically: video3 (windowID=312846)
+2026/01/07 23:03:30 Renegotiating with 1 peers
+2026/01/07 23:03:30 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/07 23:03:30 Renegotiation: peer viewer-1 connection state: connected
+2026/01/07 23:03:30 Renegotiation: ICE gathering complete for viewer-1
+2026/01/07 23:03:30 Renegotiation: sending offer to peer viewer-1 (SDP length: 13089)
+2026/01/07 23:03:30 Renegotiation: sending offer to peer viewer-1
+2026/01/07 23:03:30 Renegotiation offer sent to viewer-1
+2026/01/07 23:03:30 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/07 23:03:30 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/07 23:03:43 TUI: Adding window dynamically: 314022 (gopeep)
+2026/01/07 23:03:44 AddWindowDynamic: Adding track video4 to all peers
+2026/01/07 23:03:44 AddTrackToAllPeers: Adding track video4 to 1 peer connections
+2026/01/07 23:03:44 AddTrackToAllPeers: Adding track video4 to peer viewer-1 (state: connected)
+2026/01/07 23:03:44 AddTrackToAllPeers: Successfully added track video4 to peer viewer-1
+2026/01/07 23:03:44 AddWindowDynamic: Notifying about new stream video4
+2026/01/07 23:03:44 Broadcasting stream-added: video4
+2026/01/07 23:03:44 AddWindowDynamic: Triggering renegotiation for track video4
+2026/01/07 23:03:44 Added window dynamically: video4 (windowID=314022)
+2026/01/07 23:03:44 Renegotiating with 1 peers
+2026/01/07 23:03:44 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/07 23:03:44 Renegotiation: peer viewer-1 connection state: connected
+2026/01/07 23:03:44 Renegotiation: ICE gathering complete for viewer-1
+2026/01/07 23:03:44 Renegotiation: sending offer to peer viewer-1 (SDP length: 16852)
+2026/01/07 23:03:44 Renegotiation: sending offer to peer viewer-1
+2026/01/07 23:03:44 Renegotiation offer sent to viewer-1
+2026/01/07 23:03:44 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/07 23:03:44 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/07 23:03:44 Topmost captured window changed to: 314022 (was 317592)
+2026/01/07 23:03:44 Focus set to track=video4, windowID=314022, name=gopeep
+2026/01/07 23:03:44 Calling NotifyFocusChange for track: video4
+2026/01/07 23:03:44 NotifyFocusChange: callback exists, calling with trackID: video4
+2026/01/07 23:03:44 Focus change callback triggered for track: video4
+2026/01/07 23:03:44 Broadcasting focus-change to 1 viewers
+2026/01/07 23:03:44 Sent focus-change to viewer viewer-1
+2026/01/07 23:03:46 Topmost captured window changed to: 318244 (was 314022)
+2026/01/07 23:03:46 Focus set to track=video0, windowID=318244, name=OpenCode
+2026/01/07 23:03:46 Calling NotifyFocusChange for track: video0
+2026/01/07 23:03:46 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/07 23:03:46 Focus change callback triggered for track: video0
+2026/01/07 23:03:46 Broadcasting focus-change to 1 viewers
+2026/01/07 23:03:46 Sent focus-change to viewer viewer-1
+2026/01/07 23:04:00 Topmost captured window changed to: 314022 (was 318244)
+2026/01/07 23:04:00 Focus set to track=video4, windowID=314022, name=gopeep
+2026/01/07 23:04:00 Calling NotifyFocusChange for track: video4
+2026/01/07 23:04:00 NotifyFocusChange: callback exists, calling with trackID: video4
+2026/01/07 23:04:00 Focus change callback triggered for track: video4
+2026/01/07 23:04:00 Broadcasting focus-change to 1 viewers
+2026/01/07 23:04:00 Sent focus-change to viewer viewer-1
+2026/01/07 23:04:02 Topmost captured window changed to: 318244 (was 314022)
+2026/01/07 23:04:02 Focus set to track=video0, windowID=318244, name=OpenCode
+2026/01/07 23:04:02 Calling NotifyFocusChange for track: video0
+2026/01/07 23:04:02 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/07 23:04:02 Focus change callback triggered for track: video0
+2026/01/07 23:04:02 Broadcasting focus-change to 1 viewers
+2026/01/07 23:04:02 Sent focus-change to viewer viewer-1
+2026/01/07 23:04:17 TUI: Removing window dynamically: 314022
+2026/01/07 23:04:17 Removing window dynamically: video4 (windowID=314022)
+2026/01/07 23:04:17 Removed track video4 from peer viewer-1
+2026/01/07 23:04:17 Broadcasting stream-removed: video4
+2026/01/07 23:04:17 Renegotiating with 1 peers
+2026/01/07 23:04:17 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/07 23:04:17 Renegotiation: peer viewer-1 connection state: connected
+2026/01/07 23:04:17 Renegotiation: ICE gathering complete for viewer-1
+2026/01/07 23:04:17 Renegotiation: sending offer to peer viewer-1 (SDP length: 16670)
+2026/01/07 23:04:17 Renegotiation: sending offer to peer viewer-1
+2026/01/07 23:04:17 Renegotiation offer sent to viewer-1
+2026/01/07 23:04:17 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/07 23:04:17 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/07 23:04:17 TUI: Removing window dynamically: 312846
+2026/01/07 23:04:17 Removing window dynamically: video3 (windowID=312846)
+2026/01/07 23:04:17 Removed track video3 from peer viewer-1
+2026/01/07 23:04:17 Broadcasting stream-removed: video3
+2026/01/07 23:04:17 Renegotiating with 1 peers
+2026/01/07 23:04:17 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/07 23:04:17 Renegotiation: peer viewer-1 connection state: connected
+2026/01/07 23:04:17 Renegotiation: ICE gathering complete for viewer-1
+2026/01/07 23:04:17 Renegotiation: sending offer to peer viewer-1 (SDP length: 16484)
+2026/01/07 23:04:17 Renegotiation: sending offer to peer viewer-1
+2026/01/07 23:04:17 Renegotiation offer sent to viewer-1
+2026/01/07 23:04:17 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/07 23:04:17 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/07 23:04:18 TUI: Removing window dynamically: 317592
+2026/01/07 23:04:18 Removing window dynamically: video1 (windowID=317592)
+2026/01/07 23:04:18 Removed track video1 from peer viewer-1
+2026/01/07 23:04:18 Broadcasting stream-removed: video1
+2026/01/07 23:04:18 Renegotiating with 1 peers
+2026/01/07 23:04:18 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/07 23:04:18 Renegotiation: peer viewer-1 connection state: connected
+2026/01/07 23:04:18 Renegotiation: ICE gathering complete for viewer-1
+2026/01/07 23:04:18 Renegotiation: sending offer to peer viewer-1 (SDP length: 16298)
+2026/01/07 23:04:18 Renegotiation: sending offer to peer viewer-1
+2026/01/07 23:04:18 Renegotiation offer sent to viewer-1
+2026/01/07 23:04:18 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/07 23:04:18 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/07 23:04:21 Focus detection loop stopped
+2026/01/07 23:04:39 Viewer joined room BRAVE-MARSH-44 (total viewers: 1)
+2026/01/07 23:04:39 Peer viewer-2 connection state: connecting
+2026/01/07 23:04:40 Peer viewer-2 connection state: connected
+2026/01/07 23:04:45 Peer viewer-1 connection state: closed
+2026/01/07 23:04:45 Signal server starting on :8080
+2026/01/07 23:04:45 Peer viewer-2 connection state: closed
+2026/01/07 23:04:46 Focus detection loop started with 1 pipelines:
+2026/01/07 23:04:46   - Track video0: windowID=317592, name=Scratch
+2026/01/07 23:04:46 Topmost captured window changed to: 317592 (was 0)
+2026/01/07 23:04:46 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/07 23:04:46 Calling NotifyFocusChange for track: video0
+2026/01/07 23:04:46 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/07 23:04:46 Focus change callback triggered for track: video0
+2026/01/07 23:04:46 Broadcasting focus-change to 0 viewers
+2026/01/07 23:04:52 Viewer joined room BRAVE-MARSH-44 (total viewers: 1)
+2026/01/07 23:04:52 Peer viewer-3 connection state: connecting
+2026/01/07 23:04:53 Peer viewer-3 connection state: connected
+2026/01/07 23:04:56 TUI: Adding window dynamically: 319186 (GoPeep - Screen Sharing)
+2026/01/07 23:04:56 AddWindowDynamic: Adding track video1 to all peers
+2026/01/07 23:04:56 AddTrackToAllPeers: Adding track video1 to 0 peer connections
+2026/01/07 23:04:56 AddTrackToAllPeers: No peer connections to add track to
+2026/01/07 23:04:56 AddWindowDynamic: Notifying about new stream video1
+2026/01/07 23:04:56 Broadcasting stream-added: video1
+2026/01/07 23:04:56 AddWindowDynamic: Triggering renegotiation for track video1
+2026/01/07 23:04:56 Added window dynamically: video1 (windowID=319186)
+2026/01/07 23:04:56 Renegotiating with 0 peers
+2026/01/07 23:04:56 Topmost captured window changed to: 319186 (was 317592)
+2026/01/07 23:04:56 Focus set to track=video1, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/07 23:04:56 Calling NotifyFocusChange for track: video1
+2026/01/07 23:04:56 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/07 23:04:56 Focus change callback triggered for track: video1
+2026/01/07 23:04:56 Broadcasting focus-change to 0 viewers
+2026/01/07 23:04:58 Viewer joined room BRAVE-MARSH-44 (total viewers: 1)
+2026/01/07 23:04:58 Peer viewer-4 connection state: connecting
+2026/01/07 23:04:59 Topmost captured window changed to: 317592 (was 319186)
+2026/01/07 23:04:59 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/07 23:04:59 Calling NotifyFocusChange for track: video0
+2026/01/07 23:04:59 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/07 23:04:59 Focus change callback triggered for track: video0
+2026/01/07 23:04:59 Broadcasting focus-change to 0 viewers
+2026/01/07 23:05:03 Peer viewer-3 connection state: disconnected
+2026/01/07 23:05:03 Peer viewer-3 connection state: closed
+2026/01/07 23:05:28 Peer viewer-4 connection state: failed
+2026/01/07 23:05:28 Peer viewer-4 connection state: closed
+2026/01/07 23:06:09 Topmost captured window changed to: 319186 (was 317592)
+2026/01/07 23:06:09 Focus set to track=video1, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/07 23:06:09 Calling NotifyFocusChange for track: video1
+2026/01/07 23:06:09 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/07 23:06:09 Focus change callback triggered for track: video1
+2026/01/07 23:06:09 Broadcasting focus-change to 0 viewers
+2026/01/07 23:06:09 Focus detection loop stopped
