@@ -283,7 +283,7 @@ func runShareMode(config Config) {
 		TURNPass:   config.TURNPass,
 		ForceRelay: config.ForceRelay,
 	}
-	peerManager, err := NewPeerManagerWithICE(iceConfig)
+	peerManager, err := NewLegacyPeerManagerWithICE(iceConfig)
 	if err != nil {
 		log.Fatalf("Failed to create peer manager: %v", err)
 	}
@@ -319,7 +319,7 @@ func runShareMode(config Config) {
 
 	// Create streamer with quality from config
 	bitrate := ParseQualityFlag(config.Quality)
-	streamer := NewStreamerWithBitrate(peerManager, config.FPS, bitrate)
+	streamer := NewLegacyStreamerWithBitrate(peerManager, config.FPS, bitrate)
 	streamer.SetCaptureFunc(func() (*BGRAFrame, error) {
 		return GetLatestFrameBGRA(time.Second)
 	})
@@ -546,7 +546,7 @@ func runRemoteShareMode(config Config) {
 		TURNPass:   config.TURNPass,
 		ForceRelay: config.ForceRelay,
 	}
-	peerManager, err := NewPeerManagerWithICE(iceConfig)
+	peerManager, err := NewLegacyPeerManagerWithICE(iceConfig)
 	if err != nil {
 		log.Fatalf("Failed to create peer manager: %v", err)
 	}
@@ -582,7 +582,7 @@ func runRemoteShareMode(config Config) {
 
 	// Create streamer with quality from config
 	bitrate := ParseQualityFlag(config.Quality)
-	streamer := NewStreamerWithBitrate(peerManager, config.FPS, bitrate)
+	streamer := NewLegacyStreamerWithBitrate(peerManager, config.FPS, bitrate)
 	streamer.SetCaptureFunc(func() (*BGRAFrame, error) {
 		return GetLatestFrameBGRA(time.Second)
 	})
@@ -604,14 +604,16 @@ func runRemoteShareMode(config Config) {
 }
 
 // setupRemoteSignaling connects the WebSocket to the peer manager
+// DEPRECATED: Use setupMultiRemoteSignaling instead
 // setupRemoteSignaling connects a WebSocket to the peer manager
 // onDisconnect is called when the WebSocket disconnects (optional, can be nil)
-func setupRemoteSignaling(conn *websocket.Conn, pm *PeerManager) {
+func setupRemoteSignaling(conn *websocket.Conn, pm *LegacyPeerManager) {
 	setupRemoteSignalingWithCallback(conn, pm, nil)
 }
 
 // setupRemoteSignalingWithCallback connects a WebSocket to the peer manager with a disconnect callback
-func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *PeerManager, onDisconnect func()) {
+// DEPRECATED: Use setupMultiRemoteSignaling instead
+func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *LegacyPeerManager, onDisconnect func()) {
 	// Counter for peer IDs
 	var peerCounter int
 	var peerMu sync.Mutex
@@ -690,7 +692,7 @@ func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *PeerManager, onD
 }
 
 // setupMultiSignaling connects the signal server to the multi peer manager
-func setupMultiSignaling(server *sig.Server, pm *MultiPeerManager, roomCode string, password string) {
+func setupMultiSignaling(server *sig.Server, pm *PeerManager, roomCode string, password string) {
 	localSharer := server.RegisterLocalSharer(roomCode, password)
 
 	var peerCounter int
@@ -813,7 +815,7 @@ func setupMultiSignaling(server *sig.Server, pm *MultiPeerManager, roomCode stri
 }
 
 // setupMultiRemoteSignaling connects WebSocket to multi peer manager
-func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDisconnect func()) {
+func setupMultiRemoteSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnect func()) {
 	var peerCounter int
 	var peerMu sync.Mutex
 	var connMu sync.Mutex // Protect WebSocket writes
@@ -955,7 +957,8 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *MultiPeerManager, onDis
 }
 
 // setupSignaling connects the signal server to the peer manager
-func setupSignaling(server *sig.Server, pm *PeerManager, roomCode string, password string) {
+// DEPRECATED: Use setupMultiSignaling instead
+func setupSignaling(server *sig.Server, pm *LegacyPeerManager, roomCode string, password string) {
 	localSharer := server.RegisterLocalSharer(roomCode, password)
 
 	// Counter for peer IDs

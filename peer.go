@@ -34,8 +34,9 @@ type ICEConfig struct {
 	ForceRelay bool
 }
 
-// PeerManager manages WebRTC peer connections for sharing
-type PeerManager struct {
+// LegacyPeerManager manages WebRTC peer connections for sharing
+// DEPRECATED: Use PeerManager from multistream.go instead
+type LegacyPeerManager struct {
 	config       webrtc.Configuration
 	iceConfig    ICEConfig
 	codecType    CodecType
@@ -48,18 +49,21 @@ type PeerManager struct {
 	onDisconnect func(peerID string)
 }
 
-// NewPeerManager creates a new peer manager with default ICE servers and VP8 codec
-func NewPeerManager() (*PeerManager, error) {
-	return NewPeerManagerWithCodec(ICEConfig{}, CodecVP8)
+// NewLegacyPeerManager creates a new peer manager with default ICE servers and VP8 codec
+// DEPRECATED: Use NewPeerManager from multistream.go instead
+func NewLegacyPeerManager() (*LegacyPeerManager, error) {
+	return NewLegacyPeerManagerWithCodec(ICEConfig{}, CodecVP8)
 }
 
-// NewPeerManagerWithICE creates a peer manager with custom ICE configuration and VP8 codec
-func NewPeerManagerWithICE(iceConfig ICEConfig) (*PeerManager, error) {
-	return NewPeerManagerWithCodec(iceConfig, CodecVP8)
+// NewLegacyPeerManagerWithICE creates a peer manager with custom ICE configuration and VP8 codec
+// DEPRECATED: Use NewPeerManager from multistream.go instead
+func NewLegacyPeerManagerWithICE(iceConfig ICEConfig) (*LegacyPeerManager, error) {
+	return NewLegacyPeerManagerWithCodec(iceConfig, CodecVP8)
 }
 
-// NewPeerManagerWithCodec creates a peer manager with custom ICE configuration and codec
-func NewPeerManagerWithCodec(iceConfig ICEConfig, codecType CodecType) (*PeerManager, error) {
+// NewLegacyPeerManagerWithCodec creates a peer manager with custom ICE configuration and codec
+// DEPRECATED: Use NewPeerManager from multistream.go instead
+func NewLegacyPeerManagerWithCodec(iceConfig ICEConfig, codecType CodecType) (*LegacyPeerManager, error) {
 	// Determine WebRTC MIME type based on codec
 	var mimeType string
 	switch codecType {
@@ -110,7 +114,7 @@ func NewPeerManagerWithCodec(iceConfig ICEConfig, codecType CodecType) (*PeerMan
 		iceTransportPolicy = webrtc.ICETransportPolicyRelay
 	}
 
-	return &PeerManager{
+	return &LegacyPeerManager{
 		config: webrtc.Configuration{
 			ICEServers:         iceServers,
 			ICETransportPolicy: iceTransportPolicy,
@@ -124,23 +128,23 @@ func NewPeerManagerWithCodec(iceConfig ICEConfig, codecType CodecType) (*PeerMan
 }
 
 // GetCodecType returns the codec type being used
-func (pm *PeerManager) GetCodecType() CodecType {
+func (pm *LegacyPeerManager) GetCodecType() CodecType {
 	return pm.codecType
 }
 
 // SetICECallback sets callback for ICE candidates
-func (pm *PeerManager) SetICECallback(callback func(candidate string)) {
+func (pm *LegacyPeerManager) SetICECallback(callback func(candidate string)) {
 	pm.onICE = callback
 }
 
 // SetConnectionCallbacks sets callbacks for connection state changes
-func (pm *PeerManager) SetConnectionCallbacks(onConnected, onDisconnect func(peerID string)) {
+func (pm *LegacyPeerManager) SetConnectionCallbacks(onConnected, onDisconnect func(peerID string)) {
 	pm.onConnected = onConnected
 	pm.onDisconnect = onDisconnect
 }
 
 // CreateOffer creates an SDP offer for a new viewer
-func (pm *PeerManager) CreateOffer(peerID string) (string, error) {
+func (pm *LegacyPeerManager) CreateOffer(peerID string) (string, error) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -231,7 +235,7 @@ func (pm *PeerManager) CreateOffer(peerID string) (string, error) {
 }
 
 // HandleAnswer processes an SDP answer from a viewer
-func (pm *PeerManager) HandleAnswer(peerID string, sdp string) error {
+func (pm *LegacyPeerManager) HandleAnswer(peerID string, sdp string) error {
 	pm.mu.RLock()
 	pc, exists := pm.connections[peerID]
 	pm.mu.RUnlock()
@@ -254,7 +258,7 @@ func (pm *PeerManager) HandleAnswer(peerID string, sdp string) error {
 }
 
 // AddICECandidate adds an ICE candidate from a viewer
-func (pm *PeerManager) AddICECandidate(peerID string, candidateJSON string) error {
+func (pm *LegacyPeerManager) AddICECandidate(peerID string, candidateJSON string) error {
 	pm.mu.RLock()
 	pc, exists := pm.connections[peerID]
 	pm.mu.RUnlock()
@@ -277,7 +281,7 @@ func (pm *PeerManager) AddICECandidate(peerID string, candidateJSON string) erro
 }
 
 // detectConnectionType checks if the connection is direct (P2P) or relayed (TURN)
-func (pm *PeerManager) detectConnectionType(pc *webrtc.PeerConnection) string {
+func (pm *LegacyPeerManager) detectConnectionType(pc *webrtc.PeerConnection) string {
 	stats := pc.GetStats()
 
 	for _, stat := range stats {
@@ -305,7 +309,7 @@ func (pm *PeerManager) detectConnectionType(pc *webrtc.PeerConnection) string {
 }
 
 // removePeer removes a peer connection
-func (pm *PeerManager) removePeer(peerID string) {
+func (pm *LegacyPeerManager) removePeer(peerID string) {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -317,7 +321,7 @@ func (pm *PeerManager) removePeer(peerID string) {
 }
 
 // GetViewerInfo returns information about all connected viewers
-func (pm *PeerManager) GetViewerInfo() []ViewerInfo {
+func (pm *LegacyPeerManager) GetViewerInfo() []ViewerInfo {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
 
@@ -329,7 +333,7 @@ func (pm *PeerManager) GetViewerInfo() []ViewerInfo {
 }
 
 // WriteVideoSample writes a video sample to all connected peers
-func (pm *PeerManager) WriteVideoSample(data []byte, duration time.Duration) error {
+func (pm *LegacyPeerManager) WriteVideoSample(data []byte, duration time.Duration) error {
 	if pm == nil || pm.videoTrack == nil {
 		return fmt.Errorf("peer manager or video track not initialized")
 	}
@@ -340,14 +344,14 @@ func (pm *PeerManager) WriteVideoSample(data []byte, duration time.Duration) err
 }
 
 // GetConnectionCount returns number of active connections
-func (pm *PeerManager) GetConnectionCount() int {
+func (pm *LegacyPeerManager) GetConnectionCount() int {
 	pm.mu.RLock()
 	defer pm.mu.RUnlock()
 	return len(pm.connections)
 }
 
 // Close closes all peer connections
-func (pm *PeerManager) Close() {
+func (pm *LegacyPeerManager) Close() {
 	pm.mu.Lock()
 	defer pm.mu.Unlock()
 
@@ -376,9 +380,10 @@ type StreamStats struct {
 	LastUpdate time.Time
 }
 
-// Streamer handles the capture-encode-stream pipeline
-type Streamer struct {
-	peerManager     *PeerManager
+// LegacyStreamer handles the capture-encode-stream pipeline
+// DEPRECATED: Use Streamer from multistream.go instead
+type LegacyStreamer struct {
+	peerManager     *LegacyPeerManager
 	encoder         VideoEncoder
 	codecType       CodecType
 	captureFuncBGRA func() (*BGRAFrame, error)
@@ -398,18 +403,21 @@ type Streamer struct {
 	lastByteCount  int64
 }
 
-// NewStreamer creates a new streamer with default bitrate and codec from peer manager
-func NewStreamer(pm *PeerManager, fps int) *Streamer {
-	return NewStreamerWithBitrate(pm, fps, DefaultEncoderConfig().Bitrate)
+// NewLegacyStreamer creates a new streamer with default bitrate and codec from peer manager
+// DEPRECATED: Use NewStreamer from multistream.go instead
+func NewLegacyStreamer(pm *LegacyPeerManager, fps int) *LegacyStreamer {
+	return NewLegacyStreamerWithBitrate(pm, fps, DefaultEncoderConfig().Bitrate)
 }
 
-// NewStreamerWithBitrate creates a new streamer with specified bitrate
-func NewStreamerWithBitrate(pm *PeerManager, fps int, bitrate int) *Streamer {
-	return NewStreamerWithCodec(pm, fps, bitrate, pm.GetCodecType())
+// NewLegacyStreamerWithBitrate creates a new streamer with specified bitrate
+// DEPRECATED: Use NewStreamer from multistream.go instead
+func NewLegacyStreamerWithBitrate(pm *LegacyPeerManager, fps int, bitrate int) *LegacyStreamer {
+	return NewLegacyStreamerWithCodec(pm, fps, bitrate, pm.GetCodecType())
 }
 
-// NewStreamerWithCodec creates a new streamer with specified codec
-func NewStreamerWithCodec(pm *PeerManager, fps int, bitrate int, codecType CodecType) *Streamer {
+// NewLegacyStreamerWithCodec creates a new streamer with specified codec
+// DEPRECATED: Use NewStreamer from multistream.go instead
+func NewLegacyStreamerWithCodec(pm *LegacyPeerManager, fps int, bitrate int, codecType CodecType) *LegacyStreamer {
 	factory := NewEncoderFactory()
 	encoder, err := factory.CreateEncoder(codecType, fps, bitrate)
 	if err != nil {
@@ -418,7 +426,7 @@ func NewStreamerWithCodec(pm *PeerManager, fps int, bitrate int, codecType Codec
 		codecType = CodecVP8
 	}
 
-	return &Streamer{
+	return &LegacyStreamer{
 		peerManager: pm,
 		encoder:     encoder,
 		codecType:   codecType,
@@ -429,12 +437,12 @@ func NewStreamerWithCodec(pm *PeerManager, fps int, bitrate int, codecType Codec
 }
 
 // GetCodecType returns the codec type being used
-func (s *Streamer) GetCodecType() CodecType {
+func (s *LegacyStreamer) GetCodecType() CodecType {
 	return s.codecType
 }
 
 // IsHardwareAccelerated returns true if using hardware encoding
-func (s *Streamer) IsHardwareAccelerated() bool {
+func (s *LegacyStreamer) IsHardwareAccelerated() bool {
 	if s.encoder != nil {
 		return s.encoder.IsHardwareAccelerated()
 	}
@@ -442,19 +450,19 @@ func (s *Streamer) IsHardwareAccelerated() bool {
 }
 
 // GetStats returns current streaming statistics
-func (s *Streamer) GetStats() StreamStats {
+func (s *LegacyStreamer) GetStats() StreamStats {
 	s.statsMu.RLock()
 	defer s.statsMu.RUnlock()
 	return s.stats
 }
 
 // SetCaptureFunc sets the function used to capture frames (BGRA format)
-func (s *Streamer) SetCaptureFunc(fn func() (*BGRAFrame, error)) {
+func (s *LegacyStreamer) SetCaptureFunc(fn func() (*BGRAFrame, error)) {
 	s.captureFuncBGRA = fn
 }
 
 // Start starts the streaming loop
-func (s *Streamer) Start() error {
+func (s *LegacyStreamer) Start() error {
 	s.mu.Lock()
 	if s.running {
 		s.mu.Unlock()
@@ -487,7 +495,7 @@ func (s *Streamer) Start() error {
 }
 
 // Stop stops the streaming loop
-func (s *Streamer) Stop() {
+func (s *LegacyStreamer) Stop() {
 	s.mu.Lock()
 	if !s.running {
 		s.mu.Unlock()
@@ -501,7 +509,7 @@ func (s *Streamer) Stop() {
 }
 
 // statsLoop updates statistics periodically
-func (s *Streamer) statsLoop() {
+func (s *LegacyStreamer) statsLoop() {
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
@@ -516,7 +524,7 @@ func (s *Streamer) statsLoop() {
 }
 
 // updateStats calculates current statistics
-func (s *Streamer) updateStats() {
+func (s *LegacyStreamer) updateStats() {
 	s.statsMu.Lock()
 	defer s.statsMu.Unlock()
 
@@ -539,7 +547,7 @@ func (s *Streamer) updateStats() {
 }
 
 // streamLoop is the main capture-encode-stream loop
-func (s *Streamer) streamLoop() {
+func (s *LegacyStreamer) streamLoop() {
 	frameDuration := time.Second / time.Duration(s.fps)
 	ticker := time.NewTicker(frameDuration)
 	defer ticker.Stop()

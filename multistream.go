@@ -45,8 +45,8 @@ type PeerInfo struct {
 	renegotiating bool                         // Whether renegotiation is in progress
 }
 
-// MultiPeerManager manages WebRTC connections with multiple video tracks
-type MultiPeerManager struct {
+// PeerManager manages WebRTC connections with multiple video tracks
+type PeerManager struct {
 	config        webrtc.Configuration
 	iceConfig     ICEConfig
 	codecType     CodecType
@@ -67,8 +67,8 @@ type MultiPeerManager struct {
 	onStreamRemoved func(trackID string)
 }
 
-// NewMultiPeerManager creates a new multi-track peer manager
-func NewMultiPeerManager(iceConfig ICEConfig, codecType CodecType) (*MultiPeerManager, error) {
+// NewPeerManager creates a new multi-track peer manager
+func NewPeerManager(iceConfig ICEConfig, codecType CodecType) (*PeerManager, error) {
 	// Build ICE servers list
 	iceServers := make([]webrtc.ICEServer, 0)
 
@@ -93,7 +93,7 @@ func NewMultiPeerManager(iceConfig ICEConfig, codecType CodecType) (*MultiPeerMa
 		iceTransportPolicy = webrtc.ICETransportPolicyRelay
 	}
 
-	return &MultiPeerManager{
+	return &PeerManager{
 		config: webrtc.Configuration{
 			ICEServers:         iceServers,
 			ICETransportPolicy: iceTransportPolicy,
@@ -107,7 +107,7 @@ func NewMultiPeerManager(iceConfig ICEConfig, codecType CodecType) (*MultiPeerMa
 }
 
 // AddTrack creates a new video track for a window
-func (mpm *MultiPeerManager) AddTrack(windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
+func (mpm *PeerManager) AddTrack(windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -157,14 +157,14 @@ func (mpm *MultiPeerManager) AddTrack(windowID uint32, windowName, appName strin
 }
 
 // RemoveTrack removes a video track
-func (mpm *MultiPeerManager) RemoveTrack(trackID string) {
+func (mpm *PeerManager) RemoveTrack(trackID string) {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 	delete(mpm.tracks, trackID)
 }
 
 // GetTracks returns all current tracks in sorted order by TrackID
-func (mpm *MultiPeerManager) GetTracks() []*StreamTrackInfo {
+func (mpm *PeerManager) GetTracks() []*StreamTrackInfo {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
 
@@ -183,7 +183,7 @@ func (mpm *MultiPeerManager) GetTracks() []*StreamTrackInfo {
 }
 
 // SetFocusedTrack sets which track is focused
-func (mpm *MultiPeerManager) SetFocusedTrack(trackID string) {
+func (mpm *PeerManager) SetFocusedTrack(trackID string) {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -193,7 +193,7 @@ func (mpm *MultiPeerManager) SetFocusedTrack(trackID string) {
 }
 
 // SetFocusedWindow sets focus based on window ID
-func (mpm *MultiPeerManager) SetFocusedWindow(windowID uint32) string {
+func (mpm *PeerManager) SetFocusedWindow(windowID uint32) string {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -210,7 +210,7 @@ func (mpm *MultiPeerManager) SetFocusedWindow(windowID uint32) string {
 }
 
 // GetFocusedTrack returns the currently focused track
-func (mpm *MultiPeerManager) GetFocusedTrack() *StreamTrackInfo {
+func (mpm *PeerManager) GetFocusedTrack() *StreamTrackInfo {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
 
@@ -223,23 +223,23 @@ func (mpm *MultiPeerManager) GetFocusedTrack() *StreamTrackInfo {
 }
 
 // SetICECallback sets callback for ICE candidates
-func (mpm *MultiPeerManager) SetICECallback(callback func(peerID string, candidate string)) {
+func (mpm *PeerManager) SetICECallback(callback func(peerID string, candidate string)) {
 	mpm.onICE = callback
 }
 
 // SetConnectionCallbacks sets callbacks for connection state changes
-func (mpm *MultiPeerManager) SetConnectionCallbacks(onConnected, onDisconnect func(peerID string)) {
+func (mpm *PeerManager) SetConnectionCallbacks(onConnected, onDisconnect func(peerID string)) {
 	mpm.onConnected = onConnected
 	mpm.onDisconnect = onDisconnect
 }
 
 // SetFocusChangeCallback sets callback for when focus changes between tracks
-func (mpm *MultiPeerManager) SetFocusChangeCallback(callback func(trackID string)) {
+func (mpm *PeerManager) SetFocusChangeCallback(callback func(trackID string)) {
 	mpm.onFocusChange = callback
 }
 
 // NotifyFocusChange notifies that focus has changed to a new track
-func (mpm *MultiPeerManager) NotifyFocusChange(trackID string) {
+func (mpm *PeerManager) NotifyFocusChange(trackID string) {
 	if mpm.onFocusChange != nil {
 		log.Printf("NotifyFocusChange: callback exists, calling with trackID: %s", trackID)
 		mpm.onFocusChange(trackID)
@@ -249,7 +249,7 @@ func (mpm *MultiPeerManager) NotifyFocusChange(trackID string) {
 }
 
 // CreateOffer creates an SDP offer for a new viewer with all tracks
-func (mpm *MultiPeerManager) CreateOffer(peerID string) (string, error) {
+func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -353,7 +353,7 @@ func (mpm *MultiPeerManager) CreateOffer(peerID string) (string, error) {
 }
 
 // HandleAnswer processes an SDP answer
-func (mpm *MultiPeerManager) HandleAnswer(peerID string, sdp string) error {
+func (mpm *PeerManager) HandleAnswer(peerID string, sdp string) error {
 	mpm.mu.RLock()
 	peerInfo, exists := mpm.connections[peerID]
 	mpm.mu.RUnlock()
@@ -371,7 +371,7 @@ func (mpm *MultiPeerManager) HandleAnswer(peerID string, sdp string) error {
 }
 
 // AddICECandidate adds an ICE candidate
-func (mpm *MultiPeerManager) AddICECandidate(peerID string, candidateJSON string) error {
+func (mpm *PeerManager) AddICECandidate(peerID string, candidateJSON string) error {
 	mpm.mu.RLock()
 	peerInfo, exists := mpm.connections[peerID]
 	mpm.mu.RUnlock()
@@ -389,7 +389,7 @@ func (mpm *MultiPeerManager) AddICECandidate(peerID string, candidateJSON string
 }
 
 // WriteVideoSample writes a video sample to a specific track
-func (mpm *MultiPeerManager) WriteVideoSample(trackID string, data []byte, duration time.Duration) error {
+func (mpm *PeerManager) WriteVideoSample(trackID string, data []byte, duration time.Duration) error {
 	mpm.mu.RLock()
 	trackInfo, exists := mpm.tracks[trackID]
 	mpm.mu.RUnlock()
@@ -405,7 +405,7 @@ func (mpm *MultiPeerManager) WriteVideoSample(trackID string, data []byte, durat
 }
 
 // detectConnectionType checks if connection is direct or relayed
-func (mpm *MultiPeerManager) detectConnectionType(pc *webrtc.PeerConnection) string {
+func (mpm *PeerManager) detectConnectionType(pc *webrtc.PeerConnection) string {
 	stats := pc.GetStats()
 
 	for _, stat := range stats {
@@ -432,7 +432,7 @@ func (mpm *MultiPeerManager) detectConnectionType(pc *webrtc.PeerConnection) str
 }
 
 // removePeer removes a peer connection
-func (mpm *MultiPeerManager) removePeer(peerID string) {
+func (mpm *PeerManager) removePeer(peerID string) {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -444,7 +444,7 @@ func (mpm *MultiPeerManager) removePeer(peerID string) {
 }
 
 // GetViewerInfo returns information about connected viewers
-func (mpm *MultiPeerManager) GetViewerInfo() []ViewerInfo {
+func (mpm *PeerManager) GetViewerInfo() []ViewerInfo {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
 
@@ -456,14 +456,14 @@ func (mpm *MultiPeerManager) GetViewerInfo() []ViewerInfo {
 }
 
 // GetConnectionCount returns number of active connections
-func (mpm *MultiPeerManager) GetConnectionCount() int {
+func (mpm *PeerManager) GetConnectionCount() int {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
 	return len(mpm.connections)
 }
 
 // Close closes all peer connections
-func (mpm *MultiPeerManager) Close() {
+func (mpm *PeerManager) Close() {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -474,23 +474,23 @@ func (mpm *MultiPeerManager) Close() {
 }
 
 // GetCodecType returns the codec type
-func (mpm *MultiPeerManager) GetCodecType() CodecType {
+func (mpm *PeerManager) GetCodecType() CodecType {
 	return mpm.codecType
 }
 
 // SetRenegotiateCallback sets callback for when renegotiation offer is ready
-func (mpm *MultiPeerManager) SetRenegotiateCallback(callback func(peerID string, offer string)) {
+func (mpm *PeerManager) SetRenegotiateCallback(callback func(peerID string, offer string)) {
 	mpm.onRenegotiate = callback
 }
 
 // SetStreamChangeCallbacks sets callbacks for stream add/remove events
-func (mpm *MultiPeerManager) SetStreamChangeCallbacks(onAdded func(info sig.StreamInfo), onRemoved func(trackID string)) {
+func (mpm *PeerManager) SetStreamChangeCallbacks(onAdded func(info sig.StreamInfo), onRemoved func(trackID string)) {
 	mpm.onStreamAdded = onAdded
 	mpm.onStreamRemoved = onRemoved
 }
 
 // AddTrackToAllPeers adds a track to all existing peer connections
-func (mpm *MultiPeerManager) AddTrackToAllPeers(trackInfo *StreamTrackInfo) error {
+func (mpm *PeerManager) AddTrackToAllPeers(trackInfo *StreamTrackInfo) error {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -516,7 +516,7 @@ func (mpm *MultiPeerManager) AddTrackToAllPeers(trackInfo *StreamTrackInfo) erro
 }
 
 // RemoveTrackFromAllPeers removes a track from all existing peer connections
-func (mpm *MultiPeerManager) RemoveTrackFromAllPeers(trackID string) error {
+func (mpm *PeerManager) RemoveTrackFromAllPeers(trackID string) error {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -535,7 +535,7 @@ func (mpm *MultiPeerManager) RemoveTrackFromAllPeers(trackID string) error {
 
 // RenegotiateAllPeers triggers renegotiation with all connected peers
 // Runs in a goroutine to not block the caller
-func (mpm *MultiPeerManager) RenegotiateAllPeers() {
+func (mpm *PeerManager) RenegotiateAllPeers() {
 	go func() {
 		// Serialize renegotiations to prevent race conditions
 		mpm.renegMu.Lock()
@@ -558,7 +558,7 @@ func (mpm *MultiPeerManager) RenegotiateAllPeers() {
 }
 
 // renegotiatePeer creates a new offer for a specific peer
-func (mpm *MultiPeerManager) renegotiatePeer(peerID string) {
+func (mpm *PeerManager) renegotiatePeer(peerID string) {
 	mpm.mu.Lock()
 	peerInfo, exists := mpm.connections[peerID]
 	if !exists {
@@ -645,7 +645,7 @@ func (mpm *MultiPeerManager) renegotiatePeer(peerID string) {
 }
 
 // HandleRenegotiateAnswer processes an SDP answer from renegotiation
-func (mpm *MultiPeerManager) HandleRenegotiateAnswer(peerID string, sdp string) error {
+func (mpm *PeerManager) HandleRenegotiateAnswer(peerID string, sdp string) error {
 	mpm.mu.RLock()
 	peerInfo, exists := mpm.connections[peerID]
 	mpm.mu.RUnlock()
@@ -672,14 +672,14 @@ func (mpm *MultiPeerManager) HandleRenegotiateAnswer(peerID string, sdp string) 
 }
 
 // NotifyStreamAdded notifies that a stream was added
-func (mpm *MultiPeerManager) NotifyStreamAdded(info sig.StreamInfo) {
+func (mpm *PeerManager) NotifyStreamAdded(info sig.StreamInfo) {
 	if mpm.onStreamAdded != nil {
 		mpm.onStreamAdded(info)
 	}
 }
 
 // NotifyStreamRemoved notifies that a stream was removed
-func (mpm *MultiPeerManager) NotifyStreamRemoved(trackID string) {
+func (mpm *PeerManager) NotifyStreamRemoved(trackID string) {
 	if mpm.onStreamRemoved != nil {
 		mpm.onStreamRemoved(trackID)
 	}
@@ -709,9 +709,9 @@ type StreamPipeline struct {
 	currentBitrate float64   // Calculated bitrate in kbps
 }
 
-// MultiStreamer manages multiple stream pipelines
-type MultiStreamer struct {
-	peerManager     *MultiPeerManager
+// Streamer manages multiple stream pipelines
+type Streamer struct {
+	peerManager     *PeerManager
 	multiCapture    *MultiCapture
 	pipelines       map[string]*StreamPipeline // trackID -> pipeline
 	codecType       CodecType
@@ -729,9 +729,9 @@ type MultiStreamer struct {
 	onStreamsChange func(streams []sig.StreamInfo)
 }
 
-// NewMultiStreamer creates a new multi-streamer
-func NewMultiStreamer(peerManager *MultiPeerManager, fps, focusBitrate, bgBitrate int, adaptiveBR bool) *MultiStreamer {
-	return &MultiStreamer{
+// NewStreamer creates a new multi-streamer
+func NewStreamer(peerManager *PeerManager, fps, focusBitrate, bgBitrate int, adaptiveBR bool) *Streamer {
+	return &Streamer{
 		peerManager:     peerManager,
 		multiCapture:    NewMultiCapture(),
 		pipelines:       make(map[string]*StreamPipeline),
@@ -746,17 +746,17 @@ func NewMultiStreamer(peerManager *MultiPeerManager, fps, focusBitrate, bgBitrat
 }
 
 // SetOnFocusChange sets the callback for focus changes
-func (ms *MultiStreamer) SetOnFocusChange(callback func(trackID string)) {
+func (ms *Streamer) SetOnFocusChange(callback func(trackID string)) {
 	ms.onFocusChange = callback
 }
 
 // SetOnStreamsChange sets the callback for streams info changes
-func (ms *MultiStreamer) SetOnStreamsChange(callback func(streams []sig.StreamInfo)) {
+func (ms *Streamer) SetOnStreamsChange(callback func(streams []sig.StreamInfo)) {
 	ms.onStreamsChange = callback
 }
 
 // AddWindow adds a window to stream
-func (ms *MultiStreamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
+func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -824,7 +824,7 @@ func (ms *MultiStreamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) 
 }
 
 // RemoveWindow removes a window from streaming
-func (ms *MultiStreamer) RemoveWindow(windowID uint32) {
+func (ms *Streamer) RemoveWindow(windowID uint32) {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -845,7 +845,7 @@ func (ms *MultiStreamer) RemoveWindow(windowID uint32) {
 }
 
 // Start starts all pipelines
-func (ms *MultiStreamer) Start() error {
+func (ms *Streamer) Start() error {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -870,7 +870,7 @@ func (ms *MultiStreamer) Start() error {
 }
 
 // Stop stops all pipelines
-func (ms *MultiStreamer) Stop() {
+func (ms *Streamer) Stop() {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -889,7 +889,7 @@ func (ms *MultiStreamer) Stop() {
 }
 
 // focusDetectionLoop periodically checks for focus changes using z-order
-func (ms *MultiStreamer) focusDetectionLoop() {
+func (ms *Streamer) focusDetectionLoop() {
 	ticker := time.NewTicker(100 * time.Millisecond)
 	defer ticker.Stop()
 
@@ -936,11 +936,11 @@ func (ms *MultiStreamer) focusDetectionLoop() {
 						log.Printf("Focus set to track=%s, windowID=%d, name=%s", trackID, topmostWindow, pipeline.trackInfo.WindowName)
 
 						if newTrackID != "" {
-							// Notify via MultiStreamer callback
+							// Notify via Streamer callback
 							if ms.onFocusChange != nil {
 								go ms.onFocusChange(newTrackID)
 							}
-							// Also notify via MultiPeerManager callback (for signaling)
+							// Also notify via PeerManager callback (for signaling)
 							log.Printf("Calling NotifyFocusChange for track: %s", newTrackID)
 							ms.peerManager.NotifyFocusChange(newTrackID)
 						}
@@ -959,7 +959,7 @@ func (ms *MultiStreamer) focusDetectionLoop() {
 }
 
 // updateBitrates updates encoder bitrates based on focus
-func (ms *MultiStreamer) updateBitrates() {
+func (ms *Streamer) updateBitrates() {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -969,7 +969,7 @@ func (ms *MultiStreamer) updateBitrates() {
 }
 
 // getStreamsInfo returns StreamInfo for all streams
-func (ms *MultiStreamer) getStreamsInfo() []sig.StreamInfo {
+func (ms *Streamer) getStreamsInfo() []sig.StreamInfo {
 	streams := make([]sig.StreamInfo, 0, len(ms.pipelines))
 	for _, pipeline := range ms.pipelines {
 		streams = append(streams, sig.StreamInfo{
@@ -985,14 +985,14 @@ func (ms *MultiStreamer) getStreamsInfo() []sig.StreamInfo {
 }
 
 // GetStreamsInfo returns current streams info (thread-safe)
-func (ms *MultiStreamer) GetStreamsInfo() []sig.StreamInfo {
+func (ms *Streamer) GetStreamsInfo() []sig.StreamInfo {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 	return ms.getStreamsInfo()
 }
 
 // GetFocusedTrackID returns the currently focused track ID
-func (ms *MultiStreamer) GetFocusedTrackID() string {
+func (ms *Streamer) GetFocusedTrackID() string {
 	track := ms.peerManager.GetFocusedTrack()
 	if track != nil {
 		return track.TrackID
@@ -1001,7 +1001,7 @@ func (ms *MultiStreamer) GetFocusedTrackID() string {
 }
 
 // SetAdaptiveBitrate enables/disables adaptive bitrate
-func (ms *MultiStreamer) SetAdaptiveBitrate(enabled bool) {
+func (ms *Streamer) SetAdaptiveBitrate(enabled bool) {
 	ms.mu.Lock()
 	ms.adaptiveBitrate = enabled
 	ms.mu.Unlock()
@@ -1012,7 +1012,7 @@ func (ms *MultiStreamer) SetAdaptiveBitrate(enabled bool) {
 }
 
 // GetStats returns statistics for all active streams
-func (ms *MultiStreamer) GetStats() []StreamPipelineStats {
+func (ms *Streamer) GetStats() []StreamPipelineStats {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -1024,7 +1024,7 @@ func (ms *MultiStreamer) GetStats() []StreamPipelineStats {
 }
 
 // SetBitrate updates the bitrate for all active streams
-func (ms *MultiStreamer) SetBitrate(focusBitrate, bgBitrate int) {
+func (ms *Streamer) SetBitrate(focusBitrate, bgBitrate int) {
 	ms.mu.Lock()
 	defer ms.mu.Unlock()
 
@@ -1035,11 +1035,11 @@ func (ms *MultiStreamer) SetBitrate(focusBitrate, bgBitrate int) {
 		pipeline.SetBitrate(focusBitrate, bgBitrate)
 	}
 
-	log.Printf("MultiStreamer bitrate updated: focus=%d kbps, bg=%d kbps", focusBitrate, bgBitrate)
+	log.Printf("Streamer bitrate updated: focus=%d kbps, bg=%d kbps", focusBitrate, bgBitrate)
 }
 
 // GetStreamingWindowIDs returns a map of currently streaming window IDs
-func (ms *MultiStreamer) GetStreamingWindowIDs() map[uint32]bool {
+func (ms *Streamer) GetStreamingWindowIDs() map[uint32]bool {
 	ms.mu.RLock()
 	defer ms.mu.RUnlock()
 
@@ -1051,7 +1051,7 @@ func (ms *MultiStreamer) GetStreamingWindowIDs() map[uint32]bool {
 }
 
 // AddWindowDynamic adds a window without stopping other streams (for renegotiation)
-func (ms *MultiStreamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error) {
+func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error) {
 	ms.mu.Lock()
 
 	if len(ms.pipelines) >= MaxCaptureInstances {
@@ -1157,7 +1157,7 @@ func (ms *MultiStreamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, 
 }
 
 // RemoveWindowDynamic removes a window without stopping other streams (for renegotiation)
-func (ms *MultiStreamer) RemoveWindowDynamic(windowID uint32) error {
+func (ms *Streamer) RemoveWindowDynamic(windowID uint32) error {
 	ms.mu.Lock()
 
 	var trackIDToRemove string
@@ -1204,7 +1204,7 @@ func (ms *MultiStreamer) RemoveWindowDynamic(windowID uint32) error {
 
 // Pipeline methods
 
-func (p *StreamPipeline) run(pm *MultiPeerManager, mc *MultiCapture) {
+func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture) {
 	p.mu.Lock()
 	if p.running {
 		p.mu.Unlock()

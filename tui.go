@@ -126,8 +126,8 @@ type tickMsg time.Time
 
 // captureStartedMsg indicates capture started successfully (unified for single/multi)
 type captureStartedMsg struct {
-	streamer    *MultiStreamer
-	peerManager *MultiPeerManager
+	streamer    *Streamer
+	peerManager *PeerManager
 }
 
 // captureErrorMsg indicates capture failed to start
@@ -153,10 +153,10 @@ type model struct {
 	selectedSource int // -1 if not sharing (single-window mode)
 
 	// Multi-window mode (always used now - single window is just len(selectedWindows)==1)
-	selectedWindows map[uint32]bool   // window IDs selected for streaming
-	adaptiveBitrate bool              // reduce bitrate for non-focused windows
-	streamer        *MultiStreamer    // unified streamer (handles 1 or more windows)
-	peerManager     *MultiPeerManager // unified peer manager
+	selectedWindows map[uint32]bool // window IDs selected for streaming
+	adaptiveBitrate bool            // reduce bitrate for non-focused windows
+	streamer        *Streamer       // unified streamer (handles 1 or more windows)
+	peerManager     *PeerManager    // unified peer manager
 
 	// Quality
 	qualityCursor   int
@@ -914,7 +914,7 @@ func (m *model) initServer() error {
 	}
 	codecType := m.getSelectedCodecType()
 	var err error
-	m.peerManager, err = NewMultiPeerManager(iceConfig, codecType)
+	m.peerManager, err = NewPeerManager(iceConfig, codecType)
 	if err != nil {
 		return fmt.Errorf("failed to create peer manager: %v", err)
 	}
@@ -1301,7 +1301,7 @@ func (m *model) initMultiServer() error {
 	codecType := m.getSelectedCodecType()
 
 	var err error
-	m.peerManager, err = NewMultiPeerManager(iceConfig, codecType)
+	m.peerManager, err = NewPeerManager(iceConfig, codecType)
 	if err != nil {
 		return fmt.Errorf("failed to create multi peer manager: %v", err)
 	}
@@ -1406,12 +1406,12 @@ func (m *model) stopMultiCapture() {
 }
 
 // startMultiCaptureAsync starts multi-window capture asynchronously
-func startMultiCaptureAsync(pm *MultiPeerManager, windows []WindowInfo, fps, focusBitrate, bgBitrate int, adaptiveBR bool, codecType CodecType) tea.Cmd {
+func startMultiCaptureAsync(pm *PeerManager, windows []WindowInfo, fps, focusBitrate, bgBitrate int, adaptiveBR bool, codecType CodecType) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(100 * time.Millisecond)
 
 		// Create multi streamer
-		ms := NewMultiStreamer(pm, fps, focusBitrate, bgBitrate, adaptiveBR)
+		ms := NewStreamer(pm, fps, focusBitrate, bgBitrate, adaptiveBR)
 
 		// Add each window
 		for _, win := range windows {
@@ -1440,8 +1440,8 @@ func startMultiCaptureAsync(pm *MultiPeerManager, windows []WindowInfo, fps, foc
 }
 
 // startCaptureAsync returns a command that starts capture in a goroutine
-// Uses unified MultiStreamer with a single window (N=1)
-func startCaptureAsync(peerManager *MultiPeerManager, isFullscreen bool, windowID uint32, fps, bitrate int, codecType CodecType) tea.Cmd {
+// Uses unified Streamer with a single window (N=1)
+func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowID uint32, fps, bitrate int, codecType CodecType) tea.Cmd {
 	return func() tea.Msg {
 		// Small delay to let ScreenCaptureKit settle after any previous stop
 		time.Sleep(100 * time.Millisecond)
@@ -1452,7 +1452,7 @@ func startCaptureAsync(peerManager *MultiPeerManager, isFullscreen bool, windowI
 		}
 
 		// Create multi-streamer with single stream
-		ms := NewMultiStreamer(peerManager, fps, bitrate, bitrate/2, false)
+		ms := NewStreamer(peerManager, fps, bitrate, bitrate/2, false)
 
 		// Single window capture
 		windowInfo := WindowInfo{
