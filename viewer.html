@@ -830,6 +830,8 @@
     const passwordRoomCode = document.getElementById('password-room-code');
     
     // Initialize
+    console.log('GoPeep Viewer initializing...');
+    console.log('Room code:', roomCode);
     roomCodeEl.textContent = roomCode;
     waitingRoom.textContent = roomCode;
     passwordRoomCode.textContent = roomCode;
@@ -985,10 +987,12 @@
       if (match) {
         sharerFocusedIndex = parseInt(match[1], 10);
         console.log('Set sharerFocusedIndex to:', sharerFocusedIndex);
+        
+        // Auto-switch main video to sharer's focused window
+        if (sharerFocusedIndex !== null && streams[sharerFocusedIndex]) {
+          switchToStream(sharerFocusedIndex);
+        }
       }
-      
-      // Optionally auto-switch to sharer's focused window
-      // Uncomment to enable: switchToStream(sharerFocusedIndex);
       
       updateMultiStreamUI();
     }
@@ -1257,12 +1261,14 @@
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
       const wsUrl = `${protocol}//${window.location.host}/ws/${roomCode}`;
       
+      console.log('Connecting to WebSocket:', wsUrl);
       setStatus('Connecting...', 'connecting');
       setWaitingState('Connecting...', 'Establishing connection to server');
       
       ws = new WebSocket(wsUrl);
       
       ws.onopen = () => {
+        console.log('WebSocket connected!');
         setStatus('Joining room...', 'connecting');
         setWaitingState('Joining Room', 'Waiting for sharer...');
         reconnectAttempts = 0;
@@ -1275,6 +1281,7 @@
       
       ws.onmessage = async (event) => {
         const msg = JSON.parse(event.data);
+        console.log('WebSocket message received:', msg.type, msg);
         
         switch (msg.type) {
           case 'joined':

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"sort"
 	"sync"
 	"time"
 
@@ -133,14 +134,21 @@ func (mpm *MultiPeerManager) RemoveTrack(trackID string) {
 	delete(mpm.tracks, trackID)
 }
 
-// GetTracks returns all current tracks
+// GetTracks returns all current tracks in sorted order by TrackID
 func (mpm *MultiPeerManager) GetTracks() []*StreamTrackInfo {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
 
+	// Collect and sort track IDs to ensure consistent ordering
+	trackIDs := make([]string, 0, len(mpm.tracks))
+	for id := range mpm.tracks {
+		trackIDs = append(trackIDs, id)
+	}
+	sort.Strings(trackIDs)
+
 	tracks := make([]*StreamTrackInfo, 0, len(mpm.tracks))
-	for _, t := range mpm.tracks {
-		tracks = append(tracks, t)
+	for _, id := range trackIDs {
+		tracks = append(tracks, mpm.tracks[id])
 	}
 	return tracks
 }
@@ -222,8 +230,16 @@ func (mpm *MultiPeerManager) CreateOffer(peerID string) (string, error) {
 		return "", fmt.Errorf("failed to create peer connection: %w", err)
 	}
 
-	// Add all video tracks
-	for _, trackInfo := range mpm.tracks {
+	// Add all video tracks in sorted order (video0, video1, video2...)
+	// This ensures the viewer receives tracks in the same order as their IDs
+	trackIDs := make([]string, 0, len(mpm.tracks))
+	for id := range mpm.tracks {
+		trackIDs = append(trackIDs, id)
+	}
+	sort.Strings(trackIDs)
+
+	for _, id := range trackIDs {
+		trackInfo := mpm.tracks[id]
 		_, err = pc.AddTrack(trackInfo.Track)
 		if err != nil {
 			pc.Close()
