@@ -6,6 +6,7 @@ class Gopeep < Formula
   license "MIT"
 
   depends_on "go" => :build
+  depends_on "pkg-config" => :build
   depends_on "libvpx"
   depends_on :macos
 
