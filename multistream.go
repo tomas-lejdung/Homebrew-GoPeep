@@ -1202,6 +1202,182 @@ func (ms *Streamer) RemoveWindowDynamic(windowID uint32) error {
 	return nil
 }
 
+// AddDisplay adds display (fullscreen) capture to stream
+// Uses windowID = 0 to identify display capture
+func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	if len(ms.pipelines) >= MaxCaptureInstances {
+		return nil, fmt.Errorf("maximum streams (%d) reached", MaxCaptureInstances)
+	}
+
+	// Check if already capturing display
+	for _, pipeline := range ms.pipelines {
+		if pipeline.trackInfo.WindowID == 0 {
+			return nil, fmt.Errorf("display is already being captured")
+		}
+	}
+
+	// Create track in peer manager (windowID=0 for display)
+	trackInfo, err := ms.peerManager.AddTrack(0, "Fullscreen", "Display")
+	if err != nil {
+		return nil, err
+	}
+
+	// Start display capture
+	capture, err := ms.multiCapture.StartDisplayCapture(0, 0, ms.fps)
+	if err != nil {
+		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		return nil, fmt.Errorf("failed to start display capture: %w", err)
+	}
+
+	// Use focus bitrate for display (it's the main content)
+	bitrate := ms.focusBitrate
+
+	// Create encoder
+	factory := NewEncoderFactory()
+	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
+	if err != nil {
+		ms.multiCapture.StopCapture(capture)
+		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		return nil, fmt.Errorf("failed to create encoder: %w", err)
+	}
+
+	// Create pipeline
+	pipeline := &StreamPipeline{
+		trackInfo:    trackInfo,
+		capture:      capture,
+		encoder:      encoder,
+		fps:          ms.fps,
+		bitrate:      bitrate,
+		focusBitrate: ms.focusBitrate,
+		bgBitrate:    ms.bgBitrate,
+		adaptiveBR:   false, // No adaptive bitrate for display
+		stopChan:     make(chan struct{}),
+	}
+
+	ms.pipelines[trackInfo.TrackID] = pipeline
+
+	// Start pipeline if already running
+	if ms.running {
+		go pipeline.run(ms.peerManager, ms.multiCapture)
+	}
+
+	// Notify about streams change
+	if ms.onStreamsChange != nil {
+		ms.onStreamsChange(ms.getStreamsInfo())
+	}
+
+	return trackInfo, nil
+}
+
+// AddDisplayDynamic adds display capture without stopping other streams (for renegotiation)
+func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
+	ms.mu.Lock()
+
+	if len(ms.pipelines) >= MaxCaptureInstances {
+		ms.mu.Unlock()
+		return nil, fmt.Errorf("maximum streams (%d) reached", MaxCaptureInstances)
+	}
+
+	// Check if already streaming display
+	for _, pipeline := range ms.pipelines {
+		if pipeline.trackInfo.WindowID == 0 {
+			ms.mu.Unlock()
+			return nil, fmt.Errorf("display already streaming")
+		}
+	}
+	ms.mu.Unlock()
+
+	// Create track in peer manager
+	trackInfo, err := ms.peerManager.AddTrack(0, "Fullscreen", "Display")
+	if err != nil {
+		return nil, err
+	}
+
+	// Start display capture
+	capture, err := ms.multiCapture.StartDisplayCapture(0, 0, ms.fps)
+	if err != nil {
+		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		return nil, fmt.Errorf("failed to start display capture: %w", err)
+	}
+
+	// Use focus bitrate for display
+	bitrate := ms.focusBitrate
+
+	// Create encoder
+	factory := NewEncoderFactory()
+	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
+	if err != nil {
+		ms.multiCapture.StopCapture(capture)
+		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		return nil, fmt.Errorf("failed to create encoder: %w", err)
+	}
+
+	// Create pipeline
+	pipeline := &StreamPipeline{
+		trackInfo:    trackInfo,
+		capture:      capture,
+		encoder:      encoder,
+		fps:          ms.fps,
+		bitrate:      bitrate,
+		focusBitrate: ms.focusBitrate,
+		bgBitrate:    ms.bgBitrate,
+		adaptiveBR:   false,
+		stopChan:     make(chan struct{}),
+	}
+
+	ms.mu.Lock()
+	ms.pipelines[trackInfo.TrackID] = pipeline
+	isRunning := ms.running
+	ms.mu.Unlock()
+
+	// Start pipeline if streamer is already running
+	if isRunning {
+		if err := encoder.Start(); err != nil {
+			ms.multiCapture.StopCapture(capture)
+			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+			ms.mu.Lock()
+			delete(ms.pipelines, trackInfo.TrackID)
+			ms.mu.Unlock()
+			return nil, fmt.Errorf("failed to start encoder: %w", err)
+		}
+		go pipeline.run(ms.peerManager, ms.multiCapture)
+	}
+
+	// Add track to all existing peer connections
+	log.Printf("AddDisplayDynamic: Adding track %s to all peers", trackInfo.TrackID)
+	if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
+		log.Printf("Warning: failed to add track to some peers: %v", err)
+	}
+
+	// Notify about new stream BEFORE renegotiation so viewer knows to expect it
+	log.Printf("AddDisplayDynamic: Notifying about new stream %s", trackInfo.TrackID)
+	ms.peerManager.NotifyStreamAdded(sig.StreamInfo{
+		TrackID:    trackInfo.TrackID,
+		WindowName: trackInfo.WindowName,
+		AppName:    trackInfo.AppName,
+		IsFocused:  true, // Display is always "focused"
+		Width:      trackInfo.Width,
+		Height:     trackInfo.Height,
+	})
+
+	// Trigger renegotiation with all viewers
+	log.Printf("AddDisplayDynamic: Triggering renegotiation for track %s", trackInfo.TrackID)
+	ms.peerManager.RenegotiateAllPeers()
+
+	log.Printf("Added display dynamically: %s", trackInfo.TrackID)
+
+	return trackInfo, nil
+}
+
+// RemoveDisplayDynamic removes display capture without stopping other streams
+// This is just an alias for RemoveWindowDynamic(0) since display uses windowID=0
+func (ms *Streamer) RemoveDisplayDynamic() error {
+	return ms.RemoveWindowDynamic(0)
+}
+
 // Pipeline methods
 
 func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture) {

@@ -153,10 +153,11 @@ type model struct {
 	selectedSource int // -1 if not sharing (single-window mode)
 
 	// Multi-window mode (always used now - single window is just len(selectedWindows)==1)
-	selectedWindows map[uint32]bool // window IDs selected for streaming
-	adaptiveBitrate bool            // reduce bitrate for non-focused windows
-	streamer        *Streamer       // unified streamer (handles 1 or more windows)
-	peerManager     *PeerManager    // unified peer manager
+	selectedWindows    map[uint32]bool // window IDs selected for streaming
+	fullscreenSelected bool            // true if fullscreen is selected (mutually exclusive with selectedWindows)
+	adaptiveBitrate    bool            // reduce bitrate for non-focused windows
+	streamer           *Streamer       // unified streamer (handles 1 or more windows)
+	peerManager        *PeerManager    // unified peer manager
 
 	// Quality
 	qualityCursor   int
@@ -553,19 +554,22 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "enter":
 		if m.activeColumn == columnSources {
-			// Start sharing selected windows (or current window if none selected)
+			// Start sharing based on selection (fullscreen or windows)
+			if m.fullscreenSelected {
+				return m.startMultiWindowSharing() // Will handle fullscreen via streamer
+			}
 			if len(m.selectedWindows) > 0 {
 				return m.startMultiWindowSharing()
 			}
-			// If no windows selected, select current window and start
+			// If nothing selected, select current item and start
 			if m.sourceCursor < len(m.sources) {
 				source := m.sources[m.sourceCursor]
-				if !source.IsFullscreen && source.Window != nil {
+				if source.IsFullscreen {
+					m.fullscreenSelected = true
+					return m.startMultiWindowSharing()
+				} else if source.Window != nil {
 					m.selectedWindows[source.Window.ID] = true
 					return m.startMultiWindowSharing()
-				} else if source.IsFullscreen {
-					// For fullscreen, use single-window mode
-					return m.startSharing(m.sourceCursor)
 				}
 			}
 		} else if m.activeColumn == columnQuality {
@@ -579,10 +583,23 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case " ":
 		if m.activeColumn == columnSources {
-			// Toggle window selection (up to 4 windows)
+			// Toggle source selection (fullscreen or windows, mutually exclusive)
 			if m.sourceCursor < len(m.sources) {
 				source := m.sources[m.sourceCursor]
-				if !source.IsFullscreen && source.Window != nil {
+				if source.IsFullscreen {
+					// Toggle fullscreen selection (clears window selections)
+					m.fullscreenSelected = !m.fullscreenSelected
+					if m.fullscreenSelected {
+						m.selectedWindows = make(map[uint32]bool)
+					}
+
+					// If sharing, dynamically update
+					if m.sharing && m.streamer != nil {
+						return m.updateMultiStreamSelection()
+					}
+				} else if source.Window != nil {
+					// Clear fullscreen when selecting a window
+					m.fullscreenSelected = false
 					windowID := source.Window.ID
 
 					// Toggle selection
@@ -619,10 +636,19 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Refresh windows
 		return m, refreshWindows
 
-	// F for fullscreen (first source)
+	// F for fullscreen - toggles fullscreen selection (mutually exclusive with windows)
 	case "f":
 		if len(m.sources) > 0 && m.sources[0].IsFullscreen {
-			return m.selectSourceByIndex(0)
+			m.fullscreenSelected = !m.fullscreenSelected
+			if m.fullscreenSelected {
+				m.selectedWindows = make(map[uint32]bool)
+			}
+			m.sourceCursor = 0 // Move cursor to fullscreen
+
+			// If sharing, dynamically update
+			if m.sharing && m.streamer != nil {
+				return m.updateMultiStreamSelection()
+			}
 		}
 		return m, nil
 
@@ -737,6 +763,9 @@ func (m model) selectSourceByIndex(index int) (tea.Model, tea.Cmd) {
 // selectWindowByNumber toggles window selection by its display number (1-9)
 // Windows are numbered starting from 1, excluding fullscreen
 func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
+	// Selecting a window clears fullscreen selection
+	m.fullscreenSelected = false
+
 	// Find the nth non-fullscreen source
 	windowCount := 0
 	for i, source := range m.sources {
@@ -1148,10 +1177,10 @@ func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
 	return m, startCaptureAsync(peerManager, isFullscreen, windowInfo, fps, bitrate, codecType)
 }
 
-// startMultiWindowSharing starts sharing multiple selected windows
+// startMultiWindowSharing starts sharing selected windows or fullscreen display
 func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
-	if len(m.selectedWindows) == 0 {
-		m.lastError = "No windows selected. Use SPACE to select windows."
+	if !m.fullscreenSelected && len(m.selectedWindows) == 0 {
+		m.lastError = "No windows or fullscreen selected. Use SPACE to select."
 		return m, nil
 	}
 
@@ -1171,12 +1200,14 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 
 	m.starting = true
 
-	// Collect selected windows info
+	// Collect selected windows info (empty if fullscreen selected)
 	var selectedWindowInfos []WindowInfo
-	for _, source := range m.sources {
-		if !source.IsFullscreen && source.Window != nil {
-			if m.selectedWindows[source.Window.ID] {
-				selectedWindowInfos = append(selectedWindowInfos, *source.Window)
+	if !m.fullscreenSelected {
+		for _, source := range m.sources {
+			if !source.IsFullscreen && source.Window != nil {
+				if m.selectedWindows[source.Window.ID] {
+					selectedWindowInfos = append(selectedWindowInfos, *source.Window)
+				}
 			}
 		}
 	}
@@ -1191,8 +1222,9 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 	adaptiveBR := m.adaptiveBitrate
 	codecType := m.getSelectedCodecType()
 	multiPeerManager := m.peerManager
+	fullscreen := m.fullscreenSelected
 
-	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fps, focusBitrate, bgBitrate, adaptiveBR, codecType)
+	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fullscreen, fps, focusBitrate, bgBitrate, adaptiveBR, codecType)
 }
 
 // restartMultiStreamWithSelection restarts multi-stream with updated window selection (legacy - full restart)
@@ -1240,27 +1272,57 @@ func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
 	return m.startMultiWindowSharing()
 }
 
-// updateMultiStreamSelection dynamically adds/removes windows without full restart
+// updateMultiStreamSelection dynamically adds/removes windows/display without full restart
 func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
 	// If not currently streaming, fall back to starting fresh
 	if m.streamer == nil || !m.sharing {
 		return m.startMultiWindowSharing()
 	}
 
-	// Get currently streaming windows
+	// Get currently streaming windows (windowID=0 means display is streaming)
 	currentWindows := m.streamer.GetStreamingWindowIDs()
+	hasDisplay := currentWindows[0] // windowID 0 = display capture
 
-	// Handle special case: all windows removed
-	if len(m.selectedWindows) == 0 {
+	// Handle special case: nothing selected
+	if !m.fullscreenSelected && len(m.selectedWindows) == 0 {
 		// Full cleanup via stopCapture
 		m.stopCapture(true)
 		return m, nil
 	}
 
-	// Find windows to add
+	// Handle fullscreen transitions
+	if m.fullscreenSelected && !hasDisplay {
+		// Switching TO fullscreen: remove all windows first, then add display
+		for windowID := range currentWindows {
+			if windowID != 0 { // Skip display (shouldn't be there anyway)
+				log.Printf("TUI: Removing window %d for fullscreen switch", windowID)
+				if err := m.streamer.RemoveWindowDynamic(windowID); err != nil {
+					log.Printf("TUI: Failed to remove window %d: %v", windowID, err)
+				}
+			}
+		}
+		// Add display
+		log.Printf("TUI: Adding display capture")
+		if _, err := m.streamer.AddDisplayDynamic(); err != nil {
+			log.Printf("TUI: Failed to add display: %v", err)
+			m.lastError = fmt.Sprintf("Failed to start fullscreen: %v", err)
+		}
+		return m, nil
+	}
+
+	if !m.fullscreenSelected && hasDisplay {
+		// Switching FROM fullscreen: remove display
+		log.Printf("TUI: Removing display capture")
+		if err := m.streamer.RemoveDisplayDynamic(); err != nil {
+			log.Printf("TUI: Failed to remove display: %v", err)
+		}
+		// Continue to add any selected windows below
+	}
+
+	// Find windows to add (skip windowID 0 which is display)
 	var windowsToAdd []WindowInfo
 	for windowID := range m.selectedWindows {
-		if !currentWindows[windowID] {
+		if windowID != 0 && !currentWindows[windowID] {
 			// Find the WindowInfo for this ID from sources
 			for _, source := range m.sources {
 				if source.Window != nil && source.Window.ID == windowID {
@@ -1271,10 +1333,10 @@ func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
 		}
 	}
 
-	// Find windows to remove
+	// Find windows to remove (skip windowID 0 which is handled above)
 	var windowsToRemove []uint32
 	for windowID := range currentWindows {
-		if !m.selectedWindows[windowID] {
+		if windowID != 0 && !m.selectedWindows[windowID] {
 			windowsToRemove = append(windowsToRemove, windowID)
 		}
 	}
@@ -1423,20 +1485,29 @@ func (m *model) stopMultiCapture() {
 	}
 }
 
-// startMultiCaptureAsync starts multi-window capture asynchronously
-func startMultiCaptureAsync(pm *PeerManager, windows []WindowInfo, fps, focusBitrate, bgBitrate int, adaptiveBR bool, codecType CodecType) tea.Cmd {
+// startMultiCaptureAsync starts multi-window or display capture asynchronously
+func startMultiCaptureAsync(pm *PeerManager, windows []WindowInfo, fullscreen bool, fps, focusBitrate, bgBitrate int, adaptiveBR bool, codecType CodecType) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(100 * time.Millisecond)
 
 		// Create multi streamer
 		ms := NewStreamer(pm, fps, focusBitrate, bgBitrate, adaptiveBR)
 
-		// Add each window
-		for _, win := range windows {
-			_, err := ms.AddWindow(win)
+		if fullscreen {
+			// Add display capture
+			_, err := ms.AddDisplay()
 			if err != nil {
 				ms.Stop()
-				return captureErrorMsg{err: fmt.Sprintf("Failed to add window %s: %v", win.DisplayName(), err)}
+				return captureErrorMsg{err: fmt.Sprintf("Failed to start fullscreen capture: %v", err)}
+			}
+		} else {
+			// Add each window
+			for _, win := range windows {
+				_, err := ms.AddWindow(win)
+				if err != nil {
+					ms.Stop()
+					return captureErrorMsg{err: fmt.Sprintf("Failed to add window %s: %v", win.DisplayName(), err)}
+				}
 			}
 		}
 
@@ -1755,8 +1826,13 @@ func (m model) renderSourcesList() string {
 		var isSelected bool
 
 		if source.IsFullscreen {
-			// Fullscreen option
-			label = "[F] " + source.DisplayName
+			// Fullscreen option with checkbox
+			checkbox := "[ ]"
+			if m.fullscreenSelected {
+				checkbox = "[x]"
+				isSelected = true
+			}
+			label = fmt.Sprintf("%s [F] %s", checkbox, source.DisplayName)
 		} else {
 			// Window with checkbox
 			windowNum++

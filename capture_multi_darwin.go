@@ -212,6 +212,88 @@ int mc_start_window_capture(uint32_t window_id, int target_width, int target_hei
     }
 }
 
+// Start capturing the display (fullscreen), returns instance index or -1 on error
+// Uses window_id = 0 to indicate this is a display capture
+int mc_start_display_capture(int target_width, int target_height, int fps) {
+    mc_init();
+
+    int slot = mc_find_free_slot();
+    if (slot < 0) {
+        return -1; // No free slots
+    }
+
+    CaptureInstance* inst = &g_instances[slot];
+
+    __block SCContentFilter* filter = nil;
+    __block int configWidth = target_width;
+    __block int configHeight = target_height;
+    dispatch_semaphore_t findSemaphore = dispatch_semaphore_create(0);
+
+    [SCShareableContent getShareableContentWithCompletionHandler:^(SCShareableContent* content, NSError* error) {
+        if (error == nil && content != nil && content.displays.count > 0) {
+            SCDisplay* display = content.displays[0];
+            filter = [[SCContentFilter alloc] initWithDisplay:display excludingWindows:@[]];
+            if (configWidth <= 0) configWidth = (int)display.width;
+            if (configHeight <= 0) configHeight = (int)display.height;
+        }
+        dispatch_semaphore_signal(findSemaphore);
+    }];
+
+    dispatch_semaphore_wait(findSemaphore, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
+
+    if (filter == nil) {
+        return -2; // Display not found
+    }
+
+    @autoreleasepool {
+        inst->config = [[SCStreamConfiguration alloc] init];
+        inst->config.width = configWidth;
+        inst->config.height = configHeight;
+        inst->config.minimumFrameInterval = CMTimeMake(1, fps > 0 ? fps : 30);
+        inst->config.pixelFormat = kCVPixelFormatType_32BGRA;
+        inst->config.showsCursor = YES;
+
+        inst->stream = [[SCStream alloc] initWithFilter:filter configuration:inst->config delegate:nil];
+
+        char queueName[64];
+        snprintf(queueName, sizeof(queueName), "com.gopeep.capture.display.%d", slot);
+        inst->queue = dispatch_queue_create(queueName, DISPATCH_QUEUE_SERIAL);
+
+        MCStreamOutputDelegate* delegate = [[MCStreamOutputDelegate alloc] init];
+        delegate.instanceIndex = slot;
+        inst->output_delegate = delegate;
+        inst->frame_semaphore = dispatch_semaphore_create(0);
+        inst->window_id = 0; // 0 indicates display capture
+
+        NSError* addError = nil;
+        [inst->stream addStreamOutput:delegate type:SCStreamOutputTypeScreen sampleHandlerQueue:inst->queue error:&addError];
+        if (addError != nil) {
+            NSLog(@"Failed to add stream output for display capture instance %d: %@", slot, addError);
+            return -3;
+        }
+
+        __block int startResult = 0;
+        dispatch_semaphore_t startSemaphore = dispatch_semaphore_create(0);
+
+        [inst->stream startCaptureWithCompletionHandler:^(NSError* error) {
+            if (error != nil) {
+                NSLog(@"Failed to start display capture for instance %d: %@", slot, error);
+                startResult = -4;
+            }
+            dispatch_semaphore_signal(startSemaphore);
+        }];
+
+        dispatch_semaphore_wait(startSemaphore, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
+
+        if (startResult == 0) {
+            inst->active = 1;
+            return slot;
+        }
+
+        return startResult;
+    }
+}
+
 // Stop a capture instance
 void mc_stop_capture(int slot) {
     if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES) return;
@@ -453,6 +535,49 @@ func (mc *MultiCapture) StartWindowCapture(windowID uint32, width, height, fps i
 	inst := &CaptureInstance{
 		slot:     int(slot),
 		windowID: windowID,
+		active:   true,
+	}
+	mc.instances = append(mc.instances, inst)
+
+	return inst, nil
+}
+
+// StartDisplayCapture starts capturing the display (fullscreen), returns the capture instance
+// Uses windowID = 0 to indicate this is a display capture
+func (mc *MultiCapture) StartDisplayCapture(width, height, fps int) (*CaptureInstance, error) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+
+	if len(mc.instances) >= MaxCaptureInstances {
+		return nil, fmt.Errorf("maximum capture instances (%d) reached", MaxCaptureInstances)
+	}
+
+	// Check if already capturing display (windowID 0)
+	for _, inst := range mc.instances {
+		if inst.windowID == 0 {
+			return nil, fmt.Errorf("display is already being captured")
+		}
+	}
+
+	slot := C.mc_start_display_capture(C.int(width), C.int(height), C.int(fps))
+	if slot < 0 {
+		switch slot {
+		case -1:
+			return nil, fmt.Errorf("no free capture slots available")
+		case -2:
+			return nil, fmt.Errorf("display not found")
+		case -3:
+			return nil, fmt.Errorf("failed to add stream output")
+		case -4:
+			return nil, fmt.Errorf("failed to start capture")
+		default:
+			return nil, fmt.Errorf("capture error: %d", slot)
+		}
+	}
+
+	inst := &CaptureInstance{
+		slot:     int(slot),
+		windowID: 0, // 0 indicates display capture
 		active:   true,
 	}
 	mc.instances = append(mc.instances, inst)
