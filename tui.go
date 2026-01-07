@@ -203,6 +203,30 @@ type model struct {
 	height int
 }
 
+// findSourceIndex returns the index of the source matching the current capture state.
+// Returns -1 if not found (window closed or not in list).
+func (m *model) findSourceIndex() int {
+	if !m.sharing && !m.starting {
+		return -1
+	}
+
+	if m.isFullscreen {
+		// Fullscreen is always index 0
+		if len(m.sources) > 0 && m.sources[0].IsFullscreen {
+			return 0
+		}
+		return -1
+	}
+
+	// Find window by ID
+	for i, source := range m.sources {
+		if !source.IsFullscreen && source.Window != nil && source.Window.ID == m.activeWindowID {
+			return i
+		}
+	}
+	return -1
+}
+
 func initialModel(config Config) model {
 	// Set default signal URL if not in local mode and not already set
 	if config.SignalURL == "" && !config.LocalMode {
@@ -259,12 +283,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case windowsUpdatedMsg:
-		// If we're sharing fullscreen and got no windows, keep the existing list
-		// (fullscreen capture may cause ListWindows to return empty)
-		if m.sharing && m.isFullscreen && len(msg.windows) == 0 && len(m.sources) > 1 {
-			return m, nil
-		}
-
 		// Build sources list: fullscreen first, then windows
 		newSources := []SourceItem{
 			{IsFullscreen: true, DisplayName: "Fullscreen (Primary Display)"},
@@ -278,9 +296,34 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 		}
 
-		// Only update if we got windows, or we're not sharing fullscreen
-		if len(msg.windows) > 0 || !m.sharing || !m.isFullscreen {
-			m.sources = newSources
+		// If we're actively streaming and got an empty window list, keep existing sources
+		// (ScreenCaptureKit can sometimes return empty transiently)
+		if (m.sharing || m.starting) && len(msg.windows) == 0 && len(m.sources) > 1 {
+			// Keep existing sources and selection - don't change anything
+			return m, nil
+		}
+
+		m.sources = newSources
+
+		// Reconcile selection: find the source matching our active capture by window ID
+		// Only do this if we're actively sharing/starting AND the current selectedSource
+		// doesn't already point to the correct window
+		if m.sharing || m.starting {
+			// Check if current selectedSource is still valid
+			currentValid := false
+			if m.selectedSource >= 0 && m.selectedSource < len(m.sources) {
+				source := m.sources[m.selectedSource]
+				if m.isFullscreen && source.IsFullscreen {
+					currentValid = true
+				} else if !m.isFullscreen && !source.IsFullscreen && source.Window != nil && source.Window.ID == m.activeWindowID {
+					currentValid = true
+				}
+			}
+
+			// Only reconcile if current selection is invalid
+			if !currentValid {
+				m.selectedSource = m.findSourceIndex()
+			}
 		}
 
 		// Keep cursor in bounds
@@ -303,8 +346,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tickCmd()
 
 	case captureErrorMsg:
-		// Capture failed
+		// Capture failed - reset state fully
 		m.starting = false
+		m.sharing = false
+		m.selectedSource = -1
+		m.isFullscreen = false
+		m.activeWindowID = 0
 		m.lastError = msg.err
 		return m, refreshWindows
 
@@ -328,6 +375,15 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Clear copy message after 2 seconds
 		if m.copyMessage != "" && time.Since(m.copyMsgTime) > 2*time.Second {
 			m.copyMessage = ""
+		}
+
+		// Check if our window was closed (if streaming a window)
+		if m.sharing && !m.isFullscreen && m.activeWindowID != 0 {
+			// If window is no longer in the sources list and capture is not active, stop
+			if m.selectedSource == -1 && !IsCaptureActive() {
+				m.stopCapture(false)
+				m.lastError = "Window was closed"
+			}
 		}
 
 		// Check for WebSocket disconnection and trigger reconnection
@@ -480,7 +536,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "s":
 		// Stop sharing (but keep server running)
 		if m.sharing {
-			m.stopCapture()
+			m.stopCapture(false)
 		}
 		return m, nil
 
@@ -617,14 +673,15 @@ func (m model) restartWithCodec() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Remember room code and capture settings
+	// Remember room code and capture settings including selection
 	savedRoomCode := m.roomCode
 	savedShareURL := m.shareURL
 	savedIsFullscreen := m.isFullscreen
 	savedWindowID := m.activeWindowID
+	savedSelectedSource := m.selectedSource
 
-	// Full cleanup of current session
-	m.stopCapture()
+	// Full cleanup of current session (preserve state for restart)
+	m.stopCapture(true)
 
 	// Close existing peer manager and connections
 	if m.peerManager != nil {
@@ -639,10 +696,11 @@ func (m model) restartWithCodec() (tea.Model, tea.Cmd) {
 	}
 
 	// Mark server as not started so it will reinitialize with new codec
-	// but preserve the room code
+	// but preserve the room code and selection
 	m.serverStarted = false
 	m.roomCode = savedRoomCode
 	m.shareURL = savedShareURL
+	m.selectedSource = savedSelectedSource
 
 	// Restart capture directly with saved settings
 	return m.restartCaptureWithSettings(savedIsFullscreen, savedWindowID)
@@ -688,12 +746,16 @@ func (m model) restartWithFPS() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Remember capture settings
+	// Remember all capture settings including selection
 	savedIsFullscreen := m.isFullscreen
 	savedWindowID := m.activeWindowID
+	savedSelectedSource := m.selectedSource
 
-	// Stop capture and streamer
-	m.stopCapture()
+	// Stop capture and streamer (preserve state for restart)
+	m.stopCapture(true)
+
+	// Restore selectedSource (stopCapture doesn't touch it with preserveState=true, but be explicit)
+	m.selectedSource = savedSelectedSource
 
 	// Restart capture directly with saved settings
 	return m.restartCaptureWithSettings(savedIsFullscreen, savedWindowID)
@@ -949,7 +1011,8 @@ func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
 	}
 
 	// Stop any existing capture synchronously (this is fast)
-	m.stopCapture()
+	// Full stop since we're switching to a new source
+	m.stopCapture(false)
 
 	source := m.sources[index]
 	m.selectedSource = index
@@ -990,6 +1053,9 @@ func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
 // startCaptureAsync returns a command that starts capture in a goroutine
 func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowID uint32, fps, bitrate int, codecType CodecType) tea.Cmd {
 	return func() tea.Msg {
+		// Small delay to let ScreenCaptureKit settle after any previous stop
+		time.Sleep(100 * time.Millisecond)
+
 		// Start capture (this blocks on ScreenCaptureKit)
 		var err error
 		if isFullscreen {
@@ -1017,8 +1083,9 @@ func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowID uin
 	}
 }
 
-// stopCapture stops the current capture but keeps server running
-func (m *model) stopCapture() {
+// stopCapture stops the current capture but keeps server running.
+// If preserveState is true, keeps isFullscreen and activeWindowID for restart scenarios.
+func (m *model) stopCapture(preserveState bool) {
 	if m.streamer != nil {
 		m.streamer.Stop()
 		m.streamer = nil
@@ -1027,13 +1094,17 @@ func (m *model) stopCapture() {
 	StopCapture()
 
 	m.sharing = false
-	m.selectedSource = -1
-	m.isFullscreen = false
+
+	if !preserveState {
+		m.selectedSource = -1
+		m.isFullscreen = false
+		m.activeWindowID = 0
+	}
 }
 
 // cleanup shuts down everything
 func (m *model) cleanup() {
-	m.stopCapture()
+	m.stopCapture(false)
 
 	if m.peerManager != nil {
 		m.peerManager.Close()
