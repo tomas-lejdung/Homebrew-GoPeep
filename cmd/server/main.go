@@ -241,18 +241,44 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 	c.role = msg.Role
 
 	if msg.Role == "sharer" {
-		if room.sharer != nil {
-			errMsg := SignalMessage{Type: "error", Error: "Room already has a sharer"}
-			data, _ := json.Marshal(errMsg)
-			c.send <- data
-			return
+		if room.sharer != nil && room.sharer != c {
+			// Close old sharer connection if exists (sharer reconnecting)
+			oldSharer := room.sharer
+			log.Printf("Sharer reconnecting to room %s, closing old connection", room.code)
+			close(oldSharer.send)
 		}
 		room.sharer = c
 		log.Printf("Sharer joined room %s", room.code)
 
+		// Reset viewer peerIDs so they can receive new offers
+		for viewer := range room.viewers {
+			viewer.peerID = ""
+		}
+
 		confirmMsg := SignalMessage{Type: "joined", Role: "sharer", Room: room.code}
 		data, _ := json.Marshal(confirmMsg)
 		c.send <- data
+
+		// Notify existing viewers that sharer has reconnected
+		// They will receive new offers shortly
+		sharerReadyMsg := SignalMessage{Type: "sharer-ready"}
+		sharerReadyData, _ := json.Marshal(sharerReadyMsg)
+		for viewer := range room.viewers {
+			select {
+			case viewer.send <- sharerReadyData:
+			default:
+			}
+		}
+
+		// Also send viewer-joined for each existing viewer so sharer creates offers
+		for range room.viewers {
+			notifyMsg := SignalMessage{Type: "viewer-joined"}
+			notifyData, _ := json.Marshal(notifyMsg)
+			select {
+			case c.send <- notifyData:
+			default:
+			}
+		}
 
 	} else if msg.Role == "viewer" {
 		room.viewers[c] = true

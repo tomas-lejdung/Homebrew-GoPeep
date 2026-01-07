@@ -3,7 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"image"
 	"log"
 	"sync"
 	"time"
@@ -39,6 +38,7 @@ type ICEConfig struct {
 type PeerManager struct {
 	config       webrtc.Configuration
 	iceConfig    ICEConfig
+	codecType    CodecType
 	videoTrack   *webrtc.TrackLocalStaticSample
 	connections  map[string]*webrtc.PeerConnection
 	viewerStates map[string]*ViewerInfo
@@ -48,16 +48,34 @@ type PeerManager struct {
 	onDisconnect func(peerID string)
 }
 
-// NewPeerManager creates a new peer manager with default ICE servers
+// NewPeerManager creates a new peer manager with default ICE servers and VP8 codec
 func NewPeerManager() (*PeerManager, error) {
-	return NewPeerManagerWithICE(ICEConfig{})
+	return NewPeerManagerWithCodec(ICEConfig{}, CodecVP8)
 }
 
-// NewPeerManagerWithICE creates a peer manager with custom ICE configuration
+// NewPeerManagerWithICE creates a peer manager with custom ICE configuration and VP8 codec
 func NewPeerManagerWithICE(iceConfig ICEConfig) (*PeerManager, error) {
+	return NewPeerManagerWithCodec(iceConfig, CodecVP8)
+}
+
+// NewPeerManagerWithCodec creates a peer manager with custom ICE configuration and codec
+func NewPeerManagerWithCodec(iceConfig ICEConfig, codecType CodecType) (*PeerManager, error) {
+	// Determine WebRTC MIME type based on codec
+	var mimeType string
+	switch codecType {
+	case CodecVP9:
+		mimeType = webrtc.MimeTypeVP9
+	case CodecH264:
+		mimeType = webrtc.MimeTypeH264
+	case CodecVP8:
+		fallthrough
+	default:
+		mimeType = webrtc.MimeTypeVP8
+	}
+
 	// Create video track
 	videoTrack, err := webrtc.NewTrackLocalStaticSample(
-		webrtc.RTPCodecCapability{MimeType: webrtc.MimeTypeVP8},
+		webrtc.RTPCodecCapability{MimeType: mimeType},
 		"video",
 		"gopeep",
 	)
@@ -98,10 +116,16 @@ func NewPeerManagerWithICE(iceConfig ICEConfig) (*PeerManager, error) {
 			ICETransportPolicy: iceTransportPolicy,
 		},
 		iceConfig:    iceConfig,
+		codecType:    codecType,
 		videoTrack:   videoTrack,
 		connections:  make(map[string]*webrtc.PeerConnection),
 		viewerStates: make(map[string]*ViewerInfo),
 	}, nil
+}
+
+// GetCodecType returns the codec type being used
+func (pm *PeerManager) GetCodecType() CodecType {
+	return pm.codecType
 }
 
 // SetICECallback sets callback for ICE candidates
@@ -351,14 +375,15 @@ type StreamStats struct {
 
 // Streamer handles the capture-encode-stream pipeline
 type Streamer struct {
-	peerManager *PeerManager
-	encoder     *VP8Encoder
-	captureFunc func() (*image.RGBA, error)
-	fps         int
-	bitrate     int
-	running     bool
-	stopChan    chan struct{}
-	mu          sync.Mutex
+	peerManager     *PeerManager
+	encoder         VideoEncoder
+	codecType       CodecType
+	captureFuncBGRA func() (*BGRAFrame, error)
+	fps             int
+	bitrate         int
+	running         bool
+	stopChan        chan struct{}
+	mu              sync.Mutex
 
 	// Stats tracking
 	stats          StreamStats
@@ -370,24 +395,47 @@ type Streamer struct {
 	lastByteCount  int64
 }
 
-// NewStreamer creates a new streamer with default bitrate
+// NewStreamer creates a new streamer with default bitrate and codec from peer manager
 func NewStreamer(pm *PeerManager, fps int) *Streamer {
 	return NewStreamerWithBitrate(pm, fps, DefaultEncoderConfig().Bitrate)
 }
 
 // NewStreamerWithBitrate creates a new streamer with specified bitrate
 func NewStreamerWithBitrate(pm *PeerManager, fps int, bitrate int) *Streamer {
-	config := DefaultEncoderConfig()
-	config.FPS = fps
-	config.Bitrate = bitrate
+	return NewStreamerWithCodec(pm, fps, bitrate, pm.GetCodecType())
+}
+
+// NewStreamerWithCodec creates a new streamer with specified codec
+func NewStreamerWithCodec(pm *PeerManager, fps int, bitrate int, codecType CodecType) *Streamer {
+	factory := NewEncoderFactory()
+	encoder, err := factory.CreateEncoder(codecType, fps, bitrate)
+	if err != nil {
+		// Fallback to VP8 if encoder creation fails
+		encoder, _ = factory.CreateEncoder(CodecVP8, fps, bitrate)
+		codecType = CodecVP8
+	}
 
 	return &Streamer{
 		peerManager: pm,
-		encoder:     NewVP8Encoder(config),
+		encoder:     encoder,
+		codecType:   codecType,
 		fps:         fps,
 		bitrate:     bitrate,
 		stopChan:    make(chan struct{}),
 	}
+}
+
+// GetCodecType returns the codec type being used
+func (s *Streamer) GetCodecType() CodecType {
+	return s.codecType
+}
+
+// IsHardwareAccelerated returns true if using hardware encoding
+func (s *Streamer) IsHardwareAccelerated() bool {
+	if s.encoder != nil {
+		return s.encoder.IsHardwareAccelerated()
+	}
+	return false
 }
 
 // GetStats returns current streaming statistics
@@ -397,9 +445,9 @@ func (s *Streamer) GetStats() StreamStats {
 	return s.stats
 }
 
-// SetCaptureFunc sets the function used to capture frames
-func (s *Streamer) SetCaptureFunc(fn func() (*image.RGBA, error)) {
-	s.captureFunc = fn
+// SetCaptureFunc sets the function used to capture frames (BGRA format)
+func (s *Streamer) SetCaptureFunc(fn func() (*BGRAFrame, error)) {
+	s.captureFuncBGRA = fn
 }
 
 // Start starts the streaming loop
@@ -501,12 +549,12 @@ func (s *Streamer) streamLoop() {
 		case <-s.stopChan:
 			return
 		case <-ticker.C:
-			if s.captureFunc == nil {
+			if s.captureFuncBGRA == nil {
 				continue
 			}
 
-			// Capture frame
-			img, err := s.captureFunc()
+			// Capture frame (BGRA format - no conversion needed)
+			frame, err := s.captureFuncBGRA()
 			if err != nil {
 				consecutiveErrors++
 				if consecutiveErrors == maxConsecutiveErrors {
@@ -523,14 +571,13 @@ func (s *Streamer) streamLoop() {
 			consecutiveErrors = 0
 
 			// Update resolution stats
-			bounds := img.Bounds()
 			s.statsMu.Lock()
-			s.stats.Width = bounds.Dx()
-			s.stats.Height = bounds.Dy()
+			s.stats.Width = frame.Width
+			s.stats.Height = frame.Height
 			s.statsMu.Unlock()
 
-			// Encode frame
-			data, err := s.encoder.EncodeFrame(img)
+			// Encode frame (direct BGRA encoding - faster)
+			data, err := s.encoder.EncodeBGRAFrame(frame)
 			if err != nil {
 				log.Printf("Encode error: %v", err)
 				continue

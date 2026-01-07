@@ -905,8 +905,34 @@
             await handleICE(msg.candidate);
             break;
             
+          case 'sharer-ready':
+            // Sharer has reconnected, clean up old connection and wait for new offer
+            setStatus('Sharer reconnected', 'connecting');
+            if (pc) {
+              pc.close();
+              pc = null;
+              stopStatsCollection();
+            }
+            video.srcObject = null;
+            streamStats.style.display = 'none';
+            setWaitingState('Reconnecting', 'Sharer has reconnected, establishing new stream...');
+            waitingEl.classList.remove('hidden');
+            break;
+            
           case 'error':
             setStatus(msg.error, 'error');
+            // If sharer disconnected, clean up and wait for reconnection
+            if (msg.error === 'Sharer disconnected') {
+              if (pc) {
+                pc.close();
+                pc = null;
+                stopStatsCollection();
+              }
+              video.srcObject = null;
+              streamStats.style.display = 'none';
+              setWaitingState('Sharer Reconnecting', 'Please wait...');
+              waitingEl.classList.remove('hidden');
+            }
             break;
         }
       };

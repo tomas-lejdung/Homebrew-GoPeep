@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"image"
 	"log"
 	"net"
 	"os"
@@ -320,8 +319,8 @@ func runShareMode(config Config) {
 	// Create streamer with quality from config
 	bitrate := ParseQualityFlag(config.Quality)
 	streamer := NewStreamerWithBitrate(peerManager, config.FPS, bitrate)
-	streamer.SetCaptureFunc(func() (*image.RGBA, error) {
-		return GetLatestFrame(time.Second)
+	streamer.SetCaptureFunc(func() (*BGRAFrame, error) {
+		return GetLatestFrameBGRA(time.Second)
 	})
 
 	if err := streamer.Start(); err != nil {
@@ -583,8 +582,8 @@ func runRemoteShareMode(config Config) {
 	// Create streamer with quality from config
 	bitrate := ParseQualityFlag(config.Quality)
 	streamer := NewStreamerWithBitrate(peerManager, config.FPS, bitrate)
-	streamer.SetCaptureFunc(func() (*image.RGBA, error) {
-		return GetLatestFrame(time.Second)
+	streamer.SetCaptureFunc(func() (*BGRAFrame, error) {
+		return GetLatestFrameBGRA(time.Second)
 	})
 
 	if err := streamer.Start(); err != nil {

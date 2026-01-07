@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"image"
 	"io"
 	"log"
 	"os"
@@ -38,6 +37,8 @@ func copyToClipboard(text string) error {
 const (
 	columnSources = 0
 	columnQuality = 1
+	columnFPS     = 2
+	columnCodec   = 3
 )
 
 // Styles
@@ -101,6 +102,16 @@ type viewerCountMsg int
 
 type tickMsg time.Time
 
+// captureStartedMsg indicates capture started successfully
+type captureStartedMsg struct {
+	streamer *Streamer
+}
+
+// captureErrorMsg indicates capture failed to start
+type captureErrorMsg struct {
+	err string
+}
+
 // SourceItem represents a selectable source (fullscreen or window)
 type SourceItem struct {
 	IsFullscreen bool
@@ -122,19 +133,29 @@ type model struct {
 	qualityCursor   int
 	selectedQuality int
 
-	// Two-column navigation
-	activeColumn int // 0 = sources, 1 = quality
+	// FPS
+	fpsCursor   int
+	selectedFPS int
+
+	// Codec
+	codecCursor   int
+	selectedCodec int
+
+	// Navigation: 0 = sources, 1 = quality, 2 = fps, 3 = codec
+	activeColumn int
 
 	// Sharing state
-	sharing      bool
-	isFullscreen bool // true if sharing fullscreen
-	roomCode     string
-	shareURL     string
-	viewerCount  int
-	lastError    string
-	startTime    time.Time // when sharing started
-	copyMessage  string    // temporary "Copied!" message
-	copyMsgTime  time.Time // when copy message was shown
+	sharing        bool
+	starting       bool   // true while capture is starting (async)
+	isFullscreen   bool   // true if sharing fullscreen
+	activeWindowID uint32 // window ID being shared (for restarts)
+	roomCode       string
+	shareURL       string
+	viewerCount    int
+	lastError      string
+	startTime      time.Time // when sharing started
+	copyMessage    string    // temporary "Copied!" message
+	copyMsgTime    time.Time // when copy message was shown
 
 	// Stats display
 	showStats bool
@@ -161,12 +182,22 @@ func initialModel(config Config) model {
 		config.SignalURL = DefaultSignalServer
 	}
 
+	// Initialize available codecs
+	InitAvailableCodecs()
+
+	// Find FPS index that matches config.FPS
+	fpsIndex := FPSIndexForValue(config.FPS)
+
 	return model{
 		config:          config,
 		sourceCursor:    0,
 		selectedSource:  -1,
 		qualityCursor:   DefaultQualityIndex(),
 		selectedQuality: DefaultQualityIndex(),
+		fpsCursor:       fpsIndex,
+		selectedFPS:     fpsIndex,
+		codecCursor:     DefaultCodecIndex(),
+		selectedCodec:   DefaultCodecIndex(),
 		activeColumn:    columnSources,
 	}
 }
@@ -235,6 +266,20 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.viewerCount = int(msg)
 		return m, nil
 
+	case captureStartedMsg:
+		// Capture started successfully
+		m.starting = false
+		m.sharing = true
+		m.streamer = msg.streamer
+		m.startTime = time.Now()
+		return m, tickCmd()
+
+	case captureErrorMsg:
+		// Capture failed
+		m.starting = false
+		m.lastError = msg.err
+		return m, refreshWindows
+
 	case tickMsg:
 		// Periodic refresh
 		var cmds []tea.Cmd
@@ -270,13 +315,21 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, tea.Quit
 
 	case "tab", "right", "l":
-		// Switch to next column
-		m.activeColumn = (m.activeColumn + 1) % 2
+		// Switch to next column (sources <-> right panel)
+		if m.activeColumn == columnSources {
+			m.activeColumn = columnQuality
+		} else {
+			m.activeColumn = columnSources
+		}
 		return m, nil
 
 	case "shift+tab", "left", "h":
 		// Switch to previous column
-		m.activeColumn = (m.activeColumn + 1) % 2
+		if m.activeColumn == columnSources {
+			m.activeColumn = columnQuality
+		} else {
+			m.activeColumn = columnSources
+		}
 		return m, nil
 
 	case "up", "k":
@@ -284,9 +337,26 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.sourceCursor > 0 {
 				m.sourceCursor--
 			}
-		} else {
+		} else if m.activeColumn == columnQuality {
 			if m.qualityCursor > 0 {
 				m.qualityCursor--
+			}
+			// At top of quality, can't go higher
+		} else if m.activeColumn == columnFPS {
+			if m.fpsCursor > 0 {
+				m.fpsCursor--
+			} else {
+				// Move from FPS to quality section
+				m.activeColumn = columnQuality
+				m.qualityCursor = len(QualityPresets) - 1
+			}
+		} else if m.activeColumn == columnCodec {
+			if m.codecCursor > 0 {
+				m.codecCursor--
+			} else {
+				// Move from codec to FPS section
+				m.activeColumn = columnFPS
+				m.fpsCursor = len(FPSPresets) - 1
 			}
 		}
 		return m, nil
@@ -296,9 +366,25 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.sourceCursor < len(m.sources)-1 {
 				m.sourceCursor++
 			}
-		} else {
+		} else if m.activeColumn == columnQuality {
 			if m.qualityCursor < len(QualityPresets)-1 {
 				m.qualityCursor++
+			} else {
+				// At bottom of quality, move to FPS section
+				m.activeColumn = columnFPS
+				m.fpsCursor = 0
+			}
+		} else if m.activeColumn == columnFPS {
+			if m.fpsCursor < len(FPSPresets)-1 {
+				m.fpsCursor++
+			} else {
+				// At bottom of FPS, move to codec section
+				m.activeColumn = columnCodec
+				m.codecCursor = 0
+			}
+		} else if m.activeColumn == columnCodec {
+			if m.codecCursor < len(AvailableCodecs)-1 {
+				m.codecCursor++
 			}
 		}
 		return m, nil
@@ -309,9 +395,15 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if len(m.sources) > 0 && m.sourceCursor < len(m.sources) {
 				return m.startSharing(m.sourceCursor)
 			}
-		} else {
+		} else if m.activeColumn == columnQuality {
 			// Select quality
 			return m.applyQuality(m.qualityCursor)
+		} else if m.activeColumn == columnFPS {
+			// Select FPS
+			return m.applyFPS(m.fpsCursor)
+		} else if m.activeColumn == columnCodec {
+			// Select codec
+			return m.applyCodec(m.codecCursor)
 		}
 		return m, nil
 
@@ -326,21 +418,32 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Refresh windows
 		return m, refreshWindows
 
-	// Quick quality selection with number keys
+	// F for fullscreen (first source)
+	case "f":
+		if len(m.sources) > 0 && m.sources[0].IsFullscreen {
+			return m.selectSourceByIndex(0)
+		}
+		return m, nil
+
+	// Quick window selection with number keys (1-9 selects windows, skipping fullscreen)
 	case "1":
-		return m.applyQuality(0)
+		return m.selectWindowByNumber(1)
 	case "2":
-		return m.applyQuality(1)
+		return m.selectWindowByNumber(2)
 	case "3":
-		return m.applyQuality(2)
+		return m.selectWindowByNumber(3)
 	case "4":
-		return m.applyQuality(3)
+		return m.selectWindowByNumber(4)
 	case "5":
-		return m.applyQuality(4)
+		return m.selectWindowByNumber(5)
 	case "6":
-		return m.applyQuality(5)
+		return m.selectWindowByNumber(6)
 	case "7":
-		return m.applyQuality(6)
+		return m.selectWindowByNumber(7)
+	case "8":
+		return m.selectWindowByNumber(8)
+	case "9":
+		return m.selectWindowByNumber(9)
 
 	case "i":
 		// Toggle stats display
@@ -382,6 +485,162 @@ func (m model) applyQuality(index int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+// applyCodec changes the codec setting
+func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
+	if index < 0 || index >= len(AvailableCodecs) {
+		return m, nil
+	}
+
+	oldCodec := m.selectedCodec
+	m.selectedCodec = index
+	m.codecCursor = index
+
+	// If we're sharing and codec changed, restart with new codec
+	if m.sharing && oldCodec != m.selectedCodec {
+		return m.restartWithCodec()
+	}
+
+	return m, nil
+}
+
+// selectSourceByIndex selects a source by its index in the sources list
+func (m model) selectSourceByIndex(index int) (tea.Model, tea.Cmd) {
+	if index >= 0 && index < len(m.sources) {
+		m.sourceCursor = index
+		return m.startSharing(index)
+	}
+	return m, nil
+}
+
+// selectWindowByNumber selects a window by its display number (1-9)
+// Windows are numbered starting from 1, excluding fullscreen
+func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
+	// Find the nth non-fullscreen source
+	windowCount := 0
+	for i, source := range m.sources {
+		if !source.IsFullscreen {
+			windowCount++
+			if windowCount == num {
+				m.sourceCursor = i
+				return m.startSharing(i)
+			}
+		}
+	}
+	return m, nil
+}
+
+// restartWithCodec restarts streaming with a new codec (requires full restart)
+func (m model) restartWithCodec() (tea.Model, tea.Cmd) {
+	if !m.sharing {
+		return m, nil
+	}
+
+	// Remember room code and capture settings
+	savedRoomCode := m.roomCode
+	savedShareURL := m.shareURL
+	savedIsFullscreen := m.isFullscreen
+	savedWindowID := m.activeWindowID
+
+	// Full cleanup of current session
+	m.stopCapture()
+
+	// Close existing peer manager and connections
+	if m.peerManager != nil {
+		m.peerManager.Close()
+		m.peerManager = nil
+	}
+
+	// Close WebSocket connection if remote
+	if m.wsConn != nil {
+		m.wsConn.Close()
+		m.wsConn = nil
+	}
+
+	// Mark server as not started so it will reinitialize with new codec
+	// but preserve the room code
+	m.serverStarted = false
+	m.roomCode = savedRoomCode
+	m.shareURL = savedShareURL
+
+	// Restart capture directly with saved settings
+	return m.restartCaptureWithSettings(savedIsFullscreen, savedWindowID)
+}
+
+// getSelectedCodecType returns the currently selected codec type
+func (m model) getSelectedCodecType() CodecType {
+	if m.selectedCodec >= 0 && m.selectedCodec < len(AvailableCodecs) {
+		return AvailableCodecs[m.selectedCodec].Type
+	}
+	return CodecVP8
+}
+
+// getSelectedFPS returns the currently selected FPS value
+func (m model) getSelectedFPS() int {
+	if m.selectedFPS >= 0 && m.selectedFPS < len(FPSPresets) {
+		return FPSPresets[m.selectedFPS].Value
+	}
+	return 30 // default
+}
+
+// applyFPS changes the FPS setting
+func (m model) applyFPS(index int) (tea.Model, tea.Cmd) {
+	if index < 0 || index >= len(FPSPresets) {
+		return m, nil
+	}
+
+	oldFPS := m.selectedFPS
+	m.selectedFPS = index
+	m.fpsCursor = index
+
+	// If we're sharing and FPS changed, need full restart (capture + streamer)
+	if m.sharing && oldFPS != m.selectedFPS {
+		return m.restartWithFPS()
+	}
+
+	return m, nil
+}
+
+// restartWithFPS restarts capture and streaming with new FPS (requires full restart)
+func (m model) restartWithFPS() (tea.Model, tea.Cmd) {
+	if !m.sharing {
+		return m, nil
+	}
+
+	// Remember capture settings
+	savedIsFullscreen := m.isFullscreen
+	savedWindowID := m.activeWindowID
+
+	// Stop capture and streamer
+	m.stopCapture()
+
+	// Restart capture directly with saved settings
+	return m.restartCaptureWithSettings(savedIsFullscreen, savedWindowID)
+}
+
+// restartCaptureWithSettings restarts capture with specific settings (used by codec/fps change)
+func (m model) restartCaptureWithSettings(isFullscreen bool, windowID uint32) (tea.Model, tea.Cmd) {
+	m.isFullscreen = isFullscreen
+	m.activeWindowID = windowID
+	m.lastError = ""
+
+	// Initialize server if not already running
+	if err := m.initServer(); err != nil {
+		m.lastError = err.Error()
+		return m, nil
+	}
+
+	m.starting = true
+
+	// Capture config values for the async command
+	fps := m.getSelectedFPS()
+	bitrate := QualityPresets[m.selectedQuality].Bitrate
+	codecType := m.getSelectedCodecType()
+	peerManager := m.peerManager
+
+	// Return immediately with a command that does the heavy work async
+	return m, startCaptureAsync(peerManager, isFullscreen, windowID, fps, bitrate, codecType)
+}
+
 // restartStreamer restarts the streamer with new quality settings
 func (m model) restartStreamer() (tea.Model, tea.Cmd) {
 	if !m.sharing || m.peerManager == nil {
@@ -394,11 +653,13 @@ func (m model) restartStreamer() (tea.Model, tea.Cmd) {
 		m.streamer = nil
 	}
 
-	// Create new streamer with updated bitrate
+	// Create new streamer with updated bitrate and current codec
 	bitrate := QualityPresets[m.selectedQuality].Bitrate
-	m.streamer = NewStreamerWithBitrate(m.peerManager, m.config.FPS, bitrate)
-	m.streamer.SetCaptureFunc(func() (*image.RGBA, error) {
-		return GetLatestFrame(time.Second)
+	codecType := m.getSelectedCodecType()
+	fps := m.getSelectedFPS()
+	m.streamer = NewStreamerWithCodec(m.peerManager, fps, bitrate, codecType)
+	m.streamer.SetCaptureFunc(func() (*BGRAFrame, error) {
+		return GetLatestFrameBGRA(time.Second)
 	})
 
 	if err := m.streamer.Start(); err != nil {
@@ -415,18 +676,21 @@ func (m *model) initServer() error {
 		return nil
 	}
 
-	// Generate room code (only once)
-	m.roomCode = GenerateRoomCode()
+	// Generate room code only if not already set (preserve on codec restart)
+	if m.roomCode == "" {
+		m.roomCode = GenerateRoomCode()
+	}
 
-	// Create peer manager with ICE config (reused across source switches)
+	// Create peer manager with ICE config and selected codec
 	iceConfig := ICEConfig{
 		TURNServer: m.config.TURNServer,
 		TURNUser:   m.config.TURNUser,
 		TURNPass:   m.config.TURNPass,
 		ForceRelay: m.config.ForceRelay,
 	}
+	codecType := m.getSelectedCodecType()
 	var err error
-	m.peerManager, err = NewPeerManagerWithICE(iceConfig)
+	m.peerManager, err = NewPeerManagerWithCodec(iceConfig, codecType)
 	if err != nil {
 		return fmt.Errorf("failed to create peer manager: %v", err)
 	}
@@ -525,7 +789,12 @@ func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Stop any existing capture (but keep server)
+	// If already starting, ignore
+	if m.starting {
+		return m, nil
+	}
+
+	// Stop any existing capture synchronously (this is fast)
 	m.stopCapture()
 
 	source := m.sources[index]
@@ -533,42 +802,65 @@ func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
 	m.isFullscreen = source.IsFullscreen
 	m.lastError = ""
 
-	// Initialize server if not already running
+	// Store window ID for restarts
+	var windowID uint32
+	if !source.IsFullscreen && source.Window != nil {
+		windowID = source.Window.ID
+		m.activeWindowID = windowID
+	} else {
+		windowID = 0
+		m.activeWindowID = 0
+	}
+
+	// Initialize server synchronously (needed for peerManager, and sets shareURL for display)
+	// This is fast for local mode, may block briefly for remote WebSocket connection
 	if err := m.initServer(); err != nil {
 		m.lastError = err.Error()
 		return m, nil
 	}
 
-	// Start capture
-	var err error
-	if source.IsFullscreen {
-		err = StartDisplayCapture(0, 0, m.config.FPS)
-	} else {
-		err = StartWindowCapture(source.Window.ID, 0, 0, m.config.FPS)
-	}
+	// Now set starting state (after server is ready so URL shows)
+	m.starting = true
 
-	if err != nil {
-		m.lastError = fmt.Sprintf("Failed to start capture: %v", err)
-		return m, nil
-	}
-
-	// Create new streamer with selected quality
+	// Capture config values for the async command
+	isFullscreen := source.IsFullscreen
+	fps := m.getSelectedFPS()
 	bitrate := QualityPresets[m.selectedQuality].Bitrate
-	m.streamer = NewStreamerWithBitrate(m.peerManager, m.config.FPS, bitrate)
-	m.streamer.SetCaptureFunc(func() (*image.RGBA, error) {
-		return GetLatestFrame(time.Second)
-	})
+	codecType := m.getSelectedCodecType()
+	peerManager := m.peerManager // Capture pointer for async use
 
-	if err := m.streamer.Start(); err != nil {
-		m.lastError = fmt.Sprintf("Failed to start streamer: %v", err)
-		StopCapture()
-		return m, nil
+	// Return immediately with a command that does the heavy work async
+	return m, startCaptureAsync(peerManager, isFullscreen, windowID, fps, bitrate, codecType)
+}
+
+// startCaptureAsync returns a command that starts capture in a goroutine
+func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowID uint32, fps, bitrate int, codecType CodecType) tea.Cmd {
+	return func() tea.Msg {
+		// Start capture (this blocks on ScreenCaptureKit)
+		var err error
+		if isFullscreen {
+			err = StartDisplayCapture(0, 0, fps)
+		} else {
+			err = StartWindowCapture(windowID, 0, 0, fps)
+		}
+
+		if err != nil {
+			return captureErrorMsg{err: fmt.Sprintf("Failed to start capture: %v", err)}
+		}
+
+		// Create streamer
+		streamer := NewStreamerWithCodec(peerManager, fps, bitrate, codecType)
+		streamer.SetCaptureFunc(func() (*BGRAFrame, error) {
+			return GetLatestFrameBGRA(time.Second)
+		})
+
+		if err := streamer.Start(); err != nil {
+			StopCapture()
+			return captureErrorMsg{err: fmt.Sprintf("Failed to start streamer: %v", err)}
+		}
+
+		return captureStartedMsg{streamer: streamer}
 	}
-
-	m.sharing = true
-	m.startTime = time.Now()
-
-	return m, tickCmd()
 }
 
 // stopCapture stops the current capture but keeps server running
@@ -620,6 +912,12 @@ func (m model) View() string {
 	// Two-column layout
 	b.WriteString(m.renderColumns())
 
+	// Viewer list panel (if sharing and has viewers or waiting)
+	if m.sharing {
+		b.WriteString("\n")
+		b.WriteString(m.renderViewerList())
+	}
+
 	// Stats panel (if enabled and sharing)
 	if m.showStats && m.sharing {
 		b.WriteString("\n")
@@ -665,17 +963,43 @@ func (m model) renderSharingStatus() string {
 	}
 	b.WriteString("\n")
 
-	// Currently sharing
-	if m.sharing && m.selectedSource >= 0 && m.selectedSource < len(m.sources) {
+	// Show status based on state
+	if m.starting && m.selectedSource >= 0 && m.selectedSource < len(m.sources) {
+		// Starting capture (async)
+		source := m.sources[m.selectedSource]
+		b.WriteString(statusStyle.Render("Starting: "))
+		b.WriteString(normalStyle.Render(truncate(source.DisplayName, 30)))
+		b.WriteString("  ")
+		b.WriteString(dimStyle.Render("please wait..."))
+	} else if m.sharing && m.selectedSource >= 0 && m.selectedSource < len(m.sources) {
+		// Currently sharing
 		source := m.sources[m.selectedSource]
 		b.WriteString(statusStyle.Render("Sharing: "))
-		b.WriteString(selectedStyle.Render(truncate(source.DisplayName, 40)))
+		b.WriteString(selectedStyle.Render(truncate(source.DisplayName, 30)))
 		b.WriteString("  ")
 
 		// Quality
 		b.WriteString(statusStyle.Render("Quality: "))
 		b.WriteString(normalStyle.Render(QualityPresets[m.selectedQuality].Name))
-		b.WriteString(dimStyle.Render(fmt.Sprintf(" (%s)", QualityPresets[m.selectedQuality].Description)))
+		b.WriteString("  ")
+
+		// Codec with hardware indicator
+		b.WriteString(statusStyle.Render("Codec: "))
+		if m.streamer != nil {
+			codecName := string(m.streamer.GetCodecType())
+			if m.streamer.IsHardwareAccelerated() {
+				b.WriteString(selectedStyle.Render(codecName + " [HW]"))
+			} else {
+				b.WriteString(normalStyle.Render(codecName))
+			}
+		} else if m.selectedCodec >= 0 && m.selectedCodec < len(AvailableCodecs) {
+			codec := AvailableCodecs[m.selectedCodec]
+			if codec.IsHardware {
+				b.WriteString(selectedStyle.Render(codec.Name + " [HW]"))
+			} else {
+				b.WriteString(normalStyle.Render(codec.Name))
+			}
+		}
 		b.WriteString("  ")
 
 		// Viewer count
@@ -697,33 +1021,43 @@ func (m model) renderColumns() string {
 	// Render sources column
 	sourcesContent := m.renderSourcesList()
 
-	// Render quality column
+	// Render quality, FPS and codec as a combined right panel
 	qualityContent := m.renderQualityList()
+	fpsContent := m.renderFPSList()
+	codecContent := m.renderCodecList()
 
 	// Create boxes with appropriate styles based on active column
-	var sourcesBox, qualityBox string
+	var sourcesBox string
+	rightPanelContent := qualityContent + "\n\n" + fpsContent + "\n\n" + codecContent
 
 	sourcesTitle := " Sources "
-	qualityTitle := " Quality "
+	rightTitle := " Settings "
+
+	isRightPanelActive := m.activeColumn == columnQuality || m.activeColumn == columnFPS || m.activeColumn == columnCodec
 
 	if m.activeColumn == columnSources {
 		sourcesBox = activeBoxStyle.Width(44).Render(
 			boxTitleStyle.Render(sourcesTitle) + "\n" + sourcesContent,
 		)
-		qualityBox = inactiveBoxStyle.Width(26).Render(
-			boxTitleDimStyle.Render(qualityTitle) + "\n" + qualityContent,
-		)
 	} else {
 		sourcesBox = inactiveBoxStyle.Width(44).Render(
 			boxTitleDimStyle.Render(sourcesTitle) + "\n" + sourcesContent,
 		)
-		qualityBox = activeBoxStyle.Width(26).Render(
-			boxTitleStyle.Render(qualityTitle) + "\n" + qualityContent,
+	}
+
+	var rightBox string
+	if isRightPanelActive {
+		rightBox = activeBoxStyle.Width(28).Render(
+			boxTitleStyle.Render(rightTitle) + "\n" + rightPanelContent,
+		)
+	} else {
+		rightBox = inactiveBoxStyle.Width(28).Render(
+			boxTitleDimStyle.Render(rightTitle) + "\n" + rightPanelContent,
 		)
 	}
 
 	// Join columns horizontally
-	return lipgloss.JoinHorizontal(lipgloss.Top, sourcesBox, " ", qualityBox)
+	return lipgloss.JoinHorizontal(lipgloss.Top, sourcesBox, " ", rightBox)
 }
 
 func (m model) renderSourcesList() string {
@@ -734,26 +1068,35 @@ func (m model) renderSourcesList() string {
 		return b.String()
 	}
 
+	windowNum := 0 // Counter for window numbers (1-9)
 	for i, source := range m.sources {
 		cursor := "  "
 		if m.activeColumn == columnSources && i == m.sourceCursor {
 			cursor = "> "
 		}
 
-		// Format label
+		// Format label with appropriate shortcut key
 		var label string
 		if source.IsFullscreen {
 			label = "[F] " + source.DisplayName
 		} else {
-			label = fmt.Sprintf("[%d] %s", i, truncate(source.DisplayName, 34))
+			windowNum++
+			if windowNum <= 9 {
+				label = fmt.Sprintf("[%d] %s", windowNum, truncate(source.DisplayName, 34))
+			} else {
+				label = "[ ] " + truncate(source.DisplayName, 34)
+			}
 		}
 
 		// Style based on selection state
 		var line string
 		isSharing := m.sharing && i == m.selectedSource
+		isStarting := m.starting && i == m.selectedSource
 
 		if isSharing {
 			line = selectedStyle.Render(cursor + label)
+		} else if isStarting {
+			line = normalStyle.Render(cursor + label)
 		} else if m.activeColumn == columnSources && i == m.sourceCursor {
 			line = normalStyle.Render(cursor + label)
 		} else {
@@ -763,6 +1106,8 @@ func (m model) renderSourcesList() string {
 		b.WriteString(line)
 		if isSharing {
 			b.WriteString(dimStyle.Render(" *"))
+		} else if isStarting {
+			b.WriteString(dimStyle.Render(" ..."))
 		}
 		b.WriteString("\n")
 	}
@@ -772,6 +1117,9 @@ func (m model) renderSourcesList() string {
 
 func (m model) renderQualityList() string {
 	var b strings.Builder
+
+	b.WriteString(dimStyle.Render("--- Quality ---"))
+	b.WriteString("\n")
 
 	for i, preset := range QualityPresets {
 		cursor := "  "
@@ -801,6 +1149,135 @@ func (m model) renderQualityList() string {
 	return strings.TrimSuffix(b.String(), "\n")
 }
 
+func (m model) renderFPSList() string {
+	var b strings.Builder
+
+	b.WriteString(dimStyle.Render("--- FPS ---"))
+	b.WriteString("\n")
+
+	for i, preset := range FPSPresets {
+		cursor := "  "
+		if m.activeColumn == columnFPS && i == m.fpsCursor {
+			cursor = "> "
+		}
+
+		// Format: value + description
+		label := fmt.Sprintf("%s (%s)", preset.Name, preset.Description)
+
+		// Style based on selection state
+		var line string
+		isSelected := i == m.selectedFPS
+
+		if isSelected {
+			line = selectedStyle.Render(cursor + label)
+		} else if m.activeColumn == columnFPS && i == m.fpsCursor {
+			line = normalStyle.Render(cursor + label)
+		} else {
+			line = dimStyle.Render(cursor + label)
+		}
+
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+
+	return strings.TrimSuffix(b.String(), "\n")
+}
+
+func (m model) renderCodecList() string {
+	var b strings.Builder
+
+	b.WriteString(dimStyle.Render("--- Codec ---"))
+	b.WriteString("\n")
+
+	for i, codec := range AvailableCodecs {
+		cursor := "  "
+		if m.activeColumn == columnCodec && i == m.codecCursor {
+			cursor = "> "
+		}
+
+		// Format: name + description + hardware indicator
+		hwIndicator := ""
+		if codec.IsHardware {
+			hwIndicator = " [HW]"
+		}
+		label := fmt.Sprintf("%s (%s)%s", codec.Name, codec.Description, hwIndicator)
+
+		// Style based on selection state
+		var line string
+		isSelected := i == m.selectedCodec
+
+		if isSelected {
+			line = selectedStyle.Render(cursor + label)
+		} else if m.activeColumn == columnCodec && i == m.codecCursor {
+			line = normalStyle.Render(cursor + label)
+		} else {
+			line = dimStyle.Render(cursor + label)
+		}
+
+		b.WriteString(line)
+		b.WriteString("\n")
+	}
+
+	return strings.TrimSuffix(b.String(), "\n")
+}
+
+func (m model) renderViewerList() string {
+	viewerBoxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("11")).
+		Padding(0, 1).
+		Width(74)
+
+	var content strings.Builder
+
+	// Get viewer info from peer manager
+	var viewers []ViewerInfo
+	if m.peerManager != nil {
+		viewers = m.peerManager.GetViewerInfo()
+	}
+
+	// Header with count
+	header := fmt.Sprintf(" Viewers (%d) ", len(viewers))
+	content.WriteString(boxTitleStyle.Render(header))
+	content.WriteString("\n")
+
+	if len(viewers) == 0 {
+		content.WriteString(dimStyle.Render("  Waiting for viewers to connect..."))
+	} else {
+		// Render each viewer on one line
+		var viewerStrs []string
+		for _, v := range viewers {
+			var status string
+			switch v.State {
+			case "connected":
+				connTime := time.Since(v.ConnectedAt).Truncate(time.Second)
+				connType := ""
+				if v.ConnectionType == "relay" {
+					connType = "TURN"
+				} else if v.ConnectionType == "direct" {
+					connType = "P2P"
+				}
+				if connType != "" {
+					status = fmt.Sprintf("%s %s %s", v.PeerID, connType, formatDuration(connTime))
+				} else {
+					status = fmt.Sprintf("%s %s", v.PeerID, formatDuration(connTime))
+				}
+				viewerStrs = append(viewerStrs, viewerStyle.Render(status))
+			case "connecting":
+				status = fmt.Sprintf("%s connecting...", v.PeerID)
+				viewerStrs = append(viewerStrs, dimStyle.Render(status))
+			default:
+				status = fmt.Sprintf("%s [%s]", v.PeerID, v.State)
+				viewerStrs = append(viewerStrs, dimStyle.Render(status))
+			}
+		}
+		content.WriteString("  ")
+		content.WriteString(strings.Join(viewerStrs, "  "))
+	}
+
+	return viewerBoxStyle.Render(content.String())
+}
+
 func (m model) renderStats() string {
 	var b strings.Builder
 
@@ -809,7 +1286,7 @@ func (m model) renderStats() string {
 		Border(lipgloss.RoundedBorder()).
 		BorderForeground(lipgloss.Color("8")).
 		Padding(0, 1).
-		Width(72)
+		Width(74)
 
 	var content strings.Builder
 	content.WriteString(boxTitleDimStyle.Render(" Stats "))
@@ -856,34 +1333,6 @@ func (m model) renderStats() string {
 
 	content.WriteString(dimStyle.Render("Data: "))
 	content.WriteString(normalStyle.Render(formatBytes(m.stats.BytesSent)))
-	content.WriteString("  ")
-
-	// Viewer info with connection type
-	if m.peerManager != nil {
-		viewers := m.peerManager.GetViewerInfo()
-		content.WriteString(dimStyle.Render("Viewers: "))
-		if len(viewers) == 0 {
-			content.WriteString(dimStyle.Render("none"))
-		} else {
-			var viewerStrs []string
-			for _, v := range viewers {
-				state := v.State
-				if state == "connected" {
-					connTime := time.Since(v.ConnectedAt).Truncate(time.Second)
-					connType := ""
-					if v.ConnectionType == "relay" {
-						connType = " TURN"
-					} else if v.ConnectionType == "direct" {
-						connType = " P2P"
-					}
-					viewerStrs = append(viewerStrs, fmt.Sprintf("%s (%s%s)", v.PeerID, connTime, connType))
-				} else {
-					viewerStrs = append(viewerStrs, fmt.Sprintf("%s [%s]", v.PeerID, state))
-				}
-			}
-			content.WriteString(normalStyle.Render(strings.Join(viewerStrs, ", ")))
-		}
-	}
 
 	b.WriteString(statsBoxStyle.Render(content.String()))
 	return b.String()
@@ -928,7 +1377,8 @@ func (m model) renderHelp() string {
 	parts = append(parts, "tab/←→ switch column")
 	parts = append(parts, "↑/↓ navigate")
 	parts = append(parts, "enter select")
-	parts = append(parts, "1-7 quality")
+	parts = append(parts, "f fullscreen")
+	parts = append(parts, "1-9 window")
 
 	if m.serverStarted {
 		parts = append(parts, "c copy URL")

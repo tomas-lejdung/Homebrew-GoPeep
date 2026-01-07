@@ -591,7 +591,16 @@ func GetLatestFrame(timeout time.Duration) (*image.RGBA, error) {
 	return frameDataToImage(frame), nil
 }
 
+// BGRAFrame holds raw BGRA frame data without conversion
+type BGRAFrame struct {
+	Data   []byte
+	Width  int
+	Height int
+	Stride int
+}
+
 // frameDataToImage converts C FrameData (BGRA) to Go image.RGBA
+// Deprecated: Use frameDataToBGRA for better performance
 func frameDataToImage(frame C.FrameData) *image.RGBA {
 	width := int(frame.width)
 	height := int(frame.height)
@@ -620,6 +629,37 @@ func frameDataToImage(frame C.FrameData) *image.RGBA {
 	}
 
 	return img
+}
+
+// frameDataToBGRA returns raw BGRA data without color conversion
+func frameDataToBGRA(frame C.FrameData) *BGRAFrame {
+	width := int(frame.width)
+	height := int(frame.height)
+	bytesPerRow := int(frame.bytes_per_row)
+	dataSize := height * bytesPerRow
+
+	// Copy the raw BGRA data (convert C.uint8_t slice to Go byte slice)
+	srcData := unsafe.Slice((*byte)(unsafe.Pointer(frame.data)), dataSize)
+	data := make([]byte, dataSize)
+	copy(data, srcData)
+
+	return &BGRAFrame{
+		Data:   data,
+		Width:  width,
+		Height: height,
+		Stride: bytesPerRow,
+	}
+}
+
+// GetLatestFrameBGRA gets the latest captured frame as raw BGRA data
+func GetLatestFrameBGRA(timeout time.Duration) (*BGRAFrame, error) {
+	frame := C.get_latest_frame(C.int(timeout.Milliseconds()))
+	if frame.data == nil {
+		return nil, fmt.Errorf("no frame available")
+	}
+	defer C.free_frame(frame)
+
+	return frameDataToBGRA(frame), nil
 }
 
 // HasScreenRecordingPermission checks if screen recording is allowed
