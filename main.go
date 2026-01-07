@@ -604,7 +604,7 @@ func runRemoteShareMode(config Config) {
 }
 
 // setupRemoteSignaling connects the WebSocket to the peer manager
-// DEPRECATED: Use setupMultiRemoteSignaling instead
+// DEPRECATED: Use setupRemotePeerSignaling instead
 // setupRemoteSignaling connects a WebSocket to the peer manager
 // onDisconnect is called when the WebSocket disconnects (optional, can be nil)
 func setupRemoteSignaling(conn *websocket.Conn, pm *LegacyPeerManager) {
@@ -612,7 +612,7 @@ func setupRemoteSignaling(conn *websocket.Conn, pm *LegacyPeerManager) {
 }
 
 // setupRemoteSignalingWithCallback connects a WebSocket to the peer manager with a disconnect callback
-// DEPRECATED: Use setupMultiRemoteSignaling instead
+// DEPRECATED: Use setupRemotePeerSignaling instead
 func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *LegacyPeerManager, onDisconnect func()) {
 	// Counter for peer IDs
 	var peerCounter int
@@ -691,8 +691,8 @@ func setupRemoteSignalingWithCallback(conn *websocket.Conn, pm *LegacyPeerManage
 	}()
 }
 
-// setupMultiSignaling connects the signal server to the multi peer manager
-func setupMultiSignaling(server *sig.Server, pm *PeerManager, roomCode string, password string) {
+// setupPeerSignaling connects the signal server to the peer manager
+func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, password string) {
 	localSharer := server.RegisterLocalSharer(roomCode, password)
 
 	var peerCounter int
@@ -814,8 +814,8 @@ func setupMultiSignaling(server *sig.Server, pm *PeerManager, roomCode string, p
 	}()
 }
 
-// setupMultiRemoteSignaling connects WebSocket to multi peer manager
-func setupMultiRemoteSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnect func()) {
+// setupRemotePeerSignaling connects WebSocket to the peer manager with disconnect callback
+func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnect func()) {
 	var peerCounter int
 	var peerMu sync.Mutex
 	var connMu sync.Mutex // Protect WebSocket writes
@@ -957,7 +957,7 @@ func setupMultiRemoteSignaling(conn *websocket.Conn, pm *PeerManager, onDisconne
 }
 
 // setupSignaling connects the signal server to the peer manager
-// DEPRECATED: Use setupMultiSignaling instead
+// DEPRECATED: Use setupPeerSignaling instead
 func setupSignaling(server *sig.Server, pm *LegacyPeerManager, roomCode string, password string) {
 	localSharer := server.RegisterLocalSharer(roomCode, password)
 
