@@ -642,61 +642,6 @@ uint32_t mc_get_topmost_window(uint32_t* window_ids, int count) {
     }
 }
 
-// Get the actual frontmost window ID (the window receiving keyboard input)
-// This uses NSWorkspace to get the frontmost application, then finds its topmost window
-uint32_t mc_get_frontmost_window_id() {
-    @autoreleasepool {
-        // Get the frontmost application (the one receiving keyboard input)
-        NSRunningApplication *frontApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
-        if (frontApp == nil) return 0;
-
-        pid_t frontPID = frontApp.processIdentifier;
-
-        // Get all on-screen windows in z-order
-        CFArrayRef windowList = CGWindowListCopyWindowInfo(
-            kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
-            kCGNullWindowID
-        );
-
-        if (windowList == NULL) return 0;
-
-        uint32_t frontmostWindowID = 0;
-        CFIndex listCount = CFArrayGetCount(windowList);
-
-        // Find the first (topmost) window belonging to the frontmost application
-        for (CFIndex i = 0; i < listCount && frontmostWindowID == 0; i++) {
-            CFDictionaryRef windowInfo = (CFDictionaryRef)CFArrayGetValueAtIndex(windowList, i);
-
-            // Get window layer - only care about normal windows (layer 0)
-            CFNumberRef layerRef = (CFNumberRef)CFDictionaryGetValue(windowInfo, kCGWindowLayer);
-            if (layerRef == NULL) continue;
-
-            int layer;
-            CFNumberGetValue(layerRef, kCFNumberIntType, &layer);
-            if (layer != 0) continue;
-
-            // Get owner PID
-            CFNumberRef pidRef = (CFNumberRef)CFDictionaryGetValue(windowInfo, kCGWindowOwnerPID);
-            if (pidRef == NULL) continue;
-
-            pid_t windowPID;
-            CFNumberGetValue(pidRef, kCFNumberIntType, &windowPID);
-
-            // Check if this window belongs to the frontmost app
-            if (windowPID == frontPID) {
-                // Get window ID
-                CFNumberRef windowIDRef = (CFNumberRef)CFDictionaryGetValue(windowInfo, kCGWindowNumber);
-                if (windowIDRef != NULL) {
-                    CFNumberGetValue(windowIDRef, kCFNumberIntType, &frontmostWindowID);
-                }
-            }
-        }
-
-        CFRelease(windowList);
-        return frontmostWindowID;
-    }
-}
-
 // Get number of active instances
 int mc_get_active_count() {
     int count = 0;
@@ -1001,12 +946,6 @@ func (mc *MultiCapture) GetLatestFrameBGRA(inst *CaptureInstance, timeout time.D
 		cData:  unsafe.Pointer(frame.data),
 		slot:   inst.slot,
 	}, nil
-}
-
-// GetFrontmostWindowID returns the window ID of the frontmost window (receiving keyboard input)
-// This is the window that belongs to the frontmost application in macOS
-func GetFrontmostWindowID() uint32 {
-	return uint32(C.mc_get_frontmost_window_id())
 }
 
 // GetTopmostWindow returns which of the given window IDs is topmost in z-order

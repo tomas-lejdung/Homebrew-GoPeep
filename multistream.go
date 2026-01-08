@@ -774,22 +774,6 @@ func (mpm *PeerManager) AddICECandidate(peerID string, candidateJSON string) err
 	return peerInfo.PC.AddICECandidate(candidate)
 }
 
-// WriteVideoSample writes a video sample to a specific track
-func (mpm *PeerManager) WriteVideoSample(trackID string, data []byte, duration time.Duration) error {
-	mpm.mu.RLock()
-	trackInfo, exists := mpm.tracks[trackID]
-	mpm.mu.RUnlock()
-
-	if !exists {
-		return fmt.Errorf("track not found: %s", trackID)
-	}
-
-	return trackInfo.Track.WriteSample(media.Sample{
-		Data:     data,
-		Duration: duration,
-	})
-}
-
 // detectConnectionType checks if connection is direct or relayed
 func (mpm *PeerManager) detectConnectionType(pc *webrtc.PeerConnection) string {
 	stats := pc.GetStats()

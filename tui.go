@@ -953,15 +953,6 @@ func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// selectSourceByIndex selects a source by its index in the sources list
-func (m model) selectSourceByIndex(index int) (tea.Model, tea.Cmd) {
-	if index >= 0 && index < len(m.sources) {
-		m.sourceCursor = index
-		return m.startSharing(index)
-	}
-	return m, nil
-}
-
 // selectWindowByNumber toggles window selection by its display number (1-9)
 // Windows are numbered starting from 1, excluding fullscreen
 func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
@@ -1395,51 +1386,6 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 	fullscreen := m.fullscreenSelected
 
 	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fullscreen, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode, codecType)
-}
-
-// restartMultiStreamWithSelection restarts multi-stream with updated window selection (legacy - full restart)
-func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
-	// Stop current multi streamer
-	if m.streamer != nil {
-		m.streamer.Stop()
-		m.streamer = nil
-	}
-
-	// If no windows selected, just stop completely
-	if len(m.selectedWindows) == 0 {
-		// Full cleanup
-		if m.peerManager != nil {
-			m.peerManager.Close()
-			m.peerManager = nil
-		}
-		if m.wsConn != nil {
-			m.wsConn.Close()
-			m.wsConn = nil
-		}
-		m.sharing = false
-		m.serverStarted = false
-		return m, nil
-	}
-
-	// Close multi peer manager to reset tracks (but keep server/websocket)
-	if m.peerManager != nil {
-		m.peerManager.Close()
-		m.peerManager = nil
-	}
-
-	// We need to fully restart the server connection for new tracks
-	// Close existing websocket if any
-	if m.wsConn != nil {
-		m.wsConn.Close()
-		m.wsConn = nil
-	}
-
-	// Mark as not sharing/server to reinitialize
-	m.sharing = false
-	m.serverStarted = false
-
-	// Start fresh with new selection
-	return m.startMultiWindowSharing()
 }
 
 // updateMultiStreamSelection dynamically adds/removes windows/display without full restart
