@@ -642,6 +642,109 @@ uint32_t mc_get_topmost_window(uint32_t* window_ids, int count) {
     }
 }
 
+// Get window bounds by window ID
+// Returns 0 on success, -1 on error
+// x, y are in screen coordinates (origin top-left)
+int mc_get_window_bounds(uint32_t window_id, double* out_x, double* out_y, double* out_width, double* out_height) {
+    @autoreleasepool {
+        CFArrayRef windowList = CGWindowListCopyWindowInfo(
+            kCGWindowListOptionIncludingWindow,
+            window_id
+        );
+
+        if (windowList == NULL || CFArrayGetCount(windowList) == 0) {
+            if (windowList) CFRelease(windowList);
+            return -1;
+        }
+
+        CFDictionaryRef windowInfo = (CFDictionaryRef)CFArrayGetValueAtIndex(windowList, 0);
+        CFDictionaryRef boundsDict = (CFDictionaryRef)CFDictionaryGetValue(windowInfo, kCGWindowBounds);
+
+        if (boundsDict == NULL) {
+            CFRelease(windowList);
+            return -1;
+        }
+
+        CGRect bounds;
+        if (!CGRectMakeWithDictionaryRepresentation(boundsDict, &bounds)) {
+            CFRelease(windowList);
+            return -1;
+        }
+
+        *out_x = bounds.origin.x;
+        *out_y = bounds.origin.y;
+        *out_width = bounds.size.width;
+        *out_height = bounds.size.height;
+
+        CFRelease(windowList);
+        return 0;
+    }
+}
+
+// Get the OS-focused window (from the frontmost application)
+// Returns the window ID and bounds of the focused window
+// Returns 0 in out_window_id if no valid focused window found
+void mc_get_focused_window(uint32_t* out_window_id, double* out_x, double* out_y, double* out_width, double* out_height) {
+    @autoreleasepool {
+        *out_window_id = 0;
+        *out_x = 0;
+        *out_y = 0;
+        *out_width = 0;
+        *out_height = 0;
+
+        // Get the frontmost application
+        NSRunningApplication *frontApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
+        if (!frontApp) return;
+
+        pid_t frontPID = frontApp.processIdentifier;
+
+        // Get all on-screen windows
+        CFArrayRef windowList = CGWindowListCopyWindowInfo(
+            kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
+            kCGNullWindowID
+        );
+        if (!windowList) return;
+
+        CFIndex count = CFArrayGetCount(windowList);
+
+        for (CFIndex i = 0; i < count; i++) {
+            NSDictionary *info = (__bridge NSDictionary *)CFArrayGetValueAtIndex(windowList, i);
+
+            // Check if window belongs to frontmost app
+            NSNumber *pidNum = info[(NSString *)kCGWindowOwnerPID];
+            if (pidNum.intValue != frontPID) continue;
+
+            // Only normal windows (layer 0)
+            NSNumber *layerNum = info[(NSString *)kCGWindowLayer];
+            if (layerNum.intValue != 0) continue;
+
+            // Get window ID
+            NSNumber *windowIDNum = info[(NSString *)kCGWindowNumber];
+            if (!windowIDNum) continue;
+
+            // Get bounds
+            NSDictionary *boundsDict = info[(NSString *)kCGWindowBounds];
+            if (!boundsDict) continue;
+
+            CGRect bounds;
+            if (!CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)boundsDict, &bounds)) continue;
+
+            // Skip tiny windows
+            if (bounds.size.width < 100 || bounds.size.height < 100) continue;
+
+            // Found a valid focused window
+            *out_window_id = windowIDNum.unsignedIntValue;
+            *out_x = bounds.origin.x;
+            *out_y = bounds.origin.y;
+            *out_width = bounds.size.width;
+            *out_height = bounds.size.height;
+            break;
+        }
+
+        CFRelease(windowList);
+    }
+}
+
 // Get number of active instances
 int mc_get_active_count() {
     int count = 0;
@@ -961,6 +1064,61 @@ func GetTopmostWindow(windowIDs []uint32) uint32 {
 	}
 
 	return uint32(C.mc_get_topmost_window(&cArray[0], C.int(len(windowIDs))))
+}
+
+// WindowBounds represents the position and size of a window on screen
+type WindowBounds struct {
+	X, Y          float64 // Position (screen coordinates, origin top-left)
+	Width, Height float64 // Size
+}
+
+// GetWindowBounds returns the bounds of a window by its ID
+// Returns nil if the window doesn't exist or bounds can't be retrieved
+func GetWindowBounds(windowID uint32) *WindowBounds {
+	if windowID == 0 {
+		return nil
+	}
+
+	var x, y, w, h C.double
+	result := C.mc_get_window_bounds(C.uint32_t(windowID), &x, &y, &w, &h)
+	if result != 0 {
+		return nil
+	}
+
+	return &WindowBounds{
+		X:      float64(x),
+		Y:      float64(y),
+		Width:  float64(w),
+		Height: float64(h),
+	}
+}
+
+// FocusedWindowInfo contains information about the OS-focused window
+type FocusedWindowInfo struct {
+	WindowID uint32
+	Bounds   WindowBounds
+}
+
+// GetFocusedWindow returns the currently OS-focused window (from frontmost app)
+// Returns nil if no valid focused window is found
+func GetFocusedWindow() *FocusedWindowInfo {
+	var windowID C.uint32_t
+	var x, y, w, h C.double
+	C.mc_get_focused_window(&windowID, &x, &y, &w, &h)
+
+	if windowID == 0 {
+		return nil
+	}
+
+	return &FocusedWindowInfo{
+		WindowID: uint32(windowID),
+		Bounds: WindowBounds{
+			X:      float64(x),
+			Y:      float64(y),
+			Width:  float64(w),
+			Height: float64(h),
+		},
+	}
 }
 
 // ============================================================================
