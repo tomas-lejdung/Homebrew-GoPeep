@@ -6,6 +6,7 @@ import (
 	"log"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pion/webrtc/v3"
@@ -769,10 +770,14 @@ type StreamPipeline struct {
 	currentBitrate float64   // Calculated bitrate in kbps
 
 	// Size change tracking (for debounced notifications)
-	lastWidth       int
-	lastHeight      int
-	sizeChangeTimer *time.Timer
-	sizeChangeMu    sync.Mutex
+	lastWidth          int
+	lastHeight         int
+	sizeChangeTimer    *time.Timer
+	sizeChangePending  bool
+	sizeChangeMu       sync.Mutex
+	pendingSizeTrackID string
+	pendingSizeWidth   int
+	pendingSizeHeight  int
 }
 
 // Streamer manages multiple stream pipelines
@@ -1729,16 +1734,17 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 
 		case <-statsTicker.C:
 			// Update FPS and bitrate calculations
-			p.mu.Lock()
 			now := time.Now()
+			currentByteCount := atomic.LoadUint64(&p.byteCount)
+			p.mu.Lock()
 			elapsed := now.Sub(p.lastStatsTime).Seconds()
 			if elapsed > 0 {
 				p.currentFPS = float64(framesSinceLastStats) / elapsed
-				bytesDiff := p.byteCount - p.lastByteCount
+				bytesDiff := currentByteCount - p.lastByteCount
 				p.currentBitrate = float64(bytesDiff) * 8 / elapsed / 1000 // kbps
 			}
 			p.lastStatsTime = now
-			p.lastByteCount = p.byteCount
+			p.lastByteCount = currentByteCount
 			framesSinceLastStats = 0
 			p.mu.Unlock()
 
@@ -1776,20 +1782,37 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 				// Uses both the local callback and PeerManager notification for signaling
 				if p.trackInfo.IsFocused {
 					p.sizeChangeMu.Lock()
-					if p.sizeChangeTimer != nil {
-						p.sizeChangeTimer.Stop()
+					// Store pending size change info
+					p.pendingSizeTrackID = p.trackInfo.TrackID
+					p.pendingSizeWidth = frame.Width
+					p.pendingSizeHeight = frame.Height
+					p.sizeChangePending = true
+
+					if p.sizeChangeTimer == nil {
+						// Create timer once, reuse thereafter
+						p.sizeChangeTimer = time.AfterFunc(250*time.Millisecond, func() {
+							p.sizeChangeMu.Lock()
+							if p.sizeChangePending {
+								trackID := p.pendingSizeTrackID
+								width := p.pendingSizeWidth
+								height := p.pendingSizeHeight
+								p.sizeChangePending = false
+								p.sizeChangeMu.Unlock()
+
+								// Notify via PeerManager for WebSocket signaling
+								pm.NotifySizeChange(trackID, width, height)
+								// Also call local callback if set
+								if onSizeChange != nil {
+									onSizeChange(trackID, width, height)
+								}
+							} else {
+								p.sizeChangeMu.Unlock()
+							}
+						})
+					} else {
+						// Reset existing timer
+						p.sizeChangeTimer.Reset(250 * time.Millisecond)
 					}
-					trackID := p.trackInfo.TrackID
-					width := frame.Width
-					height := frame.Height
-					p.sizeChangeTimer = time.AfterFunc(250*time.Millisecond, func() {
-						// Notify via PeerManager for WebSocket signaling
-						pm.NotifySizeChange(trackID, width, height)
-						// Also call local callback if set
-						if onSizeChange != nil {
-							onSizeChange(trackID, width, height)
-						}
-					})
 					p.sizeChangeMu.Unlock()
 				}
 			}
@@ -1800,15 +1823,18 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 				continue
 			}
 
-			p.mu.Lock()
-			p.frameCount++
-			p.byteCount += uint64(len(data))
-			p.mu.Unlock()
+			atomic.AddUint64(&p.frameCount, 1)
+			atomic.AddUint64(&p.byteCount, uint64(len(data)))
 			framesSinceLastStats++
 
-			// Write to track
-			if err := pm.WriteVideoSample(p.trackInfo.TrackID, data, frameDuration); err != nil {
-				continue
+			// Write directly to track (cached reference, no map lookup)
+			if p.trackInfo.Track != nil {
+				if err := p.trackInfo.Track.WriteSample(media.Sample{
+					Data:     data,
+					Duration: frameDuration,
+				}); err != nil {
+					continue
+				}
 			}
 		}
 	}
@@ -1817,17 +1843,19 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 // GetStats returns current statistics for this pipeline
 func (p *StreamPipeline) GetStats() StreamPipelineStats {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	fps := p.currentFPS
+	bitrate := p.currentBitrate
+	p.mu.Unlock()
 
 	return StreamPipelineStats{
 		TrackID:   p.trackInfo.TrackID,
 		AppName:   p.trackInfo.AppName,
 		Width:     p.trackInfo.Width,
 		Height:    p.trackInfo.Height,
-		FPS:       p.currentFPS,
-		Bitrate:   p.currentBitrate,
-		Frames:    p.frameCount,
-		Bytes:     p.byteCount,
+		FPS:       fps,
+		Bitrate:   bitrate,
+		Frames:    atomic.LoadUint64(&p.frameCount),
+		Bytes:     atomic.LoadUint64(&p.byteCount),
 		IsFocused: p.trackInfo.IsFocused,
 	}
 }

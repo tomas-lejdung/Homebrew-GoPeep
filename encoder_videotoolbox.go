@@ -29,6 +29,9 @@ typedef struct {
     int output_capacity;
     pthread_mutex_t output_mutex;
     int has_output;
+
+    // CVPixelBuffer pool for efficient buffer reuse
+    CVPixelBufferPoolRef pixel_buffer_pool;
 } VideoToolboxContext;
 
 // Check if VideoToolbox H.264 encoding is available
@@ -303,6 +306,51 @@ VideoToolboxContext* create_videotoolbox_encoder_with_mode(int width, int height
         return NULL;
     }
 
+    // Create CVPixelBufferPool for efficient buffer reuse
+    CFMutableDictionaryRef poolAttrs = CFDictionaryCreateMutable(
+        kCFAllocatorDefault, 0,
+        &kCFTypeDictionaryKeyCallBacks,
+        &kCFTypeDictionaryValueCallBacks
+    );
+
+    // Pool pixel buffer attributes
+    CFMutableDictionaryRef pbAttrs = CFDictionaryCreateMutable(
+        kCFAllocatorDefault, 0,
+        &kCFTypeDictionaryKeyCallBacks,
+        &kCFTypeDictionaryValueCallBacks
+    );
+
+    int poolPixelFormat = kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange;
+    CFNumberRef poolPixelFormatNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &poolPixelFormat);
+    CFDictionarySetValue(pbAttrs, kCVPixelBufferPixelFormatTypeKey, poolPixelFormatNum);
+    CFRelease(poolPixelFormatNum);
+
+    CFNumberRef poolWidthNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &width);
+    CFNumberRef poolHeightNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &height);
+    CFDictionarySetValue(pbAttrs, kCVPixelBufferWidthKey, poolWidthNum);
+    CFDictionarySetValue(pbAttrs, kCVPixelBufferHeightKey, poolHeightNum);
+    CFRelease(poolWidthNum);
+    CFRelease(poolHeightNum);
+
+    // Allow IOSurface backing for better memory efficiency
+    CFDictionarySetValue(pbAttrs, kCVPixelBufferIOSurfacePropertiesKey,
+        (__bridge CFDictionaryRef)@{});
+
+    CVReturn poolStatus = CVPixelBufferPoolCreate(
+        kCFAllocatorDefault,
+        poolAttrs,
+        pbAttrs,
+        &ctx->pixel_buffer_pool
+    );
+
+    CFRelease(poolAttrs);
+    CFRelease(pbAttrs);
+
+    if (poolStatus != kCVReturnSuccess) {
+        // Pool creation failed - encoder will fall back to per-frame allocation
+        ctx->pixel_buffer_pool = NULL;
+    }
+
     ctx->initialized = 1;
     return ctx;
 }
@@ -319,6 +367,9 @@ void destroy_videotoolbox_encoder(VideoToolboxContext* ctx) {
             VTCompressionSessionCompleteFrames(ctx->session, kCMTimeInvalid);
             VTCompressionSessionInvalidate(ctx->session);
             CFRelease(ctx->session);
+        }
+        if (ctx->pixel_buffer_pool) {
+            CVPixelBufferPoolRelease(ctx->pixel_buffer_pool);
         }
         if (ctx->output_buffer) {
             free(ctx->output_buffer);
@@ -338,20 +389,31 @@ const uint8_t* encode_videotoolbox_frame(VideoToolboxContext* ctx, const uint8_t
     int width = ctx->width;
     int height = ctx->height;
 
-    // Create pixel buffer (NV12 format)
+    // Get pixel buffer from pool (or create if pool unavailable)
     CVPixelBufferRef pixelBuffer = NULL;
-    NSDictionary* options = @{
-        (id)kCVPixelBufferCGImageCompatibilityKey: @NO,
-        (id)kCVPixelBufferCGBitmapContextCompatibilityKey: @NO
-    };
+    CVReturn cvStatus;
 
-    CVReturn cvStatus = CVPixelBufferCreate(
-        kCFAllocatorDefault,
-        width, height,
-        kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
-        (__bridge CFDictionaryRef)options,
-        &pixelBuffer
-    );
+    if (ctx->pixel_buffer_pool) {
+        // Use pool for efficient buffer reuse
+        cvStatus = CVPixelBufferPoolCreatePixelBuffer(
+            kCFAllocatorDefault,
+            ctx->pixel_buffer_pool,
+            &pixelBuffer
+        );
+    } else {
+        // Fallback: create buffer directly
+        NSDictionary* options = @{
+            (id)kCVPixelBufferCGImageCompatibilityKey: @NO,
+            (id)kCVPixelBufferCGBitmapContextCompatibilityKey: @NO
+        };
+        cvStatus = CVPixelBufferCreate(
+            kCFAllocatorDefault,
+            width, height,
+            kCVPixelFormatType_420YpCbCr8BiPlanarVideoRange,
+            (__bridge CFDictionaryRef)options,
+            &pixelBuffer
+        );
+    }
 
     if (cvStatus != kCVReturnSuccess || !pixelBuffer) {
         *out_size = 0;
