@@ -473,9 +473,7 @@ import "C"
 
 import (
 	"fmt"
-	"image"
 	"strings"
-	"time"
 	"unsafe"
 )
 
@@ -534,43 +532,7 @@ func ListWindows() ([]WindowInfo, error) {
 	return windows, nil
 }
 
-// StartWindowCapture starts capturing a specific window
-func StartWindowCapture(windowID uint32, width, height, fps int) error {
-	result := C.start_window_capture(C.uint32_t(windowID), C.int(width), C.int(height), C.int(fps))
-	if result != 0 {
-		switch result {
-		case -1:
-			return fmt.Errorf("window not found: %d", windowID)
-		case -2:
-			return fmt.Errorf("failed to add stream output")
-		case -3:
-			return fmt.Errorf("failed to start capture")
-		default:
-			return fmt.Errorf("capture error: %d", result)
-		}
-	}
-	return nil
-}
-
-// StartDisplayCapture starts capturing the main display
-func StartDisplayCapture(width, height, fps int) error {
-	result := C.start_display_capture(C.int(width), C.int(height), C.int(fps))
-	if result != 0 {
-		switch result {
-		case -1:
-			return fmt.Errorf("display not found")
-		case -2:
-			return fmt.Errorf("failed to add stream output")
-		case -3:
-			return fmt.Errorf("failed to start capture")
-		default:
-			return fmt.Errorf("capture error: %d", result)
-		}
-	}
-	return nil
-}
-
-// StopCapture stops the current capture
+// StopCapture stops the current capture (legacy single-capture system)
 func StopCapture() {
 	C.stop_capture()
 }
@@ -578,17 +540,6 @@ func StopCapture() {
 // IsCaptureActive returns true if capture is running
 func IsCaptureActive() bool {
 	return C.is_capture_active() != 0
-}
-
-// GetLatestFrame gets the latest captured frame, blocks until available or timeout
-func GetLatestFrame(timeout time.Duration) (*image.RGBA, error) {
-	frame := C.get_latest_frame(C.int(timeout.Milliseconds()))
-	if frame.data == nil {
-		return nil, fmt.Errorf("no frame available")
-	}
-	defer C.free_frame(frame)
-
-	return frameDataToImage(frame), nil
 }
 
 // BGRAFrame holds raw BGRA frame data without conversion
@@ -602,87 +553,7 @@ type BGRAFrame struct {
 	slot  int            // Capture slot for release (-1 if Go-owned)
 }
 
-// frameDataToImage converts C FrameData (BGRA) to Go image.RGBA
-// Deprecated: Use frameDataToBGRA for better performance
-func frameDataToImage(frame C.FrameData) *image.RGBA {
-	width := int(frame.width)
-	height := int(frame.height)
-	bytesPerRow := int(frame.bytes_per_row)
-
-	// Create RGBA image
-	img := image.NewRGBA(image.Rect(0, 0, width, height))
-
-	// Convert BGRA to RGBA
-	srcData := unsafe.Slice(frame.data, height*bytesPerRow)
-
-	for y := 0; y < height; y++ {
-		srcRow := srcData[y*bytesPerRow : y*bytesPerRow+width*4]
-		dstRow := img.Pix[y*img.Stride : y*img.Stride+width*4]
-
-		for x := 0; x < width; x++ {
-			srcIdx := x * 4
-			dstIdx := x * 4
-
-			// BGRA -> RGBA (cast C.uint8_t to Go uint8)
-			dstRow[dstIdx+0] = uint8(srcRow[srcIdx+2]) // R
-			dstRow[dstIdx+1] = uint8(srcRow[srcIdx+1]) // G
-			dstRow[dstIdx+2] = uint8(srcRow[srcIdx+0]) // B
-			dstRow[dstIdx+3] = uint8(srcRow[srcIdx+3]) // A
-		}
-	}
-
-	return img
-}
-
-// frameDataToBGRA returns raw BGRA data without color conversion
-func frameDataToBGRA(frame C.FrameData) *BGRAFrame {
-	width := int(frame.width)
-	height := int(frame.height)
-	bytesPerRow := int(frame.bytes_per_row)
-	dataSize := height * bytesPerRow
-
-	// Copy the raw BGRA data (convert C.uint8_t slice to Go byte slice)
-	srcData := unsafe.Slice((*byte)(unsafe.Pointer(frame.data)), dataSize)
-	data := make([]byte, dataSize)
-	copy(data, srcData)
-
-	return &BGRAFrame{
-		Data:   data,
-		Width:  width,
-		Height: height,
-		Stride: bytesPerRow,
-	}
-}
-
-// GetLatestFrameBGRA gets the latest captured frame as raw BGRA data
-func GetLatestFrameBGRA(timeout time.Duration) (*BGRAFrame, error) {
-	frame := C.get_latest_frame(C.int(timeout.Milliseconds()))
-	if frame.data == nil {
-		return nil, fmt.Errorf("no frame available")
-	}
-	defer C.free_frame(frame)
-
-	return frameDataToBGRA(frame), nil
-}
-
 // HasScreenRecordingPermission checks if screen recording is allowed
 func HasScreenRecordingPermission() bool {
 	return C.has_screen_recording_permission() != 0
-}
-
-// FindWindowByName finds windows matching a name pattern
-func FindWindowByName(pattern string) ([]WindowInfo, error) {
-	windows, err := ListWindows()
-	if err != nil {
-		return nil, err
-	}
-
-	var matches []WindowInfo
-	for _, w := range windows {
-		if w.MatchesName(pattern) {
-			matches = append(matches, w)
-		}
-	}
-
-	return matches, nil
 }

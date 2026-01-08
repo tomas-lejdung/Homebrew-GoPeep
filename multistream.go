@@ -377,20 +377,6 @@ func (mpm *PeerManager) DeactivateSlot(trackID string) error {
 	return fmt.Errorf("slot not found: %s", trackID)
 }
 
-// GetActiveSlotCount returns the number of currently active slots
-func (mpm *PeerManager) GetActiveSlotCount() int {
-	mpm.mu.RLock()
-	defer mpm.mu.RUnlock()
-
-	count := 0
-	for i := 0; i < 4; i++ {
-		if mpm.slots[i] != nil && mpm.slots[i].Active {
-			count++
-		}
-	}
-	return count
-}
-
 // GetActiveStreamsInfo returns StreamInfo for all active slots
 // Used for sending initial streams-info to new viewers
 func (mpm *PeerManager) GetActiveStreamsInfo() []sig.StreamInfo {
@@ -439,31 +425,6 @@ func (mpm *PeerManager) GetTrackInfo(trackID string) *StreamTrackInfo {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
 	return mpm.tracks[trackID]
-}
-
-// UpdateTrackInfo updates the window info for an existing track
-// Used when swapping capture sources in auto-share mode
-func (mpm *PeerManager) UpdateTrackInfo(trackID string, info *StreamTrackInfo) {
-	mpm.mu.Lock()
-	defer mpm.mu.Unlock()
-	if existing, ok := mpm.tracks[trackID]; ok {
-		existing.WindowID = info.WindowID
-		existing.WindowName = info.WindowName
-		existing.AppName = info.AppName
-		existing.Width = info.Width
-		existing.Height = info.Height
-	}
-	// Also update slot info if using pre-allocated slots
-	for _, slot := range mpm.slots {
-		if slot != nil && slot.Info != nil && slot.Info.TrackID == trackID {
-			slot.Info.WindowID = info.WindowID
-			slot.Info.WindowName = info.WindowName
-			slot.Info.AppName = info.AppName
-			slot.Info.Width = info.Width
-			slot.Info.Height = info.Height
-			break
-		}
-	}
 }
 
 // GetSlot returns the TrackSlot at the given index (0-3)
@@ -582,16 +543,6 @@ func (mpm *PeerManager) GetTracks() []*StreamTrackInfo {
 		tracks = append(tracks, mpm.tracks[id])
 	}
 	return tracks
-}
-
-// SetFocusedTrack sets which track is focused
-func (mpm *PeerManager) SetFocusedTrack(trackID string) {
-	mpm.mu.Lock()
-	defer mpm.mu.Unlock()
-
-	for id, t := range mpm.tracks {
-		t.IsFocused = (id == trackID)
-	}
 }
 
 // SetFocusedWindow sets focus based on window ID
@@ -983,37 +934,6 @@ func (mpm *PeerManager) RemoveTrackFromAllPeers(trackID string) error {
 			}
 			delete(peerInfo.Senders, trackID)
 			log.Printf("Removed track %s from peer %s", trackID, peerID)
-		}
-	}
-	return nil
-}
-
-// ReplaceTrackOnAllPeers replaces a track on all existing peer connections
-// This preserves the transceiver and its mid, avoiding renegotiation issues with codec changes
-func (mpm *PeerManager) ReplaceTrackOnAllPeers(trackID string, newTrack *webrtc.TrackLocalStaticSample) error {
-	mpm.mu.Lock()
-	defer mpm.mu.Unlock()
-
-	log.Printf("ReplaceTrackOnAllPeers: Replacing track %s on %d peer connections", trackID, len(mpm.connections))
-
-	for peerID, peerInfo := range mpm.connections {
-		if sender, ok := peerInfo.Senders[trackID]; ok {
-			log.Printf("ReplaceTrackOnAllPeers: Replacing track %s on peer %s", trackID, peerID)
-			if err := sender.ReplaceTrack(newTrack); err != nil {
-				log.Printf("ReplaceTrackOnAllPeers: Failed to replace track %s on peer %s: %v", trackID, peerID, err)
-				continue
-			}
-			log.Printf("ReplaceTrackOnAllPeers: Successfully replaced track %s on peer %s", trackID, peerID)
-		} else {
-			log.Printf("ReplaceTrackOnAllPeers: No sender for track %s on peer %s, will add new", trackID, peerID)
-			// If no sender exists, add the track (shouldn't happen normally during codec change)
-			sender, err := peerInfo.PC.AddTrack(newTrack)
-			if err != nil {
-				log.Printf("ReplaceTrackOnAllPeers: Failed to add track %s to peer %s: %v", trackID, peerID, err)
-				continue
-			}
-			peerInfo.Senders[trackID] = sender
-			log.Printf("ReplaceTrackOnAllPeers: Added new track %s to peer %s", trackID, peerID)
 		}
 	}
 	return nil

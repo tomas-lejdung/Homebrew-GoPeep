@@ -403,96 +403,6 @@ void mc_stop_all() {
     }
 }
 
-// Start capturing a window in a specific slot (for in-place swapping)
-// Returns 0 on success, negative on error
-int mc_start_window_capture_in_slot(int slot, uint32_t window_id, int target_width, int target_height, int fps) {
-    mc_init();
-
-    if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES) {
-        return -1; // Invalid slot
-    }
-
-    CaptureInstance* inst = &g_instances[slot];
-
-    // Ensure slot is not active (should be stopped before swapping)
-    if (inst->active) {
-        return -5; // Slot is still active
-    }
-
-    __block SCContentFilter* filter = nil;
-    __block int configWidth = target_width;
-    __block int configHeight = target_height;
-    dispatch_semaphore_t findSemaphore = dispatch_semaphore_create(0);
-
-    [SCShareableContent getShareableContentWithCompletionHandler:^(SCShareableContent* content, NSError* error) {
-        if (error == nil && content != nil) {
-            for (SCWindow* window in content.windows) {
-                if (window.windowID == window_id) {
-                    filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:window];
-                    if (configWidth <= 0) configWidth = (int)window.frame.size.width;
-                    if (configHeight <= 0) configHeight = (int)window.frame.size.height;
-                    break;
-                }
-            }
-        }
-        dispatch_semaphore_signal(findSemaphore);
-    }];
-
-    dispatch_semaphore_wait(findSemaphore, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
-
-    if (filter == nil) {
-        return -2; // Window not found
-    }
-
-    @autoreleasepool {
-        inst->config = [[SCStreamConfiguration alloc] init];
-        inst->config.width = configWidth;
-        inst->config.height = configHeight;
-        inst->config.minimumFrameInterval = CMTimeMake(1, fps > 0 ? fps : 30);
-        inst->config.pixelFormat = kCVPixelFormatType_32BGRA;
-        inst->config.showsCursor = YES;
-
-        inst->stream = [[SCStream alloc] initWithFilter:filter configuration:inst->config delegate:nil];
-
-        char queueName[64];
-        snprintf(queueName, sizeof(queueName), "com.gopeep.capture.%d", slot);
-        inst->queue = dispatch_queue_create(queueName, DISPATCH_QUEUE_SERIAL);
-
-        MCStreamOutputDelegate* delegate = [[MCStreamOutputDelegate alloc] init];
-        delegate.instanceIndex = slot;
-        inst->output_delegate = delegate;
-        inst->frame_semaphore = dispatch_semaphore_create(0);
-        inst->window_id = window_id;
-
-        NSError* addError = nil;
-        [inst->stream addStreamOutput:delegate type:SCStreamOutputTypeScreen sampleHandlerQueue:inst->queue error:&addError];
-        if (addError != nil) {
-            NSLog(@"Failed to add stream output for instance %d: %@", slot, addError);
-            return -3;
-        }
-
-        __block int startResult = 0;
-        dispatch_semaphore_t startSemaphore = dispatch_semaphore_create(0);
-
-        [inst->stream startCaptureWithCompletionHandler:^(NSError* error) {
-            if (error != nil) {
-                NSLog(@"Failed to start capture for instance %d: %@", slot, error);
-                startResult = -4;
-            }
-            dispatch_semaphore_signal(startSemaphore);
-        }];
-
-        dispatch_semaphore_wait(startSemaphore, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
-
-        if (startResult == 0) {
-            inst->active = 1;
-            return 0; // Success
-        }
-
-        return startResult;
-    }
-}
-
 // Update stream configuration with new dimensions (called when window resizes)
 // This is non-blocking - the update happens asynchronously
 int mc_update_stream_size(int slot, int new_width, int new_height) {
@@ -646,14 +556,6 @@ void mc_release_frame_buffer(int slot, uint8_t* data) {
     pthread_mutex_unlock(&inst->buffer_mutex);
 }
 
-// Free frame data - legacy function, now a no-op for zero-copy frames
-// Kept for backward compatibility. Use mc_release_frame_buffer instead.
-void mc_free_frame(MCFrameData frame) {
-    // No-op: buffers are managed by the triple buffer pool
-    // They are released via mc_release_frame_buffer
-    (void)frame;  // Suppress unused parameter warning
-}
-
 // Check if instance is active
 int mc_is_active(int slot) {
     if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES) return 0;
@@ -773,11 +675,6 @@ uint32_t mc_get_frontmost_window_id() {
         CFRelease(windowList);
         return frontmostWindowID;
     }
-}
-
-// Legacy function - kept for compatibility
-uint32_t mc_get_focused_window_id() {
-    return mc_get_frontmost_window_id();
 }
 
 // Get number of active instances
@@ -978,52 +875,6 @@ func (mc *MultiCapture) StartDisplayCapture(width, height, fps int) (*CaptureIns
 	return inst, nil
 }
 
-// StartWindowCaptureInSlot starts capturing a window in a specific slot
-// This is used for in-place window swapping in auto-share mode
-// The slot must be stopped (inactive) before calling this
-func (mc *MultiCapture) StartWindowCaptureInSlot(slot int, windowID uint32, width, height, fps int) (*CaptureInstance, error) {
-	mc.mu.Lock()
-	defer mc.mu.Unlock()
-
-	if slot < 0 || slot >= MaxCaptureInstances {
-		return nil, fmt.Errorf("invalid slot index: %d", slot)
-	}
-
-	// Check if already capturing this window in another slot
-	for _, inst := range mc.instances {
-		if inst.windowID == windowID {
-			return nil, fmt.Errorf("window %d is already being captured", windowID)
-		}
-	}
-
-	result := C.mc_start_window_capture_in_slot(C.int(slot), C.uint32_t(windowID), C.int(width), C.int(height), C.int(fps))
-	if result != 0 {
-		switch result {
-		case -1:
-			return nil, fmt.Errorf("invalid slot index")
-		case -2:
-			return nil, fmt.Errorf("window not found: %d", windowID)
-		case -3:
-			return nil, fmt.Errorf("failed to add stream output")
-		case -4:
-			return nil, fmt.Errorf("failed to start capture")
-		case -5:
-			return nil, fmt.Errorf("slot %d is still active", slot)
-		default:
-			return nil, fmt.Errorf("capture error: %d", result)
-		}
-	}
-
-	inst := &CaptureInstance{
-		slot:     slot,
-		windowID: windowID,
-		active:   true,
-	}
-	mc.instances = append(mc.instances, inst)
-
-	return inst, nil
-}
-
 // StopCapture stops a capture instance
 func (mc *MultiCapture) StopCapture(inst *CaptureInstance) {
 	mc.mu.Lock()
@@ -1129,36 +980,13 @@ func (mc *MultiCapture) GetLatestFrameBGRA(inst *CaptureInstance, timeout time.D
 	}, nil
 }
 
-// GetActiveInstances returns all active capture instances
-func (mc *MultiCapture) GetActiveInstances() []*CaptureInstance {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-
-	result := make([]*CaptureInstance, len(mc.instances))
-	copy(result, mc.instances)
-	return result
-}
-
-// GetActiveCount returns the number of active captures
-func (mc *MultiCapture) GetActiveCount() int {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-	return len(mc.instances)
-}
-
 // GetFrontmostWindowID returns the window ID of the frontmost window (receiving keyboard input)
 // This is the window that belongs to the frontmost application in macOS
 func GetFrontmostWindowID() uint32 {
 	return uint32(C.mc_get_frontmost_window_id())
 }
 
-// GetFocusedWindowID is an alias for GetFrontmostWindowID for backwards compatibility
-func GetFocusedWindowID() uint32 {
-	return GetFrontmostWindowID()
-}
-
 // GetTopmostWindow returns which of the given window IDs is topmost in z-order
-// This is more reliable than GetFocusedWindowID as it checks actual z-order
 func GetTopmostWindow(windowIDs []uint32) uint32 {
 	if len(windowIDs) == 0 {
 		return 0
@@ -1171,32 +999,6 @@ func GetTopmostWindow(windowIDs []uint32) uint32 {
 	}
 
 	return uint32(C.mc_get_topmost_window(&cArray[0], C.int(len(windowIDs))))
-}
-
-// IsCapturing checks if a specific window is being captured
-func (mc *MultiCapture) IsCapturing(windowID uint32) bool {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-
-	for _, inst := range mc.instances {
-		if inst.windowID == windowID && inst.active {
-			return true
-		}
-	}
-	return false
-}
-
-// GetInstanceByWindowID returns the capture instance for a window
-func (mc *MultiCapture) GetInstanceByWindowID(windowID uint32) *CaptureInstance {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-
-	for _, inst := range mc.instances {
-		if inst.windowID == windowID && inst.active {
-			return inst
-		}
-	}
-	return nil
 }
 
 // ============================================================================
