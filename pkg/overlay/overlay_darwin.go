@@ -271,7 +271,7 @@ static void doOverlayUpdate(void) {
     }
 }
 
-// Event tap callback for mouse events
+// Event tap callback for mouse clicks
 static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
     if (type == kCGEventLeftMouseDown) {
         if (!g_overlayWindow || !g_overlayWindow.isVisible || g_currentWindowID == 0) {
@@ -290,15 +290,6 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
             }
             // Consume the click
             return NULL;
-        }
-    } else if (type == kCGEventMouseMoved) {
-        // Consume mouse move events when over overlay to prevent hover effects on window behind
-        if (g_overlayWindow && g_overlayWindow.isVisible) {
-            CGPoint mousePoint = CGEventGetLocation(event);
-            if (isPointOverOverlay(mousePoint)) {
-                // Return NULL to consume the event
-                return NULL;
-            }
         }
     } else if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
         if (g_eventTap) {
@@ -352,7 +343,7 @@ static void createOverlay(void) {
         g_overlayWindow.backgroundColor = [NSColor clearColor];
         g_overlayWindow.opaque = NO;
         g_overlayWindow.hasShadow = YES;
-        g_overlayWindow.ignoresMouseEvents = YES; // We use event tap for all mouse handling
+        g_overlayWindow.ignoresMouseEvents = NO; // Window captures mouse to prevent passthrough
         g_overlayWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
                                              NSWindowCollectionBehaviorStationary |
                                              NSWindowCollectionBehaviorFullScreenAuxiliary |
@@ -375,10 +366,12 @@ static void createOverlay(void) {
         g_indicator.layer.backgroundColor = overlayIndicatorColorForState(STATE_NOT_SELECTED).CGColor;
         [g_buttonView addSubview:g_indicator];
 
-        // Create label
+        // Create label - vertically centered
         CGFloat labelX = indicatorX + kIndicatorSize + 8.0;
-        CGFloat labelWidth = kButtonWidth - labelX - kArrowWidth - 12.0;
-        g_label = [[NSTextField alloc] initWithFrame:NSMakeRect(labelX, 6, labelWidth, 20)];
+        CGFloat labelWidth = kButtonWidth - labelX - kArrowWidth - 8.0;
+        CGFloat labelHeight = 18.0;
+        CGFloat labelY = (kButtonHeight - labelHeight) / 2.0;
+        g_label = [[NSTextField alloc] initWithFrame:NSMakeRect(labelX, labelY, labelWidth, labelHeight)];
         g_label.stringValue = @"Share";
         g_label.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
         g_label.textColor = overlayTextColorForState(STATE_NOT_SELECTED);
@@ -388,9 +381,11 @@ static void createOverlay(void) {
         g_label.selectable = NO;
         [g_buttonView addSubview:g_label];
 
-        // Create arrow label for repositioning
-        CGFloat arrowX = kButtonWidth - kArrowWidth - 8.0;
-        g_arrowLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(arrowX, 5, kArrowWidth, 22)];
+        // Create arrow label for repositioning - vertically centered
+        CGFloat arrowX = kButtonWidth - kArrowWidth - 6.0;
+        CGFloat arrowHeight = 18.0;
+        CGFloat arrowY = (kButtonHeight - arrowHeight) / 2.0;
+        g_arrowLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(arrowX, arrowY, kArrowWidth, arrowHeight)];
         g_arrowLabel.stringValue = @"→";
         g_arrowLabel.font = [NSFont systemFontOfSize:14 weight:NSFontWeightMedium];
         g_arrowLabel.textColor = [NSColor colorWithRed:0.5 green:0.5 blue:0.5 alpha:1.0];
@@ -401,8 +396,9 @@ static void createOverlay(void) {
         g_arrowLabel.alignment = NSTextAlignmentCenter;
         [g_buttonView addSubview:g_arrowLabel];
 
-        // Create event tap for click and mouse move detection
-        CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown) | CGEventMaskBit(kCGEventMouseMoved);
+        // Create event tap for click detection only
+        // Mouse hover is blocked by the window itself (ignoresMouseEvents = NO)
+        CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown);
         g_eventTap = CGEventTapCreate(
             kCGSessionEventTap,
             kCGHeadInsertEventTap,
@@ -414,7 +410,6 @@ static void createOverlay(void) {
 
         // Fallback to listen-only if default fails
         if (!g_eventTap) {
-            eventMask = CGEventMaskBit(kCGEventLeftMouseDown);  // Just clicks for fallback
             g_eventTap = CGEventTapCreate(
                 kCGSessionEventTap,
                 kCGHeadInsertEventTap,
