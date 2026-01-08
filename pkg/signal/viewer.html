@@ -88,6 +88,22 @@
       min-height: 0;
       position: relative;
       background: radial-gradient(ellipse at center, #111113 0%, var(--bg-primary) 100%);
+      overflow: hidden;
+    }
+    
+    #pan-zoom-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    
+    #pan-zoom-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .main-video {
@@ -233,6 +249,359 @@
     @keyframes pulse-glow {
       0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(34, 197, 94, 0.6); }
       50% { opacity: 0.7; box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
+    }
+    
+    /* Grid Layout System */
+    #video-grid {
+      display: none;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      gap: 4px;
+      padding: 4px;
+      background: var(--bg-primary);
+    }
+    
+    #video-grid.visible {
+      display: grid;
+    }
+    
+    /* Grid layouts based on stream count */
+    #video-grid.grid-1 {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+    }
+    
+    #video-grid.grid-2 {
+      grid-template-columns: var(--col-1, 1fr) var(--col-2, 1fr);
+      grid-template-rows: 1fr;
+    }
+    
+    #video-grid.grid-3 {
+      grid-template-columns: var(--col-1, 1fr) var(--col-2, 1fr);
+      grid-template-rows: var(--row-1, 1fr) var(--row-2, 1fr);
+    }
+    
+    #video-grid.grid-3 .grid-cell:first-child {
+      grid-row: span 2;
+    }
+    
+    #video-grid.grid-4 {
+      grid-template-columns: var(--col-1, 1fr) var(--col-2, 1fr);
+      grid-template-rows: var(--row-1, 1fr) var(--row-2, 1fr);
+    }
+    
+    /* Equal sizing mode */
+    #video-grid.equal-size {
+      --col-1: 1fr;
+      --col-2: 1fr;
+      --row-1: 1fr;
+      --row-2: 1fr;
+    }
+    
+    .grid-cell {
+      position: relative;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 2px solid transparent;
+    }
+    
+    .grid-cell:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    
+    .grid-cell.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    }
+    
+    .grid-cell.sharer-focused {
+      border-color: var(--success);
+    }
+    
+    .grid-cell.sharer-focused::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 10px;
+      height: 10px;
+      background: var(--success);
+      border-radius: 50%;
+      z-index: 10;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    .grid-cell video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: transparent;
+    }
+    
+    .grid-cell-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 12px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      pointer-events: none;
+    }
+    
+    .grid-cell:hover .grid-cell-label,
+    .grid-cell.selected .grid-cell-label {
+      opacity: 1;
+    }
+    
+    /* Layout selector */
+    .layout-selector {
+      display: none;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      gap: 2px;
+    }
+    
+    .layout-selector.visible {
+      display: flex;
+    }
+    
+    .layout-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+    
+    .layout-btn:hover {
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    
+    .layout-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+    
+    .layout-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* Proportional toggle */
+    .proportional-toggle {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    
+    .proportional-toggle.visible {
+      display: flex;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    
+    .toggle-switch.active {
+      background: var(--accent);
+    }
+    
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: transform var(--transition-fast);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .toggle-switch.active::after {
+      transform: translateX(16px);
+    }
+    
+    /* Pan/Zoom container for Native view */
+    .pan-zoom-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+    }
+    
+    .pan-zoom-container.panning {
+      cursor: grabbing;
+    }
+    
+    .pan-zoom-container.can-pan {
+      cursor: grab;
+    }
+    
+    .pan-zoom-content {
+      position: absolute;
+      transform-origin: 0 0;
+      transition: none;
+    }
+    
+    .pan-zoom-content.animating {
+      transition: transform 0.2s ease-out;
+    }
+    
+    /* Minimap */
+    .minimap {
+      position: absolute;
+      bottom: 16px;
+      right: 16px;
+      width: 120px;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: all var(--transition-normal);
+      pointer-events: none;
+      z-index: 50;
+    }
+    
+    .minimap.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+    
+    .minimap-content {
+      position: relative;
+      width: 100%;
+    }
+    
+    .minimap-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      opacity: 0.6;
+    }
+    
+    .minimap-viewport {
+      position: absolute;
+      border: 2px solid var(--accent);
+      background: rgba(59, 130, 246, 0.15);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+    
+    /* Mobile-specific styles */
+    @media (max-width: 768px) {
+      #video-grid {
+        gap: 2px;
+        padding: 2px;
+      }
+      
+      .grid-cell {
+        border-radius: var(--radius-sm);
+      }
+      
+      .grid-cell-label {
+        font-size: 10px;
+        padding: 6px 8px;
+        opacity: 1;
+      }
+      
+      #control-bar {
+        padding: 6px 10px;
+        gap: 2px;
+      }
+      
+      .control-btn {
+        width: 38px;
+        height: 38px;
+      }
+      
+      .layout-btn {
+        width: 30px;
+        height: 30px;
+      }
+      
+      .scale-btn {
+        padding: 6px 10px;
+        font-size: 10px;
+      }
+      
+      .proportional-toggle {
+        font-size: 10px;
+      }
+      
+      .toggle-switch {
+        width: 32px;
+        height: 18px;
+      }
+      
+      .toggle-switch::after {
+        width: 14px;
+        height: 14px;
+      }
+      
+      .toggle-switch.active::after {
+        transform: translateX(14px);
+      }
+      
+      .minimap {
+        width: 100px;
+        bottom: 12px;
+        right: 12px;
+      }
+      
+      /* Force focus layout on very small screens */
+      @media (max-width: 480px) {
+        #video-grid.grid-3,
+        #video-grid.grid-4 {
+          grid-template-columns: 1fr;
+          grid-template-rows: repeat(auto-fit, minmax(150px, 1fr));
+        }
+        
+        #video-grid.grid-3 .grid-cell:first-child {
+          grid-row: span 1;
+        }
+      }
+    }
+    
+    /* Landscape mobile */
+    @media (max-width: 768px) and (orientation: landscape) {
+      #video-grid.grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
     }
     
     /* Top status bar */
@@ -964,12 +1333,26 @@
   
   <!-- Video container -->
   <div id="container">
-    <!-- Main video area -->
+    <!-- Main video area (Focus mode) -->
     <div id="main-video-container">
-      <video id="main-video" class="main-video scale-fit" autoplay playsinline muted></video>
+      <div class="pan-zoom-container" id="pan-zoom-container">
+        <div class="pan-zoom-content" id="pan-zoom-content">
+          <video id="main-video" class="main-video scale-fit" autoplay playsinline muted></video>
+        </div>
+      </div>
+      <!-- Minimap for panning -->
+      <div class="minimap" id="minimap">
+        <div class="minimap-content">
+          <canvas class="minimap-image" id="minimap-canvas"></canvas>
+          <div class="minimap-viewport" id="minimap-viewport"></div>
+        </div>
+      </div>
     </div>
     
-    <!-- Thumbnails bar for multi-stream -->
+    <!-- Grid view (Grid mode) -->
+    <div id="video-grid"></div>
+    
+    <!-- Thumbnails bar for multi-stream (Focus mode only) -->
     <div id="thumbnails-bar"></div>
   </div>
   
@@ -987,6 +1370,28 @@
       </svg>
     </button>
     <div class="control-divider"></div>
+    <!-- Layout selector (visible when multiple streams) -->
+    <div class="layout-selector" id="layout-selector">
+      <button class="layout-btn active" data-layout="focus" title="Focus View (G)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+        </svg>
+      </button>
+      <button class="layout-btn" data-layout="grid" title="Grid View (G)">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="8" height="8" rx="1"></rect>
+          <rect x="13" y="3" width="8" height="8" rx="1"></rect>
+          <rect x="3" y="13" width="8" height="8" rx="1"></rect>
+          <rect x="13" y="13" width="8" height="8" rx="1"></rect>
+        </svg>
+      </button>
+    </div>
+    <!-- Proportional toggle (visible in grid mode) -->
+    <div class="proportional-toggle" id="proportional-toggle">
+      <span>Auto-size</span>
+      <div class="toggle-switch active" id="proportional-switch" title="Toggle proportional sizing (E)"></div>
+    </div>
+    <div class="control-divider" id="layout-divider" style="display: none;"></div>
     <div class="scale-selector">
       <button class="scale-btn active" data-scale="fit">Fit</button>
       <button class="scale-btn" data-scale="fill">Fill</button>
@@ -1012,10 +1417,11 @@
   <!-- Keyboard shortcuts help -->
   <div id="shortcuts-help">
     <span class="shortcut"><kbd>F</kbd>Fullscreen</span>
-    <span class="shortcut"><kbd>P</kbd>Picture-in-Picture</span>
+    <span class="shortcut"><kbd>P</kbd>PiP</span>
+    <span class="shortcut"><kbd>G</kbd>Layout</span>
+    <span class="shortcut"><kbd>E</kbd>Auto-size</span>
     <span class="shortcut"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>Scale</span>
     <span class="shortcut"><kbd>I</kbd>Stats</span>
-    <span class="shortcut"><kbd>Esc</kbd>Exit</span>
   </div>
   
   <!-- Stats panel -->
@@ -1071,6 +1477,18 @@
     const streamCountEl = document.getElementById('stream-count');
     const streamCountText = document.getElementById('stream-count-text');
     
+    // Layout elements
+    const videoGrid = document.getElementById('video-grid');
+    const layoutSelector = document.getElementById('layout-selector');
+    const proportionalToggle = document.getElementById('proportional-toggle');
+    const proportionalSwitch = document.getElementById('proportional-switch');
+    const layoutDivider = document.getElementById('layout-divider');
+    const panZoomContainer = document.getElementById('pan-zoom-container');
+    const panZoomContent = document.getElementById('pan-zoom-content');
+    const minimap = document.getElementById('minimap');
+    const minimapCanvas = document.getElementById('minimap-canvas');
+    const minimapViewport = document.getElementById('minimap-viewport');
+    
     // State
     const roomCode = window.location.pathname.substring(1);
     let ws;
@@ -1092,6 +1510,26 @@
     let streamsInfo = []; // Info from sharer (video0, video1, etc.)
     let viewerFocusedIndex = null; // What the viewer has selected (index)
     let sharerFocusedIndex = null; // What the sharer has focused (index from OS)
+    
+    // Layout state
+    let currentLayout = 'focus'; // 'focus' or 'grid'
+    let proportionalSizing = true; // true = auto-size based on resolution, false = equal size
+    let gridCells = {}; // index -> { cell, video, label }
+    let selectedGridIndex = null; // Currently selected stream in grid mode
+    
+    // Pan/zoom state
+    let panZoomState = {
+      scale: 1,
+      translateX: 0,
+      translateY: 0,
+      isPanning: false,
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0
+    };
+    let canPan = false; // True when content is larger than viewport
+    let minimapUpdateInterval = null;
     
     // Password dialog elements
     const passwordDialog = document.getElementById('password-dialog');
@@ -1177,7 +1615,17 @@
       streamCountText.textContent = streamCount;
       streamCountEl.classList.toggle('visible', streamCount > 1);
       
-      // Show/hide thumbnails bar (show when more than 1 stream)
+      // Update layout selector visibility
+      updateLayoutSelectorVisibility();
+      
+      // Handle based on current layout
+      if (currentLayout === 'grid') {
+        // In grid mode, update the grid
+        updateGridLayout();
+        return;
+      }
+      
+      // Focus mode: Show/hide thumbnails bar (show when more than 1 stream)
       const showThumbnails = streamCount > 1;
       thumbnailsBar.classList.toggle('visible', showThumbnails);
       document.body.classList.toggle('multi-stream', showThumbnails);
@@ -1273,12 +1721,19 @@
       
       // Swap the focused stream
       viewerFocusedIndex = index;
+      selectedGridIndex = index;
       
-      // Update main video
+      // Update main video (for focus mode)
       mainVideo.srcObject = streams[index].stream;
       mainVideo.play().catch(e => console.log('Main video play error:', e.message));
       
-      // Update thumbnails
+      // Reset pan/zoom when switching streams
+      panZoomState.translateX = 0;
+      panZoomState.translateY = 0;
+      applyPanZoomTransform();
+      setTimeout(updatePanZoomState, 100);
+      
+      // Update UI based on current layout
       updateMultiStreamUI();
     }
     
@@ -1363,11 +1818,25 @@
         info.height = height;
       }
       
-      // Extract index from trackId
+      // Also update in streams object
       const match = trackId.match(/video(\d+)/);
       if (!match) return;
       
       const streamIndex = parseInt(match[1], 10);
+      if (streams[streamIndex] && streams[streamIndex].info) {
+        streams[streamIndex].info.width = width;
+        streams[streamIndex].info.height = height;
+      }
+      
+      // If in grid mode with proportional sizing, recalculate layout
+      if (currentLayout === 'grid' && proportionalSizing) {
+        updateGridLayout();
+      }
+      
+      // Update pan/zoom state for focus mode
+      if (currentLayout === 'focus') {
+        setTimeout(updatePanZoomState, 100);
+      }
       
       // If this is the currently displayed stream, reset the video element
       // to force the browser to re-detect the new dimensions
@@ -1652,80 +2121,8 @@
       document.getElementById('btn-pip').classList.remove('active');
     });
     
-    // Scale mode
-    function setScale(mode) {
-      currentScale = mode;
-      mainVideo.className = 'main-video scale-' + mode;
-      
-      document.querySelectorAll('.scale-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.scale === mode);
-      });
-    }
-    
-    document.querySelectorAll('.scale-btn').forEach(btn => {
-      btn.addEventListener('click', () => setScale(btn.dataset.scale));
-    });
-    
-    // Stats toggle
-    function toggleStats() {
-      showStats = !showStats;
-      statsPanel.classList.toggle('visible', showStats);
-      document.getElementById('btn-stats').classList.toggle('active', showStats);
-    }
-    
-    // Help toggle
-    function toggleHelp() {
-      shortcutsHelp.classList.toggle('visible');
-      document.getElementById('btn-help').classList.toggle('active', shortcutsHelp.classList.contains('visible'));
-    }
-    
-    // Button event listeners
-    document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
-    document.getElementById('btn-pip').addEventListener('click', togglePiP);
-    document.getElementById('btn-stats').addEventListener('click', toggleStats);
-    document.getElementById('btn-help').addEventListener('click', toggleHelp);
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      
-      switch (e.key.toLowerCase()) {
-        case 'f':
-          toggleFullscreen();
-          break;
-        case 'p':
-          togglePiP();
-          break;
-        case 'i':
-          toggleStats();
-          break;
-        case '?':
-          toggleHelp();
-          break;
-        case '1':
-          setScale('fit');
-          break;
-        case '2':
-          setScale('fill');
-          break;
-        case '3':
-          setScale('native');
-          break;
-        case 'escape':
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
-          }
-          if (document.pictureInPictureElement) {
-            document.exitPictureInPicture();
-          }
-          shortcutsHelp.classList.remove('visible');
-          document.getElementById('btn-help').classList.remove('active');
-          break;
-      }
-    });
-    
-    // Double-click for fullscreen
-    mainVideo.addEventListener('dblclick', toggleFullscreen);
+    // Note: Scale mode, stats toggle, help toggle, keyboard shortcuts, 
+    // and button event listeners are defined in the Layout Management section below
     
     // Password dialog functions
     function showPasswordDialog(errorText = '') {
@@ -2291,6 +2688,562 @@
         console.error('ICE error:', err);
       }
     }
+    
+    // ==========================================
+    // Layout Management
+    // ==========================================
+    
+    function setLayout(layout) {
+      if (layout === currentLayout) return;
+      
+      currentLayout = layout;
+      console.log('Switching to layout:', layout);
+      
+      // Update button states
+      document.querySelectorAll('.layout-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.layout === layout);
+      });
+      
+      // Show/hide proportional toggle (only in grid mode)
+      proportionalToggle.classList.toggle('visible', layout === 'grid' && streamOrder.length > 1);
+      layoutDivider.style.display = (layout === 'grid' && streamOrder.length > 1) ? '' : 'none';
+      
+      if (layout === 'focus') {
+        // Switch to focus mode
+        mainVideoContainer.style.display = '';
+        videoGrid.classList.remove('visible');
+        thumbnailsBar.classList.toggle('visible', streamOrder.length > 1);
+        document.body.classList.toggle('multi-stream', streamOrder.length > 1);
+        
+        // Ensure main video has the focused stream
+        if (viewerFocusedIndex !== null && streams[viewerFocusedIndex]) {
+          mainVideo.srcObject = streams[viewerFocusedIndex].stream;
+          mainVideo.play().catch(e => console.log('Play error:', e));
+        }
+        
+        // Clean up grid cells
+        videoGrid.innerHTML = '';
+        gridCells = {};
+        
+      } else if (layout === 'grid') {
+        // Switch to grid mode
+        mainVideoContainer.style.display = 'none';
+        thumbnailsBar.classList.remove('visible');
+        document.body.classList.remove('multi-stream');
+        videoGrid.classList.add('visible');
+        
+        // Build the grid
+        updateGridLayout();
+      }
+      
+      // Save preference
+      try {
+        localStorage.setItem('gopeep-layout', layout);
+      } catch (e) {}
+    }
+    
+    function toggleLayout() {
+      setLayout(currentLayout === 'focus' ? 'grid' : 'focus');
+    }
+    
+    function toggleProportionalSizing() {
+      proportionalSizing = !proportionalSizing;
+      proportionalSwitch.classList.toggle('active', proportionalSizing);
+      
+      if (currentLayout === 'grid') {
+        updateGridLayout();
+      }
+      
+      // Save preference
+      try {
+        localStorage.setItem('gopeep-proportional', proportionalSizing ? '1' : '0');
+      } catch (e) {}
+    }
+    
+    function calculateProportionalSizes() {
+      const activeStreams = streamOrder.map(idx => {
+        const s = streams[idx];
+        const info = s?.info;
+        return {
+          index: idx,
+          width: info?.width || 1920,
+          height: info?.height || 1080,
+          area: (info?.width || 1920) * (info?.height || 1080)
+        };
+      });
+      
+      if (activeStreams.length === 0) return { cols: [], rows: [] };
+      
+      const totalArea = activeStreams.reduce((sum, s) => sum + s.area, 0);
+      
+      // Calculate relative weights with minimum of 25%
+      const weights = activeStreams.map(s => Math.max(0.25, s.area / totalArea));
+      const weightSum = weights.reduce((a, b) => a + b, 0);
+      const normalizedWeights = weights.map(w => w / weightSum);
+      
+      return {
+        streams: activeStreams,
+        weights: normalizedWeights
+      };
+    }
+    
+    function updateGridLayout() {
+      const count = streamOrder.length;
+      
+      if (count === 0) {
+        videoGrid.innerHTML = '';
+        videoGrid.className = 'visible';
+        gridCells = {};
+        return;
+      }
+      
+      // Remove old grid classes
+      videoGrid.className = 'visible';
+      videoGrid.classList.add(`grid-${Math.min(count, 4)}`);
+      videoGrid.classList.toggle('equal-size', !proportionalSizing);
+      
+      // Calculate proportional sizes
+      if (proportionalSizing && count >= 2) {
+        const sizes = calculateProportionalSizes();
+        
+        if (count === 2) {
+          // Side by side: proportional columns
+          const w1 = sizes.weights[0] || 0.5;
+          const w2 = sizes.weights[1] || 0.5;
+          videoGrid.style.setProperty('--col-1', `${w1}fr`);
+          videoGrid.style.setProperty('--col-2', `${w2}fr`);
+        } else if (count === 3) {
+          // 1 large on left, 2 stacked on right
+          const w1 = Math.max(sizes.weights[0], 0.4);
+          const remaining = 1 - w1;
+          videoGrid.style.setProperty('--col-1', `${w1}fr`);
+          videoGrid.style.setProperty('--col-2', `${remaining}fr`);
+          
+          // Row heights for right side
+          const h1 = sizes.weights[1] / (sizes.weights[1] + sizes.weights[2]);
+          videoGrid.style.setProperty('--row-1', `${h1}fr`);
+          videoGrid.style.setProperty('--row-2', `${1 - h1}fr`);
+        } else if (count === 4) {
+          // 2x2 grid with proportional sizing
+          const topWeight = (sizes.weights[0] + sizes.weights[1]) / 2;
+          const bottomWeight = (sizes.weights[2] + sizes.weights[3]) / 2;
+          const leftWeight = (sizes.weights[0] + sizes.weights[2]) / 2;
+          const rightWeight = (sizes.weights[1] + sizes.weights[3]) / 2;
+          
+          videoGrid.style.setProperty('--col-1', `${leftWeight / (leftWeight + rightWeight)}fr`);
+          videoGrid.style.setProperty('--col-2', `${rightWeight / (leftWeight + rightWeight)}fr`);
+          videoGrid.style.setProperty('--row-1', `${topWeight / (topWeight + bottomWeight)}fr`);
+          videoGrid.style.setProperty('--row-2', `${bottomWeight / (topWeight + bottomWeight)}fr`);
+        }
+      } else {
+        // Reset to equal sizing
+        videoGrid.style.removeProperty('--col-1');
+        videoGrid.style.removeProperty('--col-2');
+        videoGrid.style.removeProperty('--row-1');
+        videoGrid.style.removeProperty('--row-2');
+      }
+      
+      // Create or update grid cells
+      const sortedOrder = [...streamOrder].sort((a, b) => a - b);
+      
+      // Remove cells for streams that no longer exist
+      for (const idx in gridCells) {
+        if (!sortedOrder.includes(parseInt(idx))) {
+          gridCells[idx].cell.remove();
+          delete gridCells[idx];
+        }
+      }
+      
+      // Create or update cells
+      for (const idx of sortedOrder) {
+        const data = streams[idx];
+        if (!data || !data.stream) continue;
+        
+        let cell = gridCells[idx];
+        
+        if (!cell) {
+          // Create new cell
+          const cellEl = document.createElement('div');
+          cellEl.className = 'grid-cell';
+          cellEl.dataset.streamIndex = idx;
+          
+          const video = document.createElement('video');
+          video.autoplay = true;
+          video.playsinline = true;
+          video.muted = true;
+          
+          const label = document.createElement('div');
+          label.className = 'grid-cell-label';
+          
+          cellEl.appendChild(video);
+          cellEl.appendChild(label);
+          
+          // Click handlers
+          let clickTimeout = null;
+          cellEl.addEventListener('click', (e) => {
+            if (clickTimeout) {
+              // Double click - switch to focus mode with this stream
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+              viewerFocusedIndex = idx;
+              setLayout('focus');
+            } else {
+              // Single click - just select
+              clickTimeout = setTimeout(() => {
+                clickTimeout = null;
+                selectGridCell(idx);
+              }, 250);
+            }
+          });
+          
+          cell = { cell: cellEl, video, label };
+          gridCells[idx] = cell;
+        }
+        
+        // Update video source
+        if (cell.video.srcObject !== data.stream) {
+          cell.video.srcObject = data.stream;
+          cell.video.play().catch(e => console.log('Grid video play error:', e));
+        }
+        
+        // Update label
+        const info = data.info;
+        cell.label.textContent = info?.windowName || info?.appName || `Stream ${idx + 1}`;
+        
+        // Update classes
+        cell.cell.classList.toggle('selected', idx === selectedGridIndex);
+        cell.cell.classList.toggle('sharer-focused', idx === sharerFocusedIndex);
+        
+        // Ensure it's in the DOM
+        if (!cell.cell.parentNode) {
+          videoGrid.appendChild(cell.cell);
+        }
+      }
+      
+      // Reorder cells
+      for (const idx of sortedOrder) {
+        if (gridCells[idx]) {
+          videoGrid.appendChild(gridCells[idx].cell);
+        }
+      }
+    }
+    
+    function selectGridCell(index) {
+      selectedGridIndex = index;
+      
+      // Update cell classes
+      for (const idx in gridCells) {
+        gridCells[idx].cell.classList.toggle('selected', parseInt(idx) === index);
+      }
+    }
+    
+    // Update layout selector visibility based on stream count
+    function updateLayoutSelectorVisibility() {
+      const showSelector = streamOrder.length > 1;
+      layoutSelector.classList.toggle('visible', showSelector);
+      layoutDivider.style.display = (showSelector && currentLayout === 'grid') ? '' : 'none';
+      proportionalToggle.classList.toggle('visible', showSelector && currentLayout === 'grid');
+      
+      // If we only have 1 stream, force focus layout
+      if (streamOrder.length <= 1 && currentLayout === 'grid') {
+        setLayout('focus');
+      }
+    }
+    
+    // ==========================================
+    // Pan/Zoom for Native View
+    // ==========================================
+    
+    function updatePanZoomState() {
+      const video = mainVideo;
+      if (!video.videoWidth || !video.videoHeight) {
+        canPan = false;
+        panZoomContainer.classList.remove('can-pan');
+        minimap.classList.remove('visible');
+        return;
+      }
+      
+      const containerRect = mainVideoContainer.getBoundingClientRect();
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      
+      // Check if content exceeds viewport in native mode
+      canPan = currentScale === 'native' && 
+               (videoWidth > containerRect.width || videoHeight > containerRect.height);
+      
+      panZoomContainer.classList.toggle('can-pan', canPan);
+      
+      if (canPan) {
+        // Calculate bounds
+        const maxX = Math.max(0, videoWidth - containerRect.width);
+        const maxY = Math.max(0, videoHeight - containerRect.height);
+        
+        // Clamp current position
+        panZoomState.translateX = Math.max(-maxX, Math.min(0, panZoomState.translateX));
+        panZoomState.translateY = Math.max(-maxY, Math.min(0, panZoomState.translateY));
+        
+        applyPanZoomTransform();
+        updateMinimap();
+        minimap.classList.add('visible');
+      } else {
+        // Reset transform
+        panZoomState.translateX = 0;
+        panZoomState.translateY = 0;
+        applyPanZoomTransform();
+        minimap.classList.remove('visible');
+      }
+    }
+    
+    function applyPanZoomTransform() {
+      panZoomContent.style.transform = `translate(${panZoomState.translateX}px, ${panZoomState.translateY}px)`;
+    }
+    
+    function updateMinimap() {
+      if (!canPan || !mainVideo.videoWidth) return;
+      
+      const video = mainVideo;
+      const containerRect = mainVideoContainer.getBoundingClientRect();
+      
+      // Update minimap canvas size to match video aspect ratio
+      const aspectRatio = video.videoWidth / video.videoHeight;
+      const minimapWidth = 120;
+      const minimapHeight = minimapWidth / aspectRatio;
+      
+      minimapCanvas.width = minimapWidth;
+      minimapCanvas.height = minimapHeight;
+      minimapCanvas.style.height = minimapHeight + 'px';
+      
+      // Draw video frame to minimap
+      const ctx = minimapCanvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, minimapWidth, minimapHeight);
+      
+      // Calculate viewport rectangle
+      const scaleX = minimapWidth / video.videoWidth;
+      const scaleY = minimapHeight / video.videoHeight;
+      
+      const viewportX = -panZoomState.translateX * scaleX;
+      const viewportY = -panZoomState.translateY * scaleY;
+      const viewportW = containerRect.width * scaleX;
+      const viewportH = containerRect.height * scaleY;
+      
+      minimapViewport.style.left = viewportX + 'px';
+      minimapViewport.style.top = viewportY + 'px';
+      minimapViewport.style.width = Math.min(viewportW, minimapWidth) + 'px';
+      minimapViewport.style.height = Math.min(viewportH, minimapHeight) + 'px';
+    }
+    
+    function startMinimapUpdates() {
+      if (minimapUpdateInterval) return;
+      minimapUpdateInterval = setInterval(() => {
+        if (canPan && minimap.classList.contains('visible')) {
+          updateMinimap();
+        }
+      }, 200);
+    }
+    
+    function stopMinimapUpdates() {
+      if (minimapUpdateInterval) {
+        clearInterval(minimapUpdateInterval);
+        minimapUpdateInterval = null;
+      }
+    }
+    
+    // Pan/zoom event handlers
+    function handlePanStart(e) {
+      if (!canPan) return;
+      
+      panZoomState.isPanning = true;
+      panZoomContainer.classList.add('panning');
+      
+      const point = e.touches ? e.touches[0] : e;
+      panZoomState.startX = point.clientX - panZoomState.translateX;
+      panZoomState.startY = point.clientY - panZoomState.translateY;
+      
+      e.preventDefault();
+    }
+    
+    function handlePanMove(e) {
+      if (!panZoomState.isPanning) return;
+      
+      const point = e.touches ? e.touches[0] : e;
+      const containerRect = mainVideoContainer.getBoundingClientRect();
+      
+      const maxX = Math.max(0, mainVideo.videoWidth - containerRect.width);
+      const maxY = Math.max(0, mainVideo.videoHeight - containerRect.height);
+      
+      panZoomState.translateX = Math.max(-maxX, Math.min(0, point.clientX - panZoomState.startX));
+      panZoomState.translateY = Math.max(-maxY, Math.min(0, point.clientY - panZoomState.startY));
+      
+      applyPanZoomTransform();
+      updateMinimap();
+      
+      e.preventDefault();
+    }
+    
+    function handlePanEnd(e) {
+      panZoomState.isPanning = false;
+      panZoomContainer.classList.remove('panning');
+    }
+    
+    // Set up pan/zoom listeners
+    panZoomContainer.addEventListener('mousedown', handlePanStart);
+    document.addEventListener('mousemove', handlePanMove);
+    document.addEventListener('mouseup', handlePanEnd);
+    
+    panZoomContainer.addEventListener('touchstart', handlePanStart, { passive: false });
+    document.addEventListener('touchmove', handlePanMove, { passive: false });
+    document.addEventListener('touchend', handlePanEnd);
+    
+    // Update pan state when scale changes or video loads
+    mainVideo.addEventListener('loadedmetadata', () => {
+      setTimeout(updatePanZoomState, 100);
+    });
+    
+    mainVideo.addEventListener('resize', updatePanZoomState);
+    
+    // ==========================================
+    // Layout Event Listeners
+    // ==========================================
+    
+    // Layout buttons
+    document.querySelectorAll('.layout-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setLayout(btn.dataset.layout);
+      });
+    });
+    
+    // Proportional toggle
+    proportionalSwitch.addEventListener('click', toggleProportionalSizing);
+    
+    // ==========================================
+    // Keyboard Shortcuts (updated)
+    // ==========================================
+    
+    document.addEventListener('keydown', (e) => {
+      // Ignore if typing in an input
+      if (e.target.tagName === 'INPUT') return;
+      
+      switch (e.key.toLowerCase()) {
+        case 'f':
+          toggleFullscreen();
+          break;
+        case 'p':
+          togglePiP();
+          break;
+        case 'g':
+          if (streamOrder.length > 1) {
+            toggleLayout();
+          }
+          break;
+        case 'e':
+          if (currentLayout === 'grid') {
+            toggleProportionalSizing();
+          }
+          break;
+        case 'i':
+          showStats = !showStats;
+          document.getElementById('btn-stats').classList.toggle('active', showStats);
+          statsPanel.classList.toggle('visible', showStats);
+          break;
+        case '1':
+          setScaleMode('fit');
+          break;
+        case '2':
+          setScaleMode('fill');
+          break;
+        case '3':
+          setScaleMode('native');
+          break;
+        case '?':
+          shortcutsHelp.classList.toggle('visible');
+          break;
+        case 'escape':
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else if (document.pictureInPictureElement) {
+            document.exitPictureInPicture();
+          }
+          break;
+        case 'arrowleft':
+        case 'arrowup':
+          if (currentLayout === 'grid' && streamOrder.length > 0) {
+            const currentIdx = streamOrder.indexOf(selectedGridIndex);
+            const newIdx = currentIdx <= 0 ? streamOrder.length - 1 : currentIdx - 1;
+            selectGridCell(streamOrder[newIdx]);
+          }
+          break;
+        case 'arrowright':
+        case 'arrowdown':
+          if (currentLayout === 'grid' && streamOrder.length > 0) {
+            const currentIdx = streamOrder.indexOf(selectedGridIndex);
+            const newIdx = currentIdx >= streamOrder.length - 1 ? 0 : currentIdx + 1;
+            selectGridCell(streamOrder[newIdx]);
+          }
+          break;
+        case 'enter':
+          if (currentLayout === 'grid' && selectedGridIndex !== null) {
+            viewerFocusedIndex = selectedGridIndex;
+            setLayout('focus');
+          }
+          break;
+      }
+    });
+    
+    function setScaleMode(mode) {
+      currentScale = mode;
+      mainVideo.className = `main-video scale-${mode}`;
+      
+      // Update scale buttons
+      document.querySelectorAll('.scale-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.scale === mode);
+      });
+      
+      // Update grid cell videos too
+      for (const idx in gridCells) {
+        gridCells[idx].video.style.objectFit = mode === 'fill' ? 'cover' : 'contain';
+      }
+      
+      // Update pan/zoom state
+      setTimeout(updatePanZoomState, 50);
+    }
+    
+    // Scale button event listeners
+    document.querySelectorAll('.scale-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setScaleMode(btn.dataset.scale);
+      });
+    });
+    
+    // Control button event listeners
+    document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+    document.getElementById('btn-pip').addEventListener('click', togglePiP);
+    document.getElementById('btn-stats').addEventListener('click', () => {
+      showStats = !showStats;
+      document.getElementById('btn-stats').classList.toggle('active', showStats);
+      statsPanel.classList.toggle('visible', showStats);
+    });
+    document.getElementById('btn-help').addEventListener('click', () => {
+      shortcutsHelp.classList.toggle('visible');
+    });
+    
+    // Double-click to fullscreen
+    mainVideoContainer.addEventListener('dblclick', toggleFullscreen);
+    
+    // Load saved preferences
+    try {
+      const savedLayout = localStorage.getItem('gopeep-layout');
+      if (savedLayout === 'grid') {
+        currentLayout = 'grid';
+      }
+      const savedProportional = localStorage.getItem('gopeep-proportional');
+      if (savedProportional === '0') {
+        proportionalSizing = false;
+        proportionalSwitch.classList.remove('active');
+      }
+    } catch (e) {}
+    
+    // Start minimap updates
+    startMinimapUpdates();
     
     // Start
     connect();
