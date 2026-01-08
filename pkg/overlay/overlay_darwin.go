@@ -62,28 +62,45 @@ static const CGFloat kArrowWidth = 20.0;
 
 static NSColor* overlayBackgroundColor(BOOL hovered) {
     if (hovered) {
-        return [NSColor colorWithRed:0.24 green:0.24 blue:0.24 alpha:0.95];
+        // Brighter background on hover for more visible feedback
+        return [NSColor colorWithRed:0.32 green:0.32 blue:0.34 alpha:0.98];
     }
     return [NSColor colorWithRed:0.16 green:0.16 blue:0.16 alpha:0.85];
 }
 
-static NSColor* overlayTextColorForState(int state) {
+static NSColor* overlayTextColorForState(int state, BOOL hovered) {
+    if (hovered) {
+        // White text on hover for all states
+        return [NSColor whiteColor];
+    }
     if (state == STATE_NOT_SELECTED) {
         return [NSColor colorWithRed:0.53 green:0.53 blue:0.53 alpha:1.0];
     }
     return [NSColor whiteColor];
 }
 
-static NSColor* overlayIndicatorColorForState(int state) {
+static NSColor* overlayIndicatorColorForState(int state, BOOL hovered) {
+    NSColor *baseColor;
     switch (state) {
         case STATE_SHARING:
-            return [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];
+            baseColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];
+            break;
         case STATE_SELECTED:
-            return [NSColor colorWithRed:0.0 green:0.48 blue:1.0 alpha:1.0];
+            baseColor = [NSColor colorWithRed:0.0 green:0.48 blue:1.0 alpha:1.0];
+            break;
         default:
-            return [NSColor colorWithRed:0.53 green:0.53 blue:0.53 alpha:1.0];
+            baseColor = [NSColor colorWithRed:0.53 green:0.53 blue:0.53 alpha:1.0];
+            break;
     }
+
+    if (hovered && state == STATE_NOT_SELECTED) {
+        // Brighten the gray indicator on hover
+        return [NSColor colorWithRed:0.7 green:0.7 blue:0.7 alpha:1.0];
+    }
+    return baseColor;
 }
+
+
 
 static NSString* overlayLabelTextForState(int state) {
     switch (state) {
@@ -113,20 +130,25 @@ static void updateButtonAppearance(int state, BOOL hovered, BOOL arrowHovered) {
 
     if (g_label) {
         g_label.stringValue = overlayLabelTextForState(state);
-        g_label.textColor = overlayTextColorForState(state);
+        g_label.textColor = overlayTextColorForState(state, hovered);
     }
 
     if (g_indicator) {
-        g_indicator.layer.backgroundColor = overlayIndicatorColorForState(state).CGColor;
+        g_indicator.layer.backgroundColor = overlayIndicatorColorForState(state, hovered).CGColor;
         g_indicator.layer.cornerRadius = (state == STATE_SHARING) ? 2.0 : kIndicatorSize / 2.0;
     }
 
     if (g_arrowLabel) {
         g_arrowLabel.stringValue = g_positionedRight ? @"←" : @"→";
-        if (arrowHovered) {
-            g_arrowLabel.textColor = [NSColor whiteColor];
+        if (arrowHovered || hovered) {
+            // Arrow brightens when hovering anywhere on the button
+            g_arrowLabel.textColor = [NSColor colorWithRed:0.7 green:0.7 blue:0.7 alpha:1.0];
         } else {
             g_arrowLabel.textColor = [NSColor colorWithRed:0.5 green:0.5 blue:0.5 alpha:1.0];
+        }
+        // Extra bright when directly hovering the arrow
+        if (arrowHovered) {
+            g_arrowLabel.textColor = [NSColor whiteColor];
         }
     }
 }
@@ -365,7 +387,7 @@ static void createOverlay(void) {
         g_indicator = [[NSView alloc] initWithFrame:NSMakeRect(indicatorX, indicatorY, kIndicatorSize, kIndicatorSize)];
         g_indicator.wantsLayer = YES;
         g_indicator.layer.cornerRadius = kIndicatorSize / 2.0;
-        g_indicator.layer.backgroundColor = overlayIndicatorColorForState(STATE_NOT_SELECTED).CGColor;
+        g_indicator.layer.backgroundColor = overlayIndicatorColorForState(STATE_NOT_SELECTED, NO).CGColor;
         [g_buttonView addSubview:g_indicator];
 
         CGFloat labelX = indicatorX + kIndicatorSize + 8.0;
@@ -375,7 +397,7 @@ static void createOverlay(void) {
         g_label = [[NSTextField alloc] initWithFrame:NSMakeRect(labelX, labelY, labelWidth, labelHeight)];
         g_label.stringValue = @"Share";
         g_label.font = [NSFont systemFontOfSize:13 weight:NSFontWeightMedium];
-        g_label.textColor = overlayTextColorForState(STATE_NOT_SELECTED);
+        g_label.textColor = overlayTextColorForState(STATE_NOT_SELECTED, NO);
         g_label.backgroundColor = [NSColor clearColor];
         g_label.bordered = NO;
         g_label.editable = NO;
