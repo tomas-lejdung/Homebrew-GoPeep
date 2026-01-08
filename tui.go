@@ -95,6 +95,19 @@ var (
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8"))
 
+	// Keybind styles
+	keyStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("14")) // Cyan for keys
+
+	keySepStyle = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("8")) // Dim separator
+
+	toggleActiveStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("10")) // Green for active toggles
+
+	toggleInactiveStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("8")) // Dim for inactive toggles
+
 	// Box styles for columns
 	activeBoxStyle = lipgloss.NewStyle().
 			Border(lipgloss.RoundedBorder()).
@@ -1482,14 +1495,8 @@ func (m model) View() string {
 		b.WriteString("\n")
 	}
 
-	// Two-column layout
+	// Column layout (Sources, Settings, and Viewers when sharing)
 	b.WriteString(m.renderColumns())
-
-	// Viewer list panel (if sharing and has viewers or waiting)
-	if m.sharing {
-		b.WriteString("\n")
-		b.WriteString(m.renderViewerList())
-	}
 
 	// Stats panel (if enabled and sharing)
 	if m.showStats && m.sharing {
@@ -1634,6 +1641,7 @@ func (m model) renderColumns() string {
 
 	sourcesTitle := " Sources "
 	rightTitle := " Settings "
+	viewersTitle := " Viewers "
 
 	isRightPanelActive := m.activeColumn == columnQuality || m.activeColumn == columnFPS || m.activeColumn == columnCodec
 
@@ -1656,6 +1664,17 @@ func (m model) renderColumns() string {
 		rightBox = inactiveBoxStyle.Width(28).Render(
 			boxTitleDimStyle.Render(rightTitle) + "\n" + rightPanelContent,
 		)
+	}
+
+	// Add viewers column when sharing
+	if m.sharing {
+		viewersContent := m.renderViewerList()
+		viewerBoxStyle := inactiveBoxStyle.Copy().
+			BorderForeground(lipgloss.Color("11"))
+		viewersBox := viewerBoxStyle.Width(22).Render(
+			viewerStyle.Render(viewersTitle) + "\n" + viewersContent,
+		)
+		return lipgloss.JoinHorizontal(lipgloss.Top, sourcesBox, " ", rightBox, " ", viewersBox)
 	}
 
 	// Join columns horizontally
@@ -1856,12 +1875,6 @@ func (m model) renderCodecList() string {
 }
 
 func (m model) renderViewerList() string {
-	viewerBoxStyle := lipgloss.NewStyle().
-		Border(lipgloss.RoundedBorder()).
-		BorderForeground(lipgloss.Color("11")).
-		Padding(0, 1).
-		Width(74)
-
 	var content strings.Builder
 
 	// Get viewer info from peer manager
@@ -1870,46 +1883,40 @@ func (m model) renderViewerList() string {
 		viewers = m.peerManager.GetViewerInfo()
 	}
 
-	// Header with count
-	header := fmt.Sprintf(" Viewers (%d) ", len(viewers))
-	content.WriteString(boxTitleStyle.Render(header))
+	// Count display
+	countStr := fmt.Sprintf("(%d)", len(viewers))
+	content.WriteString(dimStyle.Render(countStr))
 	content.WriteString("\n")
 
 	if len(viewers) == 0 {
-		content.WriteString(dimStyle.Render("  Waiting for viewers to connect..."))
+		content.WriteString(dimStyle.Render("Waiting..."))
 	} else {
-		// Render each viewer on one line
-		var viewerStrs []string
+		// Render each viewer on its own line
 		for _, v := range viewers {
-			var status string
+			var line string
 			switch v.State {
 			case "connected":
 				connTime := time.Since(v.ConnectedAt).Truncate(time.Second)
 				connType := ""
 				if v.ConnectionType == "relay" {
-					connType = "TURN"
+					connType = " TURN"
 				} else if v.ConnectionType == "direct" {
-					connType = "P2P"
+					connType = " P2P"
 				}
-				if connType != "" {
-					status = fmt.Sprintf("%s %s %s", v.PeerID, connType, formatDuration(connTime))
-				} else {
-					status = fmt.Sprintf("%s %s", v.PeerID, formatDuration(connTime))
-				}
-				viewerStrs = append(viewerStrs, viewerStyle.Render(status))
+				line = fmt.Sprintf("%s%s %s", v.PeerID, connType, formatDuration(connTime))
+				content.WriteString(viewerStyle.Render(line))
 			case "connecting":
-				status = fmt.Sprintf("%s connecting...", v.PeerID)
-				viewerStrs = append(viewerStrs, dimStyle.Render(status))
+				line = fmt.Sprintf("%s ...", v.PeerID)
+				content.WriteString(dimStyle.Render(line))
 			default:
-				status = fmt.Sprintf("%s [%s]", v.PeerID, v.State)
-				viewerStrs = append(viewerStrs, dimStyle.Render(status))
+				line = fmt.Sprintf("%s [%s]", v.PeerID, v.State)
+				content.WriteString(dimStyle.Render(line))
 			}
+			content.WriteString("\n")
 		}
-		content.WriteString("  ")
-		content.WriteString(strings.Join(viewerStrs, "  "))
 	}
 
-	return viewerBoxStyle.Render(content.String())
+	return strings.TrimSuffix(content.String(), "\n")
 }
 
 func (m model) renderStats() string {
@@ -2019,52 +2026,70 @@ func formatBytes(b int64) string {
 }
 
 func (m model) renderHelp() string {
-	var parts []string
+	var b strings.Builder
+	sep := keySepStyle.Render(" │ ")
 
-	parts = append(parts, "tab/←→ switch column")
-	parts = append(parts, "↑/↓ navigate")
-	parts = append(parts, "space/1-9 toggle")
-	parts = append(parts, "enter start")
-	parts = append(parts, "f fullscreen")
+	// Line 1: Regular keybinds (actions)
+	var actions []string
 
-	// Adaptive bitrate toggle
-	if !m.sharing && !m.starting {
-		if m.adaptiveBitrate {
-			parts = append(parts, "a adaptive ON")
-		} else {
-			parts = append(parts, "a adaptive")
-		}
-	}
-
-	// Quality mode toggle (can toggle while streaming too)
-	if m.qualityMode {
-		parts = append(parts, "q quality ON")
-	} else {
-		parts = append(parts, "q performance")
-	}
-
-	// Password toggle (only if not sharing yet)
-	if !m.sharing && !m.serverStarted {
-		if m.passwordEnabled {
-			parts = append(parts, "p password ON")
-		} else {
-			parts = append(parts, "p password")
-		}
-	}
+	actions = append(actions, keyStyle.Render("tab")+helpStyle.Render(" columns"))
+	actions = append(actions, keyStyle.Render("↑↓")+helpStyle.Render(" select"))
+	actions = append(actions, keyStyle.Render("space")+helpStyle.Render(" toggle"))
+	actions = append(actions, keyStyle.Render("enter")+helpStyle.Render(" start"))
+	actions = append(actions, keyStyle.Render("f")+helpStyle.Render(" fullscreen"))
 
 	if m.serverStarted {
-		parts = append(parts, "c copy URL")
+		actions = append(actions, keyStyle.Render("c")+helpStyle.Render(" copy"))
 	}
 
 	if m.sharing {
-		parts = append(parts, "i stats")
-		parts = append(parts, "s stop")
+		actions = append(actions, keyStyle.Render("s")+helpStyle.Render(" stop"))
 	}
 
-	parts = append(parts, "r refresh")
-	parts = append(parts, "ctrl+c quit")
+	actions = append(actions, keyStyle.Render("r")+helpStyle.Render(" refresh"))
+	actions = append(actions, keyStyle.Render("^c")+helpStyle.Render(" quit"))
 
-	return helpStyle.Render(strings.Join(parts, " • "))
+	b.WriteString(strings.Join(actions, sep))
+
+	// Line 2: Toggles with state indicators
+	var toggles []string
+
+	// Adaptive bitrate toggle (only before sharing)
+	if !m.sharing && !m.starting {
+		toggles = append(toggles, m.renderToggle("a", "adaptive", m.adaptiveBitrate))
+	}
+
+	// Quality mode toggle - shows current mode (quality ON = quality mode, OFF = performance mode)
+	if m.qualityMode {
+		toggles = append(toggles, m.renderToggle("q", "quality", true))
+	} else {
+		toggles = append(toggles, m.renderToggle("q", "performance", false))
+	}
+
+	// Password toggle (only before sharing/server start)
+	if !m.sharing && !m.serverStarted {
+		toggles = append(toggles, m.renderToggle("p", "password", m.passwordEnabled))
+	}
+
+	// Stats toggle (only while sharing)
+	if m.sharing {
+		toggles = append(toggles, m.renderToggle("i", "stats", m.showStats))
+	}
+
+	if len(toggles) > 0 {
+		b.WriteString("\n\n")
+		b.WriteString(strings.Join(toggles, "   "))
+	}
+
+	return b.String()
+}
+
+// renderToggle renders a toggle keybind with active/inactive indicator
+func (m model) renderToggle(key, label string, active bool) string {
+	if active {
+		return toggleActiveStyle.Render("◉ "+key) + " " + toggleActiveStyle.Render(label)
+	}
+	return toggleInactiveStyle.Render("○ "+key) + " " + toggleInactiveStyle.Render(label)
 }
 
 func truncate(s string, maxLen int) string {
