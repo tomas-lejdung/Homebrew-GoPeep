@@ -2168,9 +2168,6 @@ func (ms *Streamer) SwapWindowCapture(oldWindowID uint32, newWindow WindowInfo) 
 
 	ms.mu.Unlock()
 
-	log.Printf("SwapWindowCapture: Swapping from window %d to %d (%s) in slot %d",
-		oldWindowID, newWindow.ID, newWindow.WindowName, captureSlot)
-
 	// Stop capture for old window
 	ms.multiCapture.StopCapture(targetPipeline.capture)
 
@@ -2215,7 +2212,6 @@ func (ms *Streamer) SwapWindowCapture(oldWindowID uint32, newWindow WindowInfo) 
 	// Send stream-activated to notify of the window swap (viewer will update display name)
 	ms.peerManager.NotifyStreamActivated(streamInfo)
 
-	log.Printf("SwapWindowCapture: Successfully swapped to window %d (%s)", newWindow.ID, newWindow.WindowName)
 	return nil
 }
 

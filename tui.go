@@ -208,12 +208,10 @@ type model struct {
 	// OS focus tracking
 	osFocusedWindowID uint32 // Currently OS-focused window ID
 
-	// Auto-share mode (automatically shares the frontmost window)
+	// Auto-share mode (automatically shares the topmost window)
 	autoShareEnabled    bool   // true when in auto-share mode
 	autoShareWindowID   uint32 // window ID currently being auto-shared
 	autoShareWindowName string // display name of auto-shared window
-	autoShareTicks      int    // debug: count fast ticks
-	autoShareLastFocus  uint32 // debug: last detected focus window ID
 
 	// Password protection
 	passwordEnabled bool
@@ -478,7 +476,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case fastTickMsg:
 		// Fast tick for auto-share mode - rapid focus checking using z-order
 		// Uses m.sources (refreshed every 1s by regular tick) to avoid expensive ListWindows() calls
-		m.autoShareTicks++
 		if m.autoShareEnabled {
 			// Extract window IDs from m.sources (already in memory - cheap)
 			var windowIDs []uint32
@@ -490,7 +487,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 			// Find topmost window by z-order (cheap - just CGWindowList check)
 			topmost := GetTopmostWindow(windowIDs)
-			m.autoShareLastFocus = topmost
 
 			if m.sharing && m.streamer != nil {
 				if topmost != 0 && topmost != m.autoShareWindowID {
@@ -504,7 +500,6 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					if topmostWindow != nil {
-						log.Printf("Auto-share: swapping to topmost %d (%s)", topmost, topmostWindow.WindowName)
 						if err := m.streamer.SwapWindowCapture(m.autoShareWindowID, *topmostWindow); err != nil {
 							log.Printf("Auto-share swap failed: %v", err)
 						} else {
@@ -1051,7 +1046,6 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 
 	// Find topmost window by z-order (same logic as focusDetectionLoop)
 	topmost := GetTopmostWindow(windowIDs)
-	log.Printf("Auto-share: Topmost window by z-order: %d", topmost)
 
 	if topmost == 0 {
 		m.lastError = "No topmost window found"
@@ -1073,8 +1067,6 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 		m.autoShareEnabled = false
 		return m, nil
 	}
-
-	log.Printf("Auto-share: Starting with window %d (%s)", topmost, targetWindow.WindowName)
 
 	m.autoShareWindowID = topmost
 	m.autoShareWindowName = targetWindow.WindowName
@@ -1124,49 +1116,6 @@ func (m model) startAutoShareCapture(window WindowInfo) (tea.Model, tea.Cmd) {
 	// Start capture with just this one window, and start fast tick for focus detection
 	captureCmd := startMultiCaptureAsync(m.peerManager, []WindowInfo{window}, false, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode, codecType)
 	return m, tea.Batch(captureCmd, fastTickCmd())
-}
-
-// swapAutoShareWindow swaps the capture to a new window in auto-share mode
-func (m model) swapAutoShareWindow(newWindowID uint32) (tea.Model, tea.Cmd) {
-	if m.streamer == nil || !m.autoShareEnabled {
-		return m, nil
-	}
-
-	// Find new window info
-	windows, _ := ListWindows()
-	var newWindow *WindowInfo
-	for i := range windows {
-		if windows[i].ID == newWindowID {
-			newWindow = &windows[i]
-			break
-		}
-	}
-
-	if newWindow == nil {
-		// Window not in shareable list - this is common for filtered windows
-		// Don't log spam, just skip this swap attempt
-		return m, nil
-	}
-
-	log.Printf("Auto-share: Found window %d in list, proceeding with swap", newWindowID)
-
-	// Swap the capture source in-place
-	if err := m.streamer.SwapWindowCapture(m.autoShareWindowID, *newWindow); err != nil {
-		log.Printf("Auto-share swap failed: %v", err)
-		return m, nil
-	}
-
-	m.autoShareWindowID = newWindowID
-	m.autoShareWindowName = newWindow.WindowName
-	if m.autoShareWindowName == "" {
-		m.autoShareWindowName = newWindow.OwnerName
-	}
-
-	// Update selection map for consistency
-	m.selectedWindows = make(map[uint32]bool)
-	m.selectedWindows[newWindowID] = true
-
-	return m, nil
 }
 
 // initServer initializes the server and room (only once)
@@ -2028,21 +1977,8 @@ func (m model) renderSourcesList() string {
 			b.WriteString(dimStyle.Render("Waiting for focus..."))
 		}
 		b.WriteString("\n\n")
-		// Debug: show current state
-		b.WriteString(dimStyle.Render(fmt.Sprintf("Current: %d", m.autoShareWindowID)))
+		b.WriteString(dimStyle.Render("Follows topmost window"))
 		b.WriteString("\n")
-		b.WriteString(dimStyle.Render(fmt.Sprintf("Focus:   %d", m.autoShareLastFocus)))
-		b.WriteString("\n")
-		b.WriteString(dimStyle.Render(fmt.Sprintf("Ticks:   %d", m.autoShareTicks)))
-		b.WriteString("\n")
-		if m.sharing {
-			b.WriteString(dimStyle.Render("Status: SHARING"))
-		} else if m.starting {
-			b.WriteString(dimStyle.Render("Status: STARTING"))
-		} else {
-			b.WriteString(dimStyle.Render("Status: IDLE"))
-		}
-		b.WriteString("\n\n")
 		b.WriteString(dimStyle.Render("Press Shift+A to exit"))
 		return b.String()
 	}
