@@ -156,6 +156,7 @@ type model struct {
 	selectedWindows    map[uint32]bool // window IDs selected for streaming
 	fullscreenSelected bool            // true if fullscreen is selected (mutually exclusive with selectedWindows)
 	adaptiveBitrate    bool            // reduce bitrate for non-focused windows
+	qualityMode        bool            // false = performance, true = quality (uses CQ/CRF)
 	streamer           *Streamer       // unified streamer (handles 1 or more windows)
 	peerManager        *PeerManager    // unified peer manager
 
@@ -473,7 +474,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	switch msg.String() {
-	case "q", "ctrl+c":
+	case "ctrl+c":
 		m.cleanup()
 		return m, tea.Quit
 
@@ -708,6 +709,15 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Update if already streaming
 		if m.streamer != nil {
 			m.streamer.SetAdaptiveBitrate(m.adaptiveBitrate)
+		}
+		return m, nil
+
+	case "q":
+		// Toggle quality mode (quality vs performance)
+		m.qualityMode = !m.qualityMode
+		// Update if already streaming
+		if m.streamer != nil {
+			m.streamer.SetQualityMode(m.qualityMode)
 		}
 		return m, nil
 	}
@@ -1220,11 +1230,12 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 		bgBitrate = 500
 	}
 	adaptiveBR := m.adaptiveBitrate
+	qualityMode := m.qualityMode
 	codecType := m.getSelectedCodecType()
 	multiPeerManager := m.peerManager
 	fullscreen := m.fullscreenSelected
 
-	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fullscreen, fps, focusBitrate, bgBitrate, adaptiveBR, codecType)
+	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fullscreen, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode, codecType)
 }
 
 // restartMultiStreamWithSelection restarts multi-stream with updated window selection (legacy - full restart)
@@ -1486,12 +1497,12 @@ func (m *model) stopMultiCapture() {
 }
 
 // startMultiCaptureAsync starts multi-window or display capture asynchronously
-func startMultiCaptureAsync(pm *PeerManager, windows []WindowInfo, fullscreen bool, fps, focusBitrate, bgBitrate int, adaptiveBR bool, codecType CodecType) tea.Cmd {
+func startMultiCaptureAsync(pm *PeerManager, windows []WindowInfo, fullscreen bool, fps, focusBitrate, bgBitrate int, adaptiveBR bool, qualityMode bool, codecType CodecType) tea.Cmd {
 	return func() tea.Msg {
 		time.Sleep(100 * time.Millisecond)
 
 		// Create multi streamer
-		ms := NewStreamer(pm, fps, focusBitrate, bgBitrate, adaptiveBR)
+		ms := NewStreamer(pm, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode)
 
 		if fullscreen {
 			// Add display capture
@@ -1540,8 +1551,8 @@ func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowInfo *
 			return captureErrorMsg{err: "Full screen capture not supported. Please select individual windows instead."}
 		}
 
-		// Create streamer with single stream
-		ms := NewStreamer(peerManager, fps, bitrate, bitrate/2, false)
+		// Create streamer with single stream (no adaptive bitrate, no quality mode for legacy single-window)
+		ms := NewStreamer(peerManager, fps, bitrate, bitrate/2, false, false)
 
 		// Single window capture - pass full WindowInfo for stats display
 		_, err := ms.AddWindow(*windowInfo)
@@ -2170,6 +2181,13 @@ func (m model) renderHelp() string {
 		}
 	}
 
+	// Quality mode toggle (can toggle while streaming too)
+	if m.qualityMode {
+		parts = append(parts, "q quality ON")
+	} else {
+		parts = append(parts, "q performance")
+	}
+
 	// Password toggle (only if not sharing yet)
 	if !m.sharing && !m.serverStarted {
 		if m.passwordEnabled {
@@ -2189,7 +2207,7 @@ func (m model) renderHelp() string {
 	}
 
 	parts = append(parts, "r refresh")
-	parts = append(parts, "q quit")
+	parts = append(parts, "ctrl+c quit")
 
 	return helpStyle.Render(strings.Join(parts, " • "))
 }

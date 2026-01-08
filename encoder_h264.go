@@ -15,18 +15,24 @@ typedef struct {
     int width;
     int height;
     int fps;
+    int bitrate;
     int frame_count;
     int initialized;
+    int quality_mode;  // 0 = performance (ABR), 1 = quality (CRF)
+    float crf_value;   // CRF value when in quality mode (0-51, lower = better)
 } H264EncoderContext;
 
-H264EncoderContext* create_h264_encoder(int width, int height, int fps, int bitrate) {
+H264EncoderContext* create_h264_encoder_with_mode(int width, int height, int fps, int bitrate, int quality_mode, float crf_value) {
     H264EncoderContext* ctx = (H264EncoderContext*)calloc(1, sizeof(H264EncoderContext));
     if (!ctx) return NULL;
 
     ctx->width = width;
     ctx->height = height;
     ctx->fps = fps;
+    ctx->bitrate = bitrate;
     ctx->frame_count = 0;
+    ctx->quality_mode = quality_mode;
+    ctx->crf_value = crf_value;
 
     // Use ultrafast preset for real-time encoding
     if (x264_param_default_preset(&ctx->params, "ultrafast", "zerolatency") < 0) {
@@ -45,11 +51,20 @@ H264EncoderContext* create_h264_encoder(int width, int height, int fps, int bitr
     ctx->params.b_repeat_headers = 1;  // Include SPS/PPS with each keyframe
     ctx->params.b_annexb = 1;          // Annex B format (NAL start codes)
 
-    // Rate control
-    ctx->params.rc.i_rc_method = X264_RC_ABR;
-    ctx->params.rc.i_bitrate = bitrate;
-    ctx->params.rc.i_vbv_buffer_size = bitrate;
-    ctx->params.rc.i_vbv_max_bitrate = bitrate;
+    // Rate control - choose based on mode
+    if (quality_mode) {
+        // Quality mode: CRF with VBV constraints
+        ctx->params.rc.i_rc_method = X264_RC_CRF;
+        ctx->params.rc.f_rf_constant = crf_value;
+        ctx->params.rc.i_vbv_max_bitrate = bitrate;  // Cap max bitrate
+        ctx->params.rc.i_vbv_buffer_size = bitrate;
+    } else {
+        // Performance mode: ABR (bandwidth efficient)
+        ctx->params.rc.i_rc_method = X264_RC_ABR;
+        ctx->params.rc.i_bitrate = bitrate;
+        ctx->params.rc.i_vbv_buffer_size = bitrate;
+        ctx->params.rc.i_vbv_max_bitrate = bitrate;
+    }
 
     // Keyframe interval
     ctx->params.i_keyint_max = fps * 2;  // Keyframe every 2 seconds
@@ -77,6 +92,11 @@ H264EncoderContext* create_h264_encoder(int width, int height, int fps, int bitr
 
     ctx->initialized = 1;
     return ctx;
+}
+
+// Legacy function - creates encoder in performance mode (ABR)
+H264EncoderContext* create_h264_encoder(int width, int height, int fps, int bitrate) {
+    return create_h264_encoder_with_mode(width, height, fps, bitrate, 0, 0);
 }
 
 void destroy_h264_encoder(H264EncoderContext* ctx) {
@@ -193,7 +213,9 @@ type H264Encoder struct {
 	frameCount    int
 	mu            sync.Mutex
 	initialized   bool
-	needsRecreate bool // Flag to recreate encoder on next frame (for bitrate changes)
+	needsRecreate bool    // Flag to recreate encoder on next frame (for bitrate/mode changes)
+	qualityMode   bool    // false = performance (ABR), true = quality (CRF)
+	crfValue      float32 // CRF value for quality mode (0-51, lower = better)
 }
 
 // NewH264Encoder creates a new H.264 software encoder using x264
@@ -233,7 +255,15 @@ func (e *H264Encoder) initWithDimensions(width, height int) error {
 	e.width = width
 	e.height = height
 
-	ctx := C.create_h264_encoder(C.int(width), C.int(height), C.int(e.fps), C.int(e.bitrate))
+	qualityMode := 0
+	if e.qualityMode {
+		qualityMode = 1
+	}
+
+	ctx := C.create_h264_encoder_with_mode(
+		C.int(width), C.int(height), C.int(e.fps), C.int(e.bitrate),
+		C.int(qualityMode), C.float(e.crfValue),
+	)
 	if ctx == nil {
 		return fmt.Errorf("failed to create H.264 encoder")
 	}
@@ -373,6 +403,27 @@ func (e *H264Encoder) SetBitrate(bitrate int) error {
 	}
 
 	e.bitrate = bitrate
+	e.needsRecreate = true
+	return nil
+}
+
+// SetQualityMode switches between quality and performance modes
+// Quality mode (enabled=true): Uses CRF rate control for consistent visual quality
+// Performance mode (enabled=false): Uses ABR rate control for bandwidth efficiency
+// The encoder will be recreated on the next frame encode
+func (e *H264Encoder) SetQualityMode(enabled bool, bitrate int) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	// Get CRF value from quality params
+	_, crf, _ := QualityModeParams(bitrate)
+
+	if e.qualityMode == enabled && e.crfValue == crf {
+		return nil
+	}
+
+	e.qualityMode = enabled
+	e.crfValue = crf
 	e.needsRecreate = true
 	return nil
 }

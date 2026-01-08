@@ -697,6 +697,7 @@ type StreamPipeline struct {
 	focusBitrate int // bitrate when focused
 	bgBitrate    int // bitrate when not focused (background)
 	adaptiveBR   bool
+	qualityMode  bool // false = performance, true = quality
 	mu           sync.Mutex
 
 	// Stats tracking
@@ -719,6 +720,7 @@ type Streamer struct {
 	focusBitrate    int
 	bgBitrate       int
 	adaptiveBitrate bool
+	qualityMode     bool // false = performance, true = quality
 	running         bool
 	stopChan        chan struct{}
 	focusCheckChan  chan struct{}
@@ -730,7 +732,7 @@ type Streamer struct {
 }
 
 // NewStreamer creates a new multi-streamer
-func NewStreamer(peerManager *PeerManager, fps, focusBitrate, bgBitrate int, adaptiveBR bool) *Streamer {
+func NewStreamer(peerManager *PeerManager, fps, focusBitrate, bgBitrate int, adaptiveBR bool, qualityMode bool) *Streamer {
 	return &Streamer{
 		peerManager:     peerManager,
 		multiCapture:    NewMultiCapture(),
@@ -740,6 +742,7 @@ func NewStreamer(peerManager *PeerManager, fps, focusBitrate, bgBitrate int, ada
 		focusBitrate:    focusBitrate,
 		bgBitrate:       bgBitrate,
 		adaptiveBitrate: adaptiveBR,
+		qualityMode:     qualityMode,
 		stopChan:        make(chan struct{}),
 		focusCheckChan:  make(chan struct{}),
 	}
@@ -795,6 +798,11 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
+	// Apply quality mode if enabled
+	if ms.qualityMode {
+		encoder.SetQualityMode(true, bitrate)
+	}
+
 	// Create pipeline
 	pipeline := &StreamPipeline{
 		trackInfo:    trackInfo,
@@ -805,6 +813,7 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 		focusBitrate: ms.focusBitrate,
 		bgBitrate:    ms.bgBitrate,
 		adaptiveBR:   ms.adaptiveBitrate,
+		qualityMode:  ms.qualityMode,
 		stopChan:     make(chan struct{}),
 	}
 
@@ -1011,6 +1020,26 @@ func (ms *Streamer) SetAdaptiveBitrate(enabled bool) {
 	}
 }
 
+// SetQualityMode enables/disables quality mode for all streams
+// Quality mode (true): Uses CQ/CRF for consistent visual quality
+// Performance mode (false): Uses CBR/ABR for bandwidth efficiency
+func (ms *Streamer) SetQualityMode(enabled bool) {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	ms.qualityMode = enabled
+
+	for _, pipeline := range ms.pipelines {
+		pipeline.SetQualityMode(enabled)
+	}
+
+	mode := "performance"
+	if enabled {
+		mode = "quality"
+	}
+	log.Printf("Streamer quality mode: %s", mode)
+}
+
 // GetStats returns statistics for all active streams
 func (ms *Streamer) GetStats() []StreamPipelineStats {
 	ms.mu.RLock()
@@ -1099,6 +1128,11 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
+	// Apply quality mode if enabled
+	if ms.qualityMode {
+		encoder.SetQualityMode(true, bitrate)
+	}
+
 	// Create pipeline
 	pipeline := &StreamPipeline{
 		trackInfo:    trackInfo,
@@ -1109,6 +1143,7 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 		focusBitrate: ms.focusBitrate,
 		bgBitrate:    ms.bgBitrate,
 		adaptiveBR:   ms.adaptiveBitrate,
+		qualityMode:  ms.qualityMode,
 		stopChan:     make(chan struct{}),
 	}
 
@@ -1244,6 +1279,11 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
+	// Apply quality mode if enabled
+	if ms.qualityMode {
+		encoder.SetQualityMode(true, bitrate)
+	}
+
 	// Create pipeline
 	pipeline := &StreamPipeline{
 		trackInfo:    trackInfo,
@@ -1254,6 +1294,7 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 		focusBitrate: ms.focusBitrate,
 		bgBitrate:    ms.bgBitrate,
 		adaptiveBR:   false, // No adaptive bitrate for display
+		qualityMode:  ms.qualityMode,
 		stopChan:     make(chan struct{}),
 	}
 
@@ -1315,6 +1356,11 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
+	// Apply quality mode if enabled
+	if ms.qualityMode {
+		encoder.SetQualityMode(true, bitrate)
+	}
+
 	// Create pipeline
 	pipeline := &StreamPipeline{
 		trackInfo:    trackInfo,
@@ -1325,6 +1371,7 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 		focusBitrate: ms.focusBitrate,
 		bgBitrate:    ms.bgBitrate,
 		adaptiveBR:   false,
+		qualityMode:  ms.qualityMode,
 		stopChan:     make(chan struct{}),
 	}
 
@@ -1530,6 +1577,29 @@ func (p *StreamPipeline) SetBitrate(focusBitrate, bgBitrate int) {
 			} else {
 				log.Printf("Track %s bitrate set to %d kbps", p.trackInfo.TrackID, newBitrate)
 			}
+		}
+	}
+}
+
+// SetQualityMode updates the quality mode for this pipeline
+func (p *StreamPipeline) SetQualityMode(enabled bool) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.qualityMode == enabled {
+		return
+	}
+
+	p.qualityMode = enabled
+	if p.encoder != nil {
+		if err := p.encoder.SetQualityMode(enabled, p.bitrate); err != nil {
+			log.Printf("Failed to set quality mode for track %s: %v", p.trackInfo.TrackID, err)
+		} else {
+			mode := "performance"
+			if enabled {
+				mode = "quality"
+			}
+			log.Printf("Track %s quality mode set to %s", p.trackInfo.TrackID, mode)
 		}
 	}
 }

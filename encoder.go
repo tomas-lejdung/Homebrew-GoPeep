@@ -13,20 +13,26 @@ typedef struct {
     int width;
     int height;
     int fps;
+    int bitrate;
     int frame_count;
     int initialized;
     int is_vp9;
+    int quality_mode;  // 0 = performance (CBR), 1 = quality (CQ)
+    int cq_level;      // CQ level when in quality mode (0-63, lower = better)
 } VPXEncoderContext;
 
-VPXEncoderContext* create_vpx_encoder(int width, int height, int fps, int bitrate, int use_vp9) {
+VPXEncoderContext* create_vpx_encoder_with_mode(int width, int height, int fps, int bitrate, int use_vp9, int quality_mode, int cq_level) {
     VPXEncoderContext* ctx = (VPXEncoderContext*)calloc(1, sizeof(VPXEncoderContext));
     if (!ctx) return NULL;
 
     ctx->width = width;
     ctx->height = height;
     ctx->fps = fps;
+    ctx->bitrate = bitrate;
     ctx->frame_count = 0;
     ctx->is_vp9 = use_vp9;
+    ctx->quality_mode = quality_mode;
+    ctx->cq_level = cq_level;
 
     // Select codec interface
     vpx_codec_iface_t* codec_iface = use_vp9 ? vpx_codec_vp9_cx() : vpx_codec_vp8_cx();
@@ -43,12 +49,18 @@ VPXEncoderContext* create_vpx_encoder(int width, int height, int fps, int bitrat
     cfg.g_h = height;
     cfg.g_timebase.num = 1;
     cfg.g_timebase.den = fps;
-    cfg.rc_target_bitrate = bitrate; // kbps
+    cfg.rc_target_bitrate = bitrate; // kbps - acts as ceiling in CQ mode
     cfg.g_error_resilient = VPX_ERROR_RESILIENT_DEFAULT;
     cfg.g_lag_in_frames = 0;         // Real-time mode
-    cfg.rc_end_usage = VPX_CBR;      // Constant bitrate
     cfg.kf_mode = VPX_KF_AUTO;
     cfg.kf_max_dist = fps * 2;       // Keyframe every 2 seconds
+
+    // Rate control mode
+    if (quality_mode) {
+        cfg.rc_end_usage = VPX_CQ;   // Constrained Quality - prioritizes quality
+    } else {
+        cfg.rc_end_usage = VPX_CBR;  // Constant Bitrate - bandwidth efficient
+    }
 
     if (use_vp9) {
         // VP9-specific settings for real-time
@@ -59,6 +71,11 @@ VPXEncoderContext* create_vpx_encoder(int width, int height, int fps, int bitrat
     if (vpx_codec_enc_init(&ctx->codec, codec_iface, &cfg, 0) != VPX_CODEC_OK) {
         free(ctx);
         return NULL;
+    }
+
+    // Set CQ level if in quality mode
+    if (quality_mode) {
+        vpx_codec_control(&ctx->codec, VP8E_SET_CQ_LEVEL, cq_level);
     }
 
     // Set real-time mode - different control for VP8 vs VP9
@@ -79,6 +96,11 @@ VPXEncoderContext* create_vpx_encoder(int width, int height, int fps, int bitrat
 
     ctx->initialized = 1;
     return ctx;
+}
+
+// Legacy function - creates encoder in performance mode (CBR)
+VPXEncoderContext* create_vpx_encoder(int width, int height, int fps, int bitrate, int use_vp9) {
+    return create_vpx_encoder_with_mode(width, height, fps, bitrate, use_vp9, 0, 0);
 }
 
 // Legacy wrapper for VP8
@@ -207,7 +229,9 @@ type VPXEncoder struct {
 	mu            sync.Mutex
 	initialized   bool
 	isVP9         bool
-	needsRecreate bool // Flag to recreate encoder on next frame (for bitrate changes)
+	needsRecreate bool // Flag to recreate encoder on next frame (for bitrate/mode changes)
+	qualityMode   bool // false = performance (CBR), true = quality (CQ)
+	cqLevel       int  // CQ level for quality mode (0-63, lower = better)
 }
 
 // VP8Encoder is an alias for backwards compatibility
@@ -285,7 +309,15 @@ func (e *VPXEncoder) initWithDimensions(width, height int) error {
 		useVP9 = 1
 	}
 
-	ctx := C.create_vpx_encoder(C.int(width), C.int(height), C.int(e.fps), C.int(e.bitrate), C.int(useVP9))
+	qualityMode := 0
+	if e.qualityMode {
+		qualityMode = 1
+	}
+
+	ctx := C.create_vpx_encoder_with_mode(
+		C.int(width), C.int(height), C.int(e.fps), C.int(e.bitrate),
+		C.int(useVP9), C.int(qualityMode), C.int(e.cqLevel),
+	)
 	if ctx == nil {
 		codecName := "VP8"
 		if e.isVP9 {
@@ -432,6 +464,27 @@ func (e *VPXEncoder) SetBitrate(bitrate int) error {
 	}
 
 	e.bitrate = bitrate
+	e.needsRecreate = true
+	return nil
+}
+
+// SetQualityMode switches between quality and performance modes
+// Quality mode (enabled=true): Uses CQ rate control for consistent visual quality
+// Performance mode (enabled=false): Uses CBR rate control for bandwidth efficiency
+// The encoder will be recreated on the next frame encode
+func (e *VPXEncoder) SetQualityMode(enabled bool, bitrate int) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	// Get CQ level from quality params
+	cqLevel, _, _ := QualityModeParams(bitrate)
+
+	if e.qualityMode == enabled && e.cqLevel == cqLevel {
+		return nil
+	}
+
+	e.qualityMode = enabled
+	e.cqLevel = cqLevel
 	e.needsRecreate = true
 	return nil
 }
