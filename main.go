@@ -224,6 +224,13 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 		localSharer.SendToAllViewers(focusMsg)
 	})
 
+	// Set up size change callback to broadcast dimension changes to all viewers
+	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
+		log.Printf("Size change callback triggered for track %s: %dx%d", trackID, width, height)
+		sizeMsg := sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height}
+		localSharer.SendToAllViewers(sizeMsg)
+	})
+
 	// Set up renegotiation callback to send new offers during track add/remove
 	pm.SetRenegotiateCallback(func(peerID string, offer string) {
 		log.Printf("Renegotiation: sending offer to peer %s", peerID)
@@ -350,6 +357,18 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 			log.Printf("Failed to send focus-change: %v", err)
 		} else {
 			log.Printf("Sent focus-change message to signal server")
+		}
+	})
+
+	// Set up size change callback to broadcast dimension changes to all viewers
+	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
+		log.Printf("Remote size change callback triggered for track %s: %dx%d", trackID, width, height)
+		sizeMsg := sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height}
+		connMu.Lock()
+		err := conn.WriteJSON(sizeMsg)
+		connMu.Unlock()
+		if err != nil {
+			log.Printf("Failed to send size-change: %v", err)
 		}
 	})
 

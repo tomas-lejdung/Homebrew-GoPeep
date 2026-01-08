@@ -247,6 +247,7 @@ int mc_start_display_capture(int target_width, int target_height, int fps) {
 
     @autoreleasepool {
         inst->config = [[SCStreamConfiguration alloc] init];
+        // Use display dimensions for display capture
         inst->config.width = configWidth;
         inst->config.height = configHeight;
         inst->config.minimumFrameInterval = CMTimeMake(1, fps > 0 ? fps : 30);
@@ -331,6 +332,89 @@ void mc_stop_all() {
     for (int i = 0; i < MAX_CAPTURE_INSTANCES; i++) {
         mc_stop_capture(i);
     }
+}
+
+// Update stream configuration with new dimensions (called when window resizes)
+// This is non-blocking - the update happens asynchronously
+int mc_update_stream_size(int slot, int new_width, int new_height) {
+    if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES) return -1;
+
+    CaptureInstance* inst = &g_instances[slot];
+    if (!inst->active || inst->stream == nil || inst->config == nil) return -1;
+
+    @autoreleasepool {
+        // Create new configuration with updated dimensions
+        SCStreamConfiguration* newConfig = [[SCStreamConfiguration alloc] init];
+        newConfig.width = new_width;
+        newConfig.height = new_height;
+        newConfig.minimumFrameInterval = inst->config.minimumFrameInterval;
+        newConfig.pixelFormat = inst->config.pixelFormat;
+        newConfig.showsCursor = inst->config.showsCursor;
+
+        // Store the new config immediately (frames will use it once update completes)
+        inst->config = newConfig;
+
+        // Update the stream configuration asynchronously (non-blocking)
+        [inst->stream updateConfiguration:newConfig completionHandler:^(NSError* error) {
+            if (error != nil) {
+                NSLog(@"Failed to update stream configuration: %@", error);
+            }
+        }];
+
+        return 0;
+    }
+}
+
+// Get current window dimensions using fast CGWindowList API
+// Returns width in out_width, height in out_height. Returns 0 on success, -1 on error.
+int mc_get_window_size(int slot, int* out_width, int* out_height) {
+    if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES) return -1;
+
+    CaptureInstance* inst = &g_instances[slot];
+    if (!inst->active || inst->window_id == 0) return -1;
+
+    // Use CGWindowListCopyWindowInfo - much faster than SCShareableContent
+    CFArrayRef windowList = CGWindowListCopyWindowInfo(
+        kCGWindowListOptionIncludingWindow,
+        inst->window_id
+    );
+
+    if (windowList == NULL || CFArrayGetCount(windowList) == 0) {
+        if (windowList) CFRelease(windowList);
+        return -1;
+    }
+
+    CFDictionaryRef windowInfo = (CFDictionaryRef)CFArrayGetValueAtIndex(windowList, 0);
+    CFDictionaryRef boundsDict = (CFDictionaryRef)CFDictionaryGetValue(windowInfo, kCGWindowBounds);
+
+    if (boundsDict == NULL) {
+        CFRelease(windowList);
+        return -1;
+    }
+
+    CGRect bounds;
+    if (!CGRectMakeWithDictionaryRepresentation(boundsDict, &bounds)) {
+        CFRelease(windowList);
+        return -1;
+    }
+
+    *out_width = (int)bounds.size.width;
+    *out_height = (int)bounds.size.height;
+
+    CFRelease(windowList);
+    return 0;
+}
+
+// Get current stream config dimensions
+int mc_get_config_size(int slot, int* out_width, int* out_height) {
+    if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES) return -1;
+
+    CaptureInstance* inst = &g_instances[slot];
+    if (!inst->active || inst->config == nil) return -1;
+
+    *out_width = (int)inst->config.width;
+    *out_height = (int)inst->config.height;
+    return 0;
 }
 
 // Get latest frame from an instance
@@ -617,6 +701,48 @@ func (mc *MultiCapture) StopAll() {
 		inst.active = false
 	}
 	mc.instances = mc.instances[:0]
+}
+
+// UpdateStreamSize updates the capture stream configuration with new dimensions
+// This should be called when the captured window is resized
+func (mc *MultiCapture) UpdateStreamSize(inst *CaptureInstance, newWidth, newHeight int) error {
+	if inst == nil || !inst.active {
+		return fmt.Errorf("capture instance not active")
+	}
+
+	result := C.mc_update_stream_size(C.int(inst.slot), C.int(newWidth), C.int(newHeight))
+	if result != 0 {
+		return fmt.Errorf("failed to update stream size: %d", result)
+	}
+	return nil
+}
+
+// GetWindowSize gets the current actual window dimensions from macOS
+func (mc *MultiCapture) GetWindowSize(inst *CaptureInstance) (width, height int, err error) {
+	if inst == nil || !inst.active {
+		return 0, 0, fmt.Errorf("capture instance not active")
+	}
+
+	var w, h C.int
+	result := C.mc_get_window_size(C.int(inst.slot), &w, &h)
+	if result != 0 {
+		return 0, 0, fmt.Errorf("failed to get window size")
+	}
+	return int(w), int(h), nil
+}
+
+// GetConfigSize gets the current stream configuration dimensions
+func (mc *MultiCapture) GetConfigSize(inst *CaptureInstance) (width, height int, err error) {
+	if inst == nil || !inst.active {
+		return 0, 0, fmt.Errorf("capture instance not active")
+	}
+
+	var w, h C.int
+	result := C.mc_get_config_size(C.int(inst.slot), &w, &h)
+	if result != 0 {
+		return 0, 0, fmt.Errorf("failed to get config size")
+	}
+	return int(w), int(h), nil
 }
 
 // GetLatestFrameBGRA gets the latest frame from a capture instance

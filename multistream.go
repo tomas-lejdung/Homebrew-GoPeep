@@ -59,7 +59,8 @@ type PeerManager struct {
 	onICE         func(peerID string, candidate string)
 	onConnected   func(peerID string)
 	onDisconnect  func(peerID string)
-	onFocusChange func(trackID string) // Called when focus changes to a new track
+	onFocusChange func(trackID string)                    // Called when focus changes to a new track
+	onSizeChange  func(trackID string, width, height int) // Called when focused track dimensions change
 
 	// Renegotiation callbacks
 	onRenegotiate   func(peerID string, offer string)
@@ -269,6 +270,18 @@ func (mpm *PeerManager) NotifyFocusChange(trackID string) {
 		mpm.onFocusChange(trackID)
 	} else {
 		log.Printf("NotifyFocusChange: callback is NIL! trackID: %s", trackID)
+	}
+}
+
+// SetSizeChangeCallback sets callback for when focused track dimensions change
+func (mpm *PeerManager) SetSizeChangeCallback(callback func(trackID string, width, height int)) {
+	mpm.onSizeChange = callback
+}
+
+// NotifySizeChange notifies that the focused track dimensions have changed
+func (mpm *PeerManager) NotifySizeChange(trackID string, width, height int) {
+	if mpm.onSizeChange != nil {
+		mpm.onSizeChange(trackID, width, height)
 	}
 }
 
@@ -754,6 +767,12 @@ type StreamPipeline struct {
 	lastStatsTime  time.Time // When we last calculated rates
 	currentFPS     float64   // Calculated FPS
 	currentBitrate float64   // Calculated bitrate in kbps
+
+	// Size change tracking (for debounced notifications)
+	lastWidth       int
+	lastHeight      int
+	sizeChangeTimer *time.Timer
+	sizeChangeMu    sync.Mutex
 }
 
 // Streamer manages multiple stream pipelines
@@ -775,6 +794,7 @@ type Streamer struct {
 	// Callbacks
 	onFocusChange   func(trackID string)
 	onStreamsChange func(streams []sig.StreamInfo)
+	onSizeChange    func(trackID string, width, height int)
 }
 
 // NewStreamer creates a new multi-streamer
@@ -802,6 +822,11 @@ func (ms *Streamer) SetOnFocusChange(callback func(trackID string)) {
 // SetOnStreamsChange sets the callback for streams info changes
 func (ms *Streamer) SetOnStreamsChange(callback func(streams []sig.StreamInfo)) {
 	ms.onStreamsChange = callback
+}
+
+// SetOnSizeChange sets the callback for when focused track dimensions change
+func (ms *Streamer) SetOnSizeChange(callback func(trackID string, width, height int)) {
+	ms.onSizeChange = callback
 }
 
 // AddWindow adds a window to stream
@@ -868,7 +893,7 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 
 	// Start pipeline if already running
 	if ms.running {
-		go pipeline.run(ms.peerManager, ms.multiCapture)
+		go pipeline.run(ms.peerManager, ms.multiCapture, ms.onSizeChange)
 	}
 
 	// Notify about streams change
@@ -916,7 +941,7 @@ func (ms *Streamer) Start() error {
 		if err := pipeline.encoder.Start(); err != nil {
 			return err
 		}
-		go pipeline.run(ms.peerManager, ms.multiCapture)
+		go pipeline.run(ms.peerManager, ms.multiCapture, ms.onSizeChange)
 	}
 
 	// Start focus detection loop
@@ -1277,7 +1302,7 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 
 	// 8. Start all new pipeline run loops
 	for _, pipeline := range ms.pipelines {
-		go pipeline.run(ms.peerManager, ms.multiCapture)
+		go pipeline.run(ms.peerManager, ms.multiCapture, ms.onSizeChange)
 	}
 
 	// 9. Notify streams change
@@ -1394,7 +1419,7 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 			ms.mu.Unlock()
 			return nil, fmt.Errorf("failed to start encoder: %w", err)
 		}
-		go pipeline.run(ms.peerManager, ms.multiCapture)
+		go pipeline.run(ms.peerManager, ms.multiCapture, ms.onSizeChange)
 	}
 
 	// Add track to all existing peer connections
@@ -1535,7 +1560,7 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 
 	// Start pipeline if already running
 	if ms.running {
-		go pipeline.run(ms.peerManager, ms.multiCapture)
+		go pipeline.run(ms.peerManager, ms.multiCapture, ms.onSizeChange)
 	}
 
 	// Notify about streams change
@@ -1624,7 +1649,7 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 			ms.mu.Unlock()
 			return nil, fmt.Errorf("failed to start encoder: %w", err)
 		}
-		go pipeline.run(ms.peerManager, ms.multiCapture)
+		go pipeline.run(ms.peerManager, ms.multiCapture, ms.onSizeChange)
 	}
 
 	// Add track to all existing peer connections
@@ -1661,7 +1686,7 @@ func (ms *Streamer) RemoveDisplayDynamic() error {
 
 // Pipeline methods
 
-func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture) {
+func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange func(trackID string, width, height int)) {
 	p.wg.Add(1)
 	defer p.wg.Done()
 
@@ -1717,15 +1742,57 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture) {
 			framesSinceLastStats = 0
 			p.mu.Unlock()
 
+			// Check if window has been resized and update stream configuration
+			// Run in separate goroutine to avoid any blocking
+			if p.capture != nil && p.trackInfo.WindowID != 0 {
+				go func(capture *CaptureInstance, windowID uint32) {
+					actualW, actualH, err := mc.GetWindowSize(capture)
+					if err == nil && actualW > 0 && actualH > 0 {
+						configW, configH, err := mc.GetConfigSize(capture)
+						if err == nil && (configW != actualW || configH != actualH) {
+							log.Printf("Window resized: config %dx%d -> actual %dx%d, updating stream", configW, configH, actualW, actualH)
+							if err := mc.UpdateStreamSize(capture, actualW, actualH); err != nil {
+								log.Printf("Failed to update stream size: %v", err)
+							}
+						}
+					}
+				}(p.capture, p.trackInfo.WindowID)
+			}
+
 		case <-ticker.C:
 			frame, err := mc.GetLatestFrameBGRA(p.capture, 100*time.Millisecond)
 			if err != nil {
 				continue
 			}
 
-			// Update dimensions
-			p.trackInfo.Width = frame.Width
-			p.trackInfo.Height = frame.Height
+			// Check for dimension changes and notify (debounced, focused track only)
+			if frame.Width != p.lastWidth || frame.Height != p.lastHeight {
+				p.lastWidth = frame.Width
+				p.lastHeight = frame.Height
+				p.trackInfo.Width = frame.Width
+				p.trackInfo.Height = frame.Height
+
+				// Debounced size change notification (only for focused track)
+				// Uses both the local callback and PeerManager notification for signaling
+				if p.trackInfo.IsFocused {
+					p.sizeChangeMu.Lock()
+					if p.sizeChangeTimer != nil {
+						p.sizeChangeTimer.Stop()
+					}
+					trackID := p.trackInfo.TrackID
+					width := frame.Width
+					height := frame.Height
+					p.sizeChangeTimer = time.AfterFunc(250*time.Millisecond, func() {
+						// Notify via PeerManager for WebSocket signaling
+						pm.NotifySizeChange(trackID, width, height)
+						// Also call local callback if set
+						if onSizeChange != nil {
+							onSizeChange(trackID, width, height)
+						}
+					})
+					p.sizeChangeMu.Unlock()
+				}
+			}
 
 			// Encode
 			data, err := p.encoder.EncodeBGRAFrame(frame)

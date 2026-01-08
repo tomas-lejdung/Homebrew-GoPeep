@@ -641,6 +641,8 @@ func (e *VideoToolboxEncoder) EncodeBGRAFrame(frame *BGRAFrame) ([]byte, error) 
 			return nil, err
 		}
 		e.needsRecreate = false
+		// Reset frame count to force keyframe on next frame after dimension change
+		e.frameCount = 0
 	}
 
 	// Force keyframe on first frame

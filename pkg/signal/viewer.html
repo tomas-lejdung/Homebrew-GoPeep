@@ -1049,6 +1049,35 @@
       updateMultiStreamUI();
     }
     
+    function handleSizeChange(trackId, width, height) {
+      console.log('Size change received:', trackId, width, height);
+      
+      // Update streamsInfo with new dimensions
+      const info = streamsInfo.find(i => i.trackId === trackId);
+      if (info) {
+        info.width = width;
+        info.height = height;
+      }
+      
+      // Extract index from trackId
+      const match = trackId.match(/video(\d+)/);
+      if (!match) return;
+      
+      const streamIndex = parseInt(match[1], 10);
+      
+      // If this is the currently displayed stream, reset the video element
+      // to force the browser to re-detect the new dimensions
+      if (viewerFocusedIndex === streamIndex && mainVideo.srcObject) {
+        console.log('Resetting video element for dimension change');
+        const currentSrc = mainVideo.srcObject;
+        mainVideo.srcObject = null;
+        requestAnimationFrame(() => {
+          mainVideo.srcObject = currentSrc;
+          mainVideo.play().catch(e => console.log('Autoplay blocked after resize:', e));
+        });
+      }
+    }
+    
     // Handle renegotiation offer (when tracks are added/removed dynamically)
     async function handleRenegotiationOffer(sdp) {
       if (!pc) {
@@ -1454,6 +1483,10 @@
             
           case 'focus-change':
             handleFocusChange(msg.focusedTrack);
+            break;
+            
+          case 'size-change':
+            handleSizeChange(msg.trackId, msg.width, msg.height);
             break;
             
           case 'stream-added':
