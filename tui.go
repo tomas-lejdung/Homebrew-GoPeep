@@ -1011,7 +1011,10 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// handleOverlayToggle handles the overlay button click to toggle window selection
+// handleOverlayToggle handles the overlay button click to toggle window selection.
+// When not sharing, this acts as "Quick Share" - selecting the window and starting
+// sharing immediately (like pressing Enter in the TUI).
+// When already sharing, this toggles the window selection.
 func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 	// Find the window in sources
 	var targetWindow *WindowInfo
@@ -1027,14 +1030,38 @@ func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	// Toggle selection
-	if m.selectedWindows[windowID] {
-		// Deselect
-		delete(m.selectedWindows, windowID)
-	} else {
-		// Select - check if we need to evict oldest
+	// If already sharing, toggle selection (existing behavior)
+	if m.sharing {
+		if m.selectedWindows[windowID] {
+			// Deselect
+			delete(m.selectedWindows, windowID)
+		} else {
+			// Select - check if we need to evict oldest
+			if len(m.selectedWindows) >= MaxCaptureInstances {
+				var oldestID uint32
+				for id := range m.selectedWindows {
+					oldestID = id
+					break
+				}
+				delete(m.selectedWindows, oldestID)
+				log.Printf("Overlay: Evicted window %d to make room", oldestID)
+			}
+			m.selectedWindows[windowID] = true
+		}
+		m.syncOverlay()
+		if m.streamer != nil {
+			return m.updateMultiStreamSelection()
+		}
+		return m, nil
+	}
+
+	// Not sharing - Quick Share: select this window and start sharing
+	// Clear fullscreen selection (like pressing Space on a window in TUI)
+	m.fullscreenSelected = false
+
+	// Add window to selection if not already selected
+	if !m.selectedWindows[windowID] {
 		if len(m.selectedWindows) >= MaxCaptureInstances {
-			// Remove oldest (FIFO - use autoShareFocusTimes or just pick first)
 			var oldestID uint32
 			for id := range m.selectedWindows {
 				oldestID = id
@@ -1046,15 +1073,10 @@ func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 		m.selectedWindows[windowID] = true
 	}
 
-	// Sync overlay controller state
 	m.syncOverlay()
 
-	// If sharing, dynamically update without full restart
-	if m.sharing && m.streamer != nil {
-		return m.updateMultiStreamSelection()
-	}
-
-	return m, nil
+	log.Printf("Quick Share: Starting with window %d (%s)", windowID, targetWindow.DisplayName())
+	return m.startMultiWindowSharing()
 }
 
 // syncOverlay updates the overlay controller with current state.

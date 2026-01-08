@@ -1,91 +1,930 @@
-2026/01/09 00:17:55 === GoPeep started at 2026-01-09T00:17:55+01:00 ===
-2026/01/09 00:17:58 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
-2026/01/09 00:17:58 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/09 00:17:58 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/09 00:17:58 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/09 00:17:58 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/09 00:17:58 InitializeTrackSlots: All 4 track slots ready
-2026/01/09 00:17:58 Signal server starting on :8080
-2026/01/09 00:17:58 ActivateSlot: Activated video0 for window 332249 (Ghostty - ./gopeep --local)
-2026/01/09 00:17:59 Broadcasting sharer-started to room FINE-OTTER-32
-2026/01/09 00:17:59 Focus detection loop started with 1 pipelines:
-2026/01/09 00:17:59   - Track video0: windowID=332249, name=./gopeep --local
-2026/01/09 00:17:59 Renegotiating with 0 peers
-2026/01/09 00:17:59 sendLoop: Writing frame 1 to track video0 (windowID=332249, streamID=gopeep-stream-0)
-2026/01/09 00:17:59 Topmost captured window changed to: 332249 (was 0)
-2026/01/09 00:17:59 Focus set to track=video0, windowID=332249, name=./gopeep --local
-2026/01/09 00:17:59 Calling NotifyFocusChange for track: video0
-2026/01/09 00:17:59 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/09 00:17:59 Focus change callback triggered for track: video0
-2026/01/09 00:17:59 Size change callback triggered for track video0: 1109x843
-2026/01/09 00:18:00 Viewer joined room FINE-OTTER-32 (total viewers: 1)
-2026/01/09 00:18:00 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 00:18:00 Peer viewer-1 connection state: connecting
-2026/01/09 00:18:01 Peer viewer-1 connection state: connected
-2026/01/09 00:18:02 sendLoop: Writing frame 101 to track video0 (windowID=332249, streamID=gopeep-stream-0)
-2026/01/09 00:18:03 TUI: Adding window dynamically: 312846 (Animation)
-2026/01/09 00:18:03 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/09 00:18:03 ActivateSlot: Activated video1 for window 312846 (Arc - Animation)
-2026/01/09 00:18:04 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
-2026/01/09 00:18:04 Broadcasting stream-activated: video1 (fast path)
-2026/01/09 00:18:04 Added window dynamically: video1 (windowID=312846, fastPath=true)
-2026/01/09 00:18:04 Topmost captured window changed to: 312846 (was 332249)
-2026/01/09 00:18:04 Focus set to track=video1, windowID=312846, name=Animation
-2026/01/09 00:18:04 Calling NotifyFocusChange for track: video1
-2026/01/09 00:18:04 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/09 00:18:04 Focus change callback triggered for track: video1
-2026/01/09 00:18:04 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 00:18:04 Size change callback triggered for track video1: 2560x1409
-2026/01/09 00:18:06 TUI: Adding window dynamically: 332705 (overlay-enhancements.md)
-2026/01/09 00:18:06 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/09 00:18:06 ActivateSlot: Activated video2 for window 332705 (Code - overlay-enhancements.md)
-2026/01/09 00:18:06 sendLoop: Writing frame 201 to track video0 (windowID=332249, streamID=gopeep-stream-0)
-2026/01/09 00:18:06 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
-2026/01/09 00:18:06 Broadcasting stream-activated: video2 (fast path)
-2026/01/09 00:18:06 Added window dynamically: video2 (windowID=332705, fastPath=true)
-2026/01/09 00:18:06 Topmost captured window changed to: 332705 (was 312846)
-2026/01/09 00:18:06 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
-2026/01/09 00:18:06 Calling NotifyFocusChange for track: video2
-2026/01/09 00:18:06 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/09 00:18:06 Focus change callback triggered for track: video2
-2026/01/09 00:18:07 sendLoop: Writing frame 1 to track video2 (windowID=332705, streamID=gopeep-stream-2)
-2026/01/09 00:18:07 Topmost captured window changed to: 312846 (was 332705)
-2026/01/09 00:18:07 Focus set to track=video1, windowID=312846, name=Animation
-2026/01/09 00:18:07 Calling NotifyFocusChange for track: video1
-2026/01/09 00:18:07 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/09 00:18:07 Focus change callback triggered for track: video1
-2026/01/09 00:18:08 sendLoop: Writing frame 101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 00:18:09 Topmost captured window changed to: 332705 (was 312846)
-2026/01/09 00:18:09 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
-2026/01/09 00:18:09 Calling NotifyFocusChange for track: video2
-2026/01/09 00:18:09 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/09 00:18:09 Focus change callback triggered for track: video2
-2026/01/09 00:18:09 sendLoop: Writing frame 301 to track video0 (windowID=332249, streamID=gopeep-stream-0)
-2026/01/09 00:18:10 sendLoop: Writing frame 101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
-2026/01/09 00:18:10 TUI: Removing window dynamically: 332705
-2026/01/09 00:18:10 Removing window dynamically: video2 (windowID=332705, fastPath=true)
-2026/01/09 00:18:10 DeactivateSlot: Deactivated video2
-2026/01/09 00:18:10 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
-2026/01/09 00:18:10 Broadcasting stream-deactivated: video2 (fast path)
-2026/01/09 00:18:10 Topmost captured window changed to: 312846 (was 332705)
-2026/01/09 00:18:10 Focus set to track=video1, windowID=312846, name=Animation
-2026/01/09 00:18:10 Calling NotifyFocusChange for track: video1
-2026/01/09 00:18:10 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/09 00:18:10 Focus change callback triggered for track: video1
-2026/01/09 00:18:11 sendLoop: Writing frame 201 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 00:18:13 sendLoop: Writing frame 401 to track video0 (windowID=332249, streamID=gopeep-stream-0)
-2026/01/09 00:18:15 sendLoop: Writing frame 301 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 00:18:15 TUI: Removing window dynamically: 312846
-2026/01/09 00:18:15 Removing window dynamically: video1 (windowID=312846, fastPath=true)
-2026/01/09 00:18:15 DeactivateSlot: Deactivated video1
-2026/01/09 00:18:15 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
-2026/01/09 00:18:15 Broadcasting stream-deactivated: video1 (fast path)
-2026/01/09 00:18:15 Topmost captured window changed to: 332249 (was 312846)
-2026/01/09 00:18:15 Focus set to track=video0, windowID=332249, name=./gopeep --local
-2026/01/09 00:18:15 Calling NotifyFocusChange for track: video0
-2026/01/09 00:18:15 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/09 00:18:15 Focus change callback triggered for track: video0
-2026/01/09 00:18:16 sendLoop: Writing frame 501 to track video0 (windowID=332249, streamID=gopeep-stream-0)
-2026/01/09 00:18:18 Focus detection loop stopped
-2026/01/09 00:18:18 Broadcasting stream-removed: video0
-2026/01/09 00:18:18 Peer viewer-1 connection state: closed
+2026/01/09 00:30:32 === GoPeep started at 2026-01-09T00:30:32+01:00 ===
+2026/01/09 00:30:36 Quick Share: Starting with window 312846 (Arc - Overlay)
+2026/01/09 00:30:36 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/09 00:30:36 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/09 00:30:36 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/09 00:30:36 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/09 00:30:36 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/09 00:30:36 InitializeTrackSlots: All 4 track slots ready
+2026/01/09 00:30:36 ActivateSlot: Activated video0 for window 312846 (Arc - Overlay)
+2026/01/09 00:30:37 Cannot broadcast sharer-started: server=false roomCode=CLEAN-PLAIN-28
+2026/01/09 00:30:37 Renegotiating with 0 peers
+2026/01/09 00:30:37 Focus detection loop started with 1 pipelines:
+2026/01/09 00:30:37   - Track video0: windowID=312846, name=Overlay
+2026/01/09 00:30:37 Topmost captured window changed to: 312846 (was 0)
+2026/01/09 00:30:37 Focus set to track=video0, windowID=312846, name=Overlay
+2026/01/09 00:30:37 Calling NotifyFocusChange for track: video0
+2026/01/09 00:30:37 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:30:37 Remote focus change callback triggered for track: video0
+2026/01/09 00:30:37 Sent focus-change message to signal server
+2026/01/09 00:30:37 sendLoop: Writing frame 1 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:30:37 Remote size change callback triggered for track video0: 2560x1409
+2026/01/09 00:30:38 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 00:30:38 Peer viewer-1 connection state: connecting
+2026/01/09 00:30:39 Peer viewer-1 connection state: connected
+2026/01/09 00:30:40 sendLoop: Writing frame 101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:30:44 sendLoop: Writing frame 201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:30:48 sendLoop: Writing frame 301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:30:50 Peer viewer-1 connection state: disconnected
+2026/01/09 00:30:50 Peer viewer-1 connection state: closed
+2026/01/09 00:30:51 sendLoop: Writing frame 401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:30:55 sendLoop: Writing frame 501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:30:58 sendLoop: Writing frame 601 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:31:02 sendLoop: Writing frame 701 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:31:05 sendLoop: Writing frame 801 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:31:09 sendLoop: Writing frame 901 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:31:17 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 00:31:18 Peer viewer-2 connection state: connecting
+2026/01/09 00:31:19 Peer viewer-2 connection state: connected
+2026/01/09 00:31:38 sendLoop: Writing frame 1001 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:31:41 sendLoop: Writing frame 1101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:31:46 sendLoop: Writing frame 1201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:31:55 sendLoop: Writing frame 1301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:32:08 sendLoop: Writing frame 1401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:32:21 sendLoop: Writing frame 1501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:32:29 TUI: Adding window dynamically: 317592 (Scratch)
+2026/01/09 00:32:29 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:32:29 ActivateSlot: Activated video1 for window 317592 (Heynote - Scratch)
+2026/01/09 00:32:30 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/09 00:32:30 Remote: broadcasting stream-activated: video1 (fast path)
+2026/01/09 00:32:30 Added window dynamically: video1 (windowID=317592, fastPath=true)
+2026/01/09 00:32:30 sendLoop: Writing frame 1601 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:32:30 sendLoop: Writing frame 1 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 00:32:30 Topmost captured window changed to: 317592 (was 312846)
+2026/01/09 00:32:30 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/09 00:32:30 Calling NotifyFocusChange for track: video1
+2026/01/09 00:32:30 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:32:30 Remote focus change callback triggered for track: video1
+2026/01/09 00:32:30 Sent focus-change message to signal server
+2026/01/09 00:32:33 Topmost captured window changed to: 312846 (was 317592)
+2026/01/09 00:32:33 Focus set to track=video0, windowID=312846, name=Overlay
+2026/01/09 00:32:33 Calling NotifyFocusChange for track: video0
+2026/01/09 00:32:33 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:32:33 Remote focus change callback triggered for track: video0
+2026/01/09 00:32:33 Sent focus-change message to signal server
+2026/01/09 00:32:34 sendLoop: Writing frame 1701 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:32:34 sendLoop: Writing frame 101 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 00:32:37 Topmost captured window changed to: 317592 (was 312846)
+2026/01/09 00:32:37 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/09 00:32:37 Calling NotifyFocusChange for track: video1
+2026/01/09 00:32:37 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:32:37 Remote focus change callback triggered for track: video1
+2026/01/09 00:32:37 Sent focus-change message to signal server
+2026/01/09 00:32:37 Topmost captured window changed to: 312846 (was 317592)
+2026/01/09 00:32:37 Focus set to track=video0, windowID=312846, name=Overlay
+2026/01/09 00:32:37 Calling NotifyFocusChange for track: video0
+2026/01/09 00:32:37 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:32:37 Remote focus change callback triggered for track: video0
+2026/01/09 00:32:37 Sent focus-change message to signal server
+2026/01/09 00:32:39 sendLoop: Writing frame 1801 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:32:39 sendLoop: Writing frame 201 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 00:32:46 sendLoop: Writing frame 1901 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:32:47 sendLoop: Writing frame 301 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 00:32:52 TUI: Removing window dynamically: 317592
+2026/01/09 00:32:52 Removing window dynamically: video1 (windowID=317592, fastPath=true)
+2026/01/09 00:32:52 DeactivateSlot: Deactivated video1
+2026/01/09 00:32:52 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/09 00:32:52 Remote: broadcasting stream-deactivated: video1 (fast path)
+2026/01/09 00:32:53 sendLoop: Writing frame 2001 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:32:58 Track video0 bitrate set to 50000 kbps
+2026/01/09 00:32:58 Streamer bitrate updated: focus=50000 kbps, bg=25000 kbps
+2026/01/09 00:33:00 Track video0 FPS changed from 30 to 60
+2026/01/09 00:33:00 Streamer FPS updated to 60
+2026/01/09 00:33:00 Pipeline ticker updated to 60 FPS
+2026/01/09 00:33:01 sendLoop: Writing frame 2101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:33:03 sendLoop: Writing frame 2201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:33:05 sendLoop: Writing frame 2301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:33:07 sendLoop: Writing frame 2401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:33:09 sendLoop: Writing frame 2501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:33:11 sendLoop: Writing frame 2601 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:33:15 sendLoop: Writing frame 2701 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:33:17 sendLoop: Writing frame 2801 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 00:33:17 TUI: Removing window 312846 (no sources selected)
+2026/01/09 00:33:17 Removing window dynamically: video0 (windowID=312846, fastPath=true)
+2026/01/09 00:33:17 DeactivateSlot: Deactivated video0
+2026/01/09 00:33:17 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/09 00:33:17 Remote: broadcasting stream-deactivated: video0 (fast path)
+2026/01/09 00:33:18 TUI: Adding window dynamically: 317592 (Scratch)
+2026/01/09 00:33:18 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:33:18 ActivateSlot: Activated video0 for window 317592 (Heynote - Scratch)
+2026/01/09 00:33:19 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/09 00:33:19 Remote: broadcasting stream-activated: video0 (fast path)
+2026/01/09 00:33:19 Added window dynamically: video0 (windowID=317592, fastPath=true)
+2026/01/09 00:33:19 sendLoop: Writing frame 1 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:19 Topmost captured window changed to: 317592 (was 312846)
+2026/01/09 00:33:19 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:33:19 Calling NotifyFocusChange for track: video0
+2026/01/09 00:33:19 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:33:19 Remote focus change callback triggered for track: video0
+2026/01/09 00:33:19 Sent focus-change message to signal server
+2026/01/09 00:33:19 Remote size change callback triggered for track video0: 1280x921
+2026/01/09 00:33:20 sendLoop: Writing frame 101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:22 sendLoop: Writing frame 201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:25 sendLoop: Writing frame 301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:28 sendLoop: Writing frame 401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:30 sendLoop: Writing frame 501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:31 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 00:33:31 Peer viewer-3 connection state: connecting
+2026/01/09 00:33:32 Peer viewer-3 connection state: connected
+2026/01/09 00:33:32 sendLoop: Writing frame 601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:35 sendLoop: Writing frame 701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:37 Peer viewer-2 connection state: disconnected
+2026/01/09 00:33:37 Peer viewer-2 connection state: closed
+2026/01/09 00:33:38 sendLoop: Writing frame 801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:40 sendLoop: Writing frame 901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:42 sendLoop: Writing frame 1001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:44 sendLoop: Writing frame 1101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:46 sendLoop: Writing frame 1201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:48 sendLoop: Writing frame 1301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:50 sendLoop: Writing frame 1401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:52 sendLoop: Writing frame 1501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:53 TUI: Adding window dynamically: 325008 (Julia Hellberg)
+2026/01/09 00:33:53 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:33:53 ActivateSlot: Activated video1 for window 325008 (Messages - Julia Hellberg)
+2026/01/09 00:33:54 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/09 00:33:54 Remote: broadcasting stream-activated: video1 (fast path)
+2026/01/09 00:33:54 Added window dynamically: video1 (windowID=325008, fastPath=true)
+2026/01/09 00:33:54 sendLoop: Writing frame 1 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:33:54 sendLoop: Writing frame 1601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:54 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 00:33:54 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:33:54 Calling NotifyFocusChange for track: video1
+2026/01/09 00:33:54 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:33:54 Remote focus change callback triggered for track: video1
+2026/01/09 00:33:54 Sent focus-change message to signal server
+2026/01/09 00:33:56 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 00:33:56 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:33:56 Calling NotifyFocusChange for track: video0
+2026/01/09 00:33:56 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:33:56 Remote focus change callback triggered for track: video0
+2026/01/09 00:33:56 Sent focus-change message to signal server
+2026/01/09 00:33:56 sendLoop: Writing frame 1701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:33:56 sendLoop: Writing frame 101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:33:58 sendLoop: Writing frame 201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:33:58 sendLoop: Writing frame 1801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:00 sendLoop: Writing frame 1901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:00 sendLoop: Writing frame 301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:02 sendLoop: Writing frame 2001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:02 sendLoop: Writing frame 401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:02 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 00:34:02 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:34:02 Calling NotifyFocusChange for track: video1
+2026/01/09 00:34:02 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:34:02 Remote focus change callback triggered for track: video1
+2026/01/09 00:34:02 Sent focus-change message to signal server
+2026/01/09 00:34:04 sendLoop: Writing frame 2101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:04 sendLoop: Writing frame 501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:06 sendLoop: Writing frame 2201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:06 sendLoop: Writing frame 601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:08 sendLoop: Writing frame 2301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:08 sendLoop: Writing frame 701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:08 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 00:34:08 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:34:08 Calling NotifyFocusChange for track: video0
+2026/01/09 00:34:08 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:34:08 Remote focus change callback triggered for track: video0
+2026/01/09 00:34:08 Sent focus-change message to signal server
+2026/01/09 00:34:10 sendLoop: Writing frame 2401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:10 sendLoop: Writing frame 801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:12 sendLoop: Writing frame 2501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:12 sendLoop: Writing frame 901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:14 sendLoop: Writing frame 2601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:14 sendLoop: Writing frame 1001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:16 sendLoop: Writing frame 2701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:16 sendLoop: Writing frame 1101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:18 sendLoop: Writing frame 2801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:18 sendLoop: Writing frame 1201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:18 TUI: Adding window dynamically: 312846 (Overlay)
+2026/01/09 00:34:18 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:34:18 ActivateSlot: Activated video2 for window 312846 (Arc - Overlay)
+2026/01/09 00:34:19 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 00:34:19 Remote: broadcasting stream-activated: video2 (fast path)
+2026/01/09 00:34:19 Added window dynamically: video2 (windowID=312846, fastPath=true)
+2026/01/09 00:34:19 Topmost captured window changed to: 312846 (was 317592)
+2026/01/09 00:34:19 Focus set to track=video2, windowID=312846, name=Overlay
+2026/01/09 00:34:19 Calling NotifyFocusChange for track: video2
+2026/01/09 00:34:19 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:34:19 Remote focus change callback triggered for track: video2
+2026/01/09 00:34:19 Sent focus-change message to signal server
+2026/01/09 00:34:19 sendLoop: Writing frame 1 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:19 sendLoop: Writing frame 2901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:19 Remote size change callback triggered for track video2: 2560x1409
+2026/01/09 00:34:20 sendLoop: Writing frame 1301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:21 sendLoop: Writing frame 101 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:21 sendLoop: Writing frame 3001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:21 sendLoop: Writing frame 1401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:22 Topmost captured window changed to: 325008 (was 312846)
+2026/01/09 00:34:22 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:34:22 Calling NotifyFocusChange for track: video1
+2026/01/09 00:34:22 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:34:22 Remote focus change callback triggered for track: video1
+2026/01/09 00:34:22 Sent focus-change message to signal server
+2026/01/09 00:34:23 sendLoop: Writing frame 201 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:23 Topmost captured window changed to: 312846 (was 325008)
+2026/01/09 00:34:23 Focus set to track=video2, windowID=312846, name=Overlay
+2026/01/09 00:34:23 Calling NotifyFocusChange for track: video2
+2026/01/09 00:34:23 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:34:23 Remote focus change callback triggered for track: video2
+2026/01/09 00:34:23 Sent focus-change message to signal server
+2026/01/09 00:34:23 sendLoop: Writing frame 3101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:23 sendLoop: Writing frame 1501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:25 sendLoop: Writing frame 301 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:25 sendLoop: Writing frame 3201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:25 sendLoop: Writing frame 1601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:26 Topmost captured window changed to: 317592 (was 312846)
+2026/01/09 00:34:26 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:34:26 Calling NotifyFocusChange for track: video0
+2026/01/09 00:34:26 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:34:26 Remote focus change callback triggered for track: video0
+2026/01/09 00:34:26 Sent focus-change message to signal server
+2026/01/09 00:34:27 sendLoop: Writing frame 401 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:27 Topmost captured window changed to: 312846 (was 317592)
+2026/01/09 00:34:27 Focus set to track=video2, windowID=312846, name=Overlay
+2026/01/09 00:34:27 Calling NotifyFocusChange for track: video2
+2026/01/09 00:34:27 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:34:27 Remote focus change callback triggered for track: video2
+2026/01/09 00:34:27 Sent focus-change message to signal server
+2026/01/09 00:34:27 sendLoop: Writing frame 3301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:27 sendLoop: Writing frame 1701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:29 sendLoop: Writing frame 501 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:29 sendLoop: Writing frame 3401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:29 sendLoop: Writing frame 1801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:31 sendLoop: Writing frame 601 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:31 sendLoop: Writing frame 3501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:31 sendLoop: Writing frame 1901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:33 sendLoop: Writing frame 701 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:33 sendLoop: Writing frame 3601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:33 sendLoop: Writing frame 2001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:35 sendLoop: Writing frame 801 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:35 sendLoop: Writing frame 3701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:35 sendLoop: Writing frame 2101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:35 SetCodec: Changing codec from vp8 to vp9
+2026/01/09 00:34:35 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/09 00:34:35 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/09 00:34:35 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/09 00:34:35 SetCodec: Using slots path - recreating slots with new codec
+2026/01/09 00:34:35 encodeLoop: Encode failed for track video2 (error #2): encoder not initialized
+2026/01/09 00:34:35 Removed track video0 from peer viewer-3
+2026/01/09 00:34:35 Removed track video1 from peer viewer-3
+2026/01/09 00:34:35 Removed track video2 from peer viewer-3
+2026/01/09 00:34:35 Removed track video3 from peer viewer-3
+2026/01/09 00:34:35 RecreateSlots: Recreating 4 track slots with new codec video/VP9
+2026/01/09 00:34:35 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/09 00:34:35 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/09 00:34:35 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/09 00:34:35 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/09 00:34:35 RecreateSlots: Restored active slot 0 for window 317592 (Scratch)
+2026/01/09 00:34:35 RecreateSlots: Restored active slot 1 for window 325008 (Julia Hellberg)
+2026/01/09 00:34:35 RecreateSlots: Restored active slot 2 for window 312846 (Overlay)
+2026/01/09 00:34:35 RecreateSlots: Completed - 3 active slots restored
+2026/01/09 00:34:35 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/09 00:34:35 AddTrackToAllPeers: Adding track video0 to peer viewer-3 (state: connected)
+2026/01/09 00:34:35 AddTrackToAllPeers: Successfully added track video0 to peer viewer-3
+2026/01/09 00:34:35 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/09 00:34:35 AddTrackToAllPeers: Adding track video1 to peer viewer-3 (state: connected)
+2026/01/09 00:34:35 AddTrackToAllPeers: Successfully added track video1 to peer viewer-3
+2026/01/09 00:34:35 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/09 00:34:35 AddTrackToAllPeers: Adding track video2 to peer viewer-3 (state: connected)
+2026/01/09 00:34:35 AddTrackToAllPeers: Successfully added track video2 to peer viewer-3
+2026/01/09 00:34:35 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/09 00:34:35 AddTrackToAllPeers: Adding track video3 to peer viewer-3 (state: connected)
+2026/01/09 00:34:35 AddTrackToAllPeers: Successfully added track video3 to peer viewer-3
+2026/01/09 00:34:35 SetCodec: Created pipeline for slot video0 (window 317592)
+2026/01/09 00:34:35 SetCodec: Created pipeline for slot video1 (window 325008)
+2026/01/09 00:34:35 SetCodec: Created pipeline for slot video2 (window 312846)
+2026/01/09 00:34:35 SetCodec: Triggering renegotiation for 3 pipelines
+2026/01/09 00:34:35 SetCodec: Successfully changed codec to vp9 with 3 pipelines
+2026/01/09 00:34:35 Renegotiating with 1 peers
+2026/01/09 00:34:35 Renegotiation: peer viewer-3 signaling state: stable
+2026/01/09 00:34:35 Renegotiation: peer viewer-3 connection state: connected
+2026/01/09 00:34:35 Renegotiation: ICE gathering complete for viewer-3
+2026/01/09 00:34:35 Renegotiation: sending offer to peer viewer-3 (SDP length: 17888)
+2026/01/09 00:34:35 Remote renegotiation: sending offer for peer viewer-3
+2026/01/09 00:34:35 Remote renegotiation: sent streams-info with 3 tracks
+2026/01/09 00:34:35 sendLoop: Writing frame 1 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:35 sendLoop: Writing frame 1 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:35 sendLoop: Writing frame 1 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:35 Renegotiation: received answer from peer viewer-3, setting remote description
+2026/01/09 00:34:35 Renegotiation: complete for peer viewer-3, signaling state: stable, connection state: connected
+2026/01/09 00:34:36 Remote size change callback triggered for track video2: 2560x1409
+2026/01/09 00:34:37 sendLoop: Writing frame 101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:37 sendLoop: Writing frame 101 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:37 sendLoop: Writing frame 101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:39 sendLoop: Writing frame 201 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:39 sendLoop: Writing frame 201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:39 sendLoop: Writing frame 201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:41 sendLoop: Writing frame 301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:41 sendLoop: Writing frame 301 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/09 00:34:41 sendLoop: Writing frame 301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:43 TUI: Removing window dynamically: 312846
+2026/01/09 00:34:43 Removing window dynamically: video2 (windowID=312846, fastPath=true)
+2026/01/09 00:34:43 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/09 00:34:43 Topmost captured window changed to: 317592 (was 312846)
+2026/01/09 00:34:43 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:34:43 Calling NotifyFocusChange for track: video0
+2026/01/09 00:34:43 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:34:43 Remote focus change callback triggered for track: video0
+2026/01/09 00:34:43 Sent focus-change message to signal server
+2026/01/09 00:34:43 DeactivateSlot: Deactivated video2
+2026/01/09 00:34:43 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/09 00:34:43 Remote: broadcasting stream-deactivated: video2 (fast path)
+2026/01/09 00:34:43 sendLoop: Writing frame 401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:43 sendLoop: Writing frame 401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:45 sendLoop: Writing frame 501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:45 sendLoop: Writing frame 501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:47 sendLoop: Writing frame 601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:47 sendLoop: Writing frame 601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:47 TUI: Adding window dynamically: 332705 (overlay-enhancements.md)
+2026/01/09 00:34:47 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:34:47 ActivateSlot: Activated video2 for window 332705 (Code - overlay-enhancements.md)
+2026/01/09 00:34:48 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 00:34:48 Remote: broadcasting stream-activated: video2 (fast path)
+2026/01/09 00:34:48 Added window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 00:34:48 sendLoop: Writing frame 1 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:34:48 Topmost captured window changed to: 332705 (was 317592)
+2026/01/09 00:34:48 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 00:34:48 Calling NotifyFocusChange for track: video2
+2026/01/09 00:34:48 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:34:48 Remote focus change callback triggered for track: video2
+2026/01/09 00:34:48 Sent focus-change message to signal server
+2026/01/09 00:34:48 sendLoop: Writing frame 701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:48 sendLoop: Writing frame 701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:49 Topmost captured window changed to: 317592 (was 332705)
+2026/01/09 00:34:49 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:34:49 Calling NotifyFocusChange for track: video0
+2026/01/09 00:34:49 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:34:49 Remote focus change callback triggered for track: video0
+2026/01/09 00:34:49 Sent focus-change message to signal server
+2026/01/09 00:34:50 sendLoop: Writing frame 101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:34:50 sendLoop: Writing frame 801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:50 sendLoop: Writing frame 801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:52 sendLoop: Writing frame 201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:34:52 sendLoop: Writing frame 901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:52 sendLoop: Writing frame 901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:53 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 00:34:53 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:34:53 Calling NotifyFocusChange for track: video1
+2026/01/09 00:34:53 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:34:53 Remote focus change callback triggered for track: video1
+2026/01/09 00:34:53 Sent focus-change message to signal server
+2026/01/09 00:34:54 sendLoop: Writing frame 301 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:34:54 sendLoop: Writing frame 1001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:54 sendLoop: Writing frame 1001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:56 sendLoop: Writing frame 401 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:34:56 sendLoop: Writing frame 1101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:56 sendLoop: Writing frame 1101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:34:58 sendLoop: Writing frame 501 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:34:58 sendLoop: Writing frame 1201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:34:58 sendLoop: Writing frame 1201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:00 sendLoop: Writing frame 601 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:00 sendLoop: Writing frame 1301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:00 sendLoop: Writing frame 1301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:02 sendLoop: Writing frame 701 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:02 sendLoop: Writing frame 1401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:02 sendLoop: Writing frame 1401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:04 sendLoop: Writing frame 801 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:04 sendLoop: Writing frame 1501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:04 sendLoop: Writing frame 1501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:05 sendLoop: Writing frame 901 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:06 sendLoop: Writing frame 1601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:06 sendLoop: Writing frame 1601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:07 sendLoop: Writing frame 1001 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:08 sendLoop: Writing frame 1701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:08 sendLoop: Writing frame 1701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:09 sendLoop: Writing frame 1101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:10 sendLoop: Writing frame 1801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:10 sendLoop: Writing frame 1801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:11 sendLoop: Writing frame 1201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:12 sendLoop: Writing frame 1901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:12 sendLoop: Writing frame 1901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:12 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 00:35:12 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:35:12 Calling NotifyFocusChange for track: video0
+2026/01/09 00:35:12 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:35:12 Remote focus change callback triggered for track: video0
+2026/01/09 00:35:12 Sent focus-change message to signal server
+2026/01/09 00:35:13 sendLoop: Writing frame 1301 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:14 sendLoop: Writing frame 2001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:14 sendLoop: Writing frame 2001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:14 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 00:35:14 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:35:14 Calling NotifyFocusChange for track: video1
+2026/01/09 00:35:14 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:35:14 Remote focus change callback triggered for track: video1
+2026/01/09 00:35:14 Sent focus-change message to signal server
+2026/01/09 00:35:15 sendLoop: Writing frame 1401 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:16 sendLoop: Writing frame 2101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:16 sendLoop: Writing frame 2101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:17 sendLoop: Writing frame 1501 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:18 sendLoop: Writing frame 2201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:18 sendLoop: Writing frame 2201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:18 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 00:35:18 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:35:18 Calling NotifyFocusChange for track: video0
+2026/01/09 00:35:18 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:35:18 Remote focus change callback triggered for track: video0
+2026/01/09 00:35:18 Sent focus-change message to signal server
+2026/01/09 00:35:19 sendLoop: Writing frame 1601 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:20 sendLoop: Writing frame 2301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:20 sendLoop: Writing frame 2301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:21 sendLoop: Writing frame 1701 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:22 Topmost captured window changed to: 332705 (was 317592)
+2026/01/09 00:35:22 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 00:35:22 Calling NotifyFocusChange for track: video2
+2026/01/09 00:35:22 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:35:22 Remote focus change callback triggered for track: video2
+2026/01/09 00:35:22 Sent focus-change message to signal server
+2026/01/09 00:35:22 sendLoop: Writing frame 2401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:22 sendLoop: Writing frame 2401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:23 sendLoop: Writing frame 1801 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:24 sendLoop: Writing frame 2501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:24 sendLoop: Writing frame 2501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:25 sendLoop: Writing frame 1901 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:26 sendLoop: Writing frame 2601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:26 sendLoop: Writing frame 2601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:27 sendLoop: Writing frame 2001 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:27 sendLoop: Writing frame 2701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:28 sendLoop: Writing frame 2701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:29 sendLoop: Writing frame 2101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:29 sendLoop: Writing frame 2801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:30 sendLoop: Writing frame 2801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:31 sendLoop: Writing frame 2901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:31 sendLoop: Writing frame 2201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:32 sendLoop: Writing frame 2901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:33 TUI: Removing window dynamically: 332705
+2026/01/09 00:35:33 Removing window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 00:35:33 Topmost captured window changed to: 317592 (was 332705)
+2026/01/09 00:35:33 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:35:33 Calling NotifyFocusChange for track: video0
+2026/01/09 00:35:33 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:35:33 Remote focus change callback triggered for track: video0
+2026/01/09 00:35:33 Sent focus-change message to signal server
+2026/01/09 00:35:34 DeactivateSlot: Deactivated video2
+2026/01/09 00:35:34 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/09 00:35:34 Remote: broadcasting stream-deactivated: video2 (fast path)
+2026/01/09 00:35:34 sendLoop: Writing frame 3001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:34 sendLoop: Writing frame 3001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:35 TUI: Adding window dynamically: 332705 (overlay-enhancements.md)
+2026/01/09 00:35:35 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:35:35 ActivateSlot: Activated video2 for window 332705 (Code - overlay-enhancements.md)
+2026/01/09 00:35:36 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 00:35:36 Remote: broadcasting stream-activated: video2 (fast path)
+2026/01/09 00:35:36 Added window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 00:35:36 Topmost captured window changed to: 332705 (was 317592)
+2026/01/09 00:35:36 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 00:35:36 Calling NotifyFocusChange for track: video2
+2026/01/09 00:35:36 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:35:36 Remote focus change callback triggered for track: video2
+2026/01/09 00:35:36 Sent focus-change message to signal server
+2026/01/09 00:35:36 sendLoop: Writing frame 1 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:37 sendLoop: Writing frame 3101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:38 sendLoop: Writing frame 3101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:39 sendLoop: Writing frame 101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:39 sendLoop: Writing frame 3201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:40 sendLoop: Writing frame 3201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:42 sendLoop: Writing frame 201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:42 sendLoop: Writing frame 3301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:43 sendLoop: Writing frame 3301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:43 Topmost captured window changed to: 325008 (was 332705)
+2026/01/09 00:35:43 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:35:43 Calling NotifyFocusChange for track: video1
+2026/01/09 00:35:43 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:35:43 Remote focus change callback triggered for track: video1
+2026/01/09 00:35:43 Sent focus-change message to signal server
+2026/01/09 00:35:44 sendLoop: Writing frame 301 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:44 sendLoop: Writing frame 3401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:45 Topmost captured window changed to: 332705 (was 325008)
+2026/01/09 00:35:45 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 00:35:45 Calling NotifyFocusChange for track: video2
+2026/01/09 00:35:45 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:35:45 Remote focus change callback triggered for track: video2
+2026/01/09 00:35:45 Sent focus-change message to signal server
+2026/01/09 00:35:45 sendLoop: Writing frame 3401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:46 sendLoop: Writing frame 401 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:46 sendLoop: Writing frame 3501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:47 sendLoop: Writing frame 3501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:47 Topmost captured window changed to: 317592 (was 332705)
+2026/01/09 00:35:47 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:35:47 Calling NotifyFocusChange for track: video0
+2026/01/09 00:35:47 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:35:47 Remote focus change callback triggered for track: video0
+2026/01/09 00:35:47 Sent focus-change message to signal server
+2026/01/09 00:35:48 sendLoop: Writing frame 501 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:48 sendLoop: Writing frame 3601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:49 sendLoop: Writing frame 3601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:50 sendLoop: Writing frame 601 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:50 sendLoop: Writing frame 3701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:51 sendLoop: Writing frame 3701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:52 sendLoop: Writing frame 701 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:52 sendLoop: Writing frame 3801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:53 sendLoop: Writing frame 3801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:54 sendLoop: Writing frame 801 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:54 sendLoop: Writing frame 3901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:55 sendLoop: Writing frame 3901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:56 sendLoop: Writing frame 901 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:56 sendLoop: Writing frame 4001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:57 sendLoop: Writing frame 4001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:35:57 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 00:35:57 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:35:57 Calling NotifyFocusChange for track: video1
+2026/01/09 00:35:57 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:35:57 Remote focus change callback triggered for track: video1
+2026/01/09 00:35:57 Sent focus-change message to signal server
+2026/01/09 00:35:58 sendLoop: Writing frame 1001 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:35:58 sendLoop: Writing frame 4101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:35:59 sendLoop: Writing frame 4101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:00 sendLoop: Writing frame 1101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:00 sendLoop: Writing frame 4201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:00 sendLoop: Writing frame 4201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:02 sendLoop: Writing frame 4301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:02 sendLoop: Writing frame 1201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:02 sendLoop: Writing frame 4301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:04 sendLoop: Writing frame 4401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:04 sendLoop: Writing frame 1301 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:04 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 00:36:04 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:36:04 Calling NotifyFocusChange for track: video0
+2026/01/09 00:36:04 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:36:04 Remote focus change callback triggered for track: video0
+2026/01/09 00:36:04 Sent focus-change message to signal server
+2026/01/09 00:36:04 sendLoop: Writing frame 4401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:06 Topmost captured window changed to: 332705 (was 317592)
+2026/01/09 00:36:06 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 00:36:06 Calling NotifyFocusChange for track: video2
+2026/01/09 00:36:06 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:36:06 Remote focus change callback triggered for track: video2
+2026/01/09 00:36:06 Sent focus-change message to signal server
+2026/01/09 00:36:06 sendLoop: Writing frame 4501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:06 sendLoop: Writing frame 1401 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:06 sendLoop: Writing frame 4501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:08 sendLoop: Writing frame 4601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:08 sendLoop: Writing frame 1501 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:08 sendLoop: Writing frame 4601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:10 sendLoop: Writing frame 4701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:10 sendLoop: Writing frame 1601 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:10 sendLoop: Writing frame 4701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:11 sendLoop: Writing frame 4801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:12 sendLoop: Writing frame 1701 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:12 sendLoop: Writing frame 4801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:13 sendLoop: Writing frame 4901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:14 sendLoop: Writing frame 1801 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:14 sendLoop: Writing frame 4901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:15 sendLoop: Writing frame 5001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:16 sendLoop: Writing frame 1901 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:16 sendLoop: Writing frame 5001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:17 sendLoop: Writing frame 5101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:17 sendLoop: Writing frame 2001 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:18 sendLoop: Writing frame 5101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:20 sendLoop: Writing frame 5201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:20 sendLoop: Writing frame 2101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:21 sendLoop: Writing frame 5201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:22 sendLoop: Writing frame 5301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:22 Track video0 quality mode set to quality
+2026/01/09 00:36:22 Track video1 quality mode set to quality
+2026/01/09 00:36:22 Track video2 quality mode set to quality
+2026/01/09 00:36:22 Streamer quality mode: quality
+2026/01/09 00:36:23 sendLoop: Writing frame 2201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:24 sendLoop: Writing frame 5301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:25 sendLoop: Writing frame 5401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:25 sendLoop: Writing frame 2301 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:25 sendLoop: Writing frame 5401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:27 sendLoop: Writing frame 5501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:28 sendLoop: Writing frame 2401 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:28 sendLoop: Writing frame 5501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:31 sendLoop: Writing frame 5601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:32 sendLoop: Writing frame 2501 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:33 sendLoop: Writing frame 5601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:35 sendLoop: Writing frame 5701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:35 sendLoop: Writing frame 2601 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:35 Topmost captured window changed to: 317592 (was 332705)
+2026/01/09 00:36:35 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:36:35 Calling NotifyFocusChange for track: video0
+2026/01/09 00:36:35 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:36:35 Remote focus change callback triggered for track: video0
+2026/01/09 00:36:35 Sent focus-change message to signal server
+2026/01/09 00:36:35 sendLoop: Writing frame 5701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:36 sendLoop: Writing frame 5801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:37 sendLoop: Writing frame 2701 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:38 sendLoop: Writing frame 5801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:39 sendLoop: Writing frame 5901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:39 sendLoop: Writing frame 2801 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:40 sendLoop: Writing frame 5901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:41 sendLoop: Writing frame 6001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:41 sendLoop: Writing frame 2901 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:41 Window resized: config 1280x921 -> actual 871x790, updating stream
+2026/01/09 00:36:42 sendLoop: Writing frame 6001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:42 Remote size change callback triggered for track video0: 871x790
+2026/01/09 00:36:42 Window resized: config 871x790 -> actual 866x766, updating stream
+2026/01/09 00:36:43 sendLoop: Writing frame 6101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:43 Remote size change callback triggered for track video0: 866x766
+2026/01/09 00:36:44 sendLoop: Writing frame 3001 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:44 sendLoop: Writing frame 6101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:45 sendLoop: Writing frame 6201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:46 sendLoop: Writing frame 3101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:46 sendLoop: Writing frame 6201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:47 sendLoop: Writing frame 6301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:47 Window resized: config 866x766 -> actual 1293x969, updating stream
+2026/01/09 00:36:48 sendLoop: Writing frame 3201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:48 sendLoop: Writing frame 6301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:48 Remote size change callback triggered for track video0: 1293x969
+2026/01/09 00:36:48 Window resized: config 1293x969 -> actual 1309x786, updating stream
+2026/01/09 00:36:49 Remote size change callback triggered for track video0: 1309x786
+2026/01/09 00:36:49 sendLoop: Writing frame 6401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:49 Window resized: config 1309x786 -> actual 1157x743, updating stream
+2026/01/09 00:36:50 sendLoop: Writing frame 3301 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:50 sendLoop: Writing frame 6401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:50 Remote size change callback triggered for track video0: 1157x743
+2026/01/09 00:36:51 sendLoop: Writing frame 6501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:51 Topmost captured window changed to: 332705 (was 317592)
+2026/01/09 00:36:51 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 00:36:51 Calling NotifyFocusChange for track: video2
+2026/01/09 00:36:51 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:36:51 Remote focus change callback triggered for track: video2
+2026/01/09 00:36:51 Sent focus-change message to signal server
+2026/01/09 00:36:52 sendLoop: Writing frame 3401 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:52 sendLoop: Writing frame 6501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:53 sendLoop: Writing frame 6601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:53 Window resized: config 1235x888 -> actual 1498x1107, updating stream
+2026/01/09 00:36:53 sendLoop: Writing frame 3501 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:53 TUI: Removing window dynamically: 332705
+2026/01/09 00:36:53 Removing window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 00:36:53 sendLoop: Writing frame 6601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:53 Topmost captured window changed to: 317592 (was 332705)
+2026/01/09 00:36:53 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:36:53 Calling NotifyFocusChange for track: video0
+2026/01/09 00:36:53 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:36:53 Remote focus change callback triggered for track: video0
+2026/01/09 00:36:53 Sent focus-change message to signal server
+2026/01/09 00:36:54 DeactivateSlot: Deactivated video2
+2026/01/09 00:36:54 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/09 00:36:54 Remote: broadcasting stream-deactivated: video2 (fast path)
+2026/01/09 00:36:55 sendLoop: Writing frame 6701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:55 sendLoop: Writing frame 6701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:56 TUI: Adding window dynamically: 332705 (overlay-enhancements.md)
+2026/01/09 00:36:56 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:36:56 ActivateSlot: Activated video2 for window 332705 (Code - overlay-enhancements.md)
+2026/01/09 00:36:56 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 00:36:56 Remote: broadcasting stream-activated: video2 (fast path)
+2026/01/09 00:36:56 Added window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 00:36:57 sendLoop: Writing frame 1 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:36:57 Topmost captured window changed to: 332705 (was 317592)
+2026/01/09 00:36:57 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 00:36:57 Calling NotifyFocusChange for track: video2
+2026/01/09 00:36:57 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:36:57 Remote focus change callback triggered for track: video2
+2026/01/09 00:36:57 Sent focus-change message to signal server
+2026/01/09 00:36:57 sendLoop: Writing frame 6801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:36:58 TUI: Removing window dynamically: 332705
+2026/01/09 00:36:58 Removing window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 00:36:58 Topmost captured window changed to: 317592 (was 332705)
+2026/01/09 00:36:58 Focus set to track=video0, windowID=317592, name=Scratch
+2026/01/09 00:36:58 Calling NotifyFocusChange for track: video0
+2026/01/09 00:36:58 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:36:58 Remote focus change callback triggered for track: video0
+2026/01/09 00:36:58 Sent focus-change message to signal server
+2026/01/09 00:36:58 sendLoop: Writing frame 6801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:36:58 DeactivateSlot: Deactivated video2
+2026/01/09 00:36:58 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/09 00:36:58 Remote: broadcasting stream-deactivated: video2 (fast path)
+2026/01/09 00:36:59 sendLoop: Writing frame 6901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:37:00 sendLoop: Writing frame 6901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:01 sendLoop: Writing frame 7001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:37:02 sendLoop: Writing frame 7001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:03 sendLoop: Writing frame 7101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:37:04 sendLoop: Writing frame 7101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:05 sendLoop: Writing frame 7201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:37:06 sendLoop: Writing frame 7201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:08 sendLoop: Writing frame 7301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:37:08 sendLoop: Writing frame 7301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:08 Auto-share: Enabling mode, starting focus observer
+2026/01/09 00:37:08 Auto-share: Already sharing, keeping existing 2 windows
+2026/01/09 00:37:09 Auto-share: Adding window 332249 (GoPeep - Screen Sharing)
+2026/01/09 00:37:09 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:37:09 ActivateSlot: Activated video2 for window 332249 (Ghostty - GoPeep - Screen Sharing)
+2026/01/09 00:37:10 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 00:37:10 Remote: broadcasting stream-activated: video2 (fast path)
+2026/01/09 00:37:10 Added window dynamically: video2 (windowID=332249, fastPath=true)
+2026/01/09 00:37:10 Auto-share: Successfully added GoPeep - Screen Sharing
+2026/01/09 00:37:10 sendLoop: Writing frame 1 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:10 Topmost captured window changed to: 332249 (was 317592)
+2026/01/09 00:37:10 Focus set to track=video2, windowID=332249, name=GoPeep - Screen Sharing
+2026/01/09 00:37:10 Calling NotifyFocusChange for track: video2
+2026/01/09 00:37:10 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:37:10 Remote focus change callback triggered for track: video2
+2026/01/09 00:37:10 Sent focus-change message to signal server
+2026/01/09 00:37:10 Track video2 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 00:37:10 sendLoop: Writing frame 7401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:37:10 sendLoop: Writing frame 7401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:10 Auto-share: Adding window 312846 (Overlay)
+2026/01/09 00:37:10 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:37:10 ActivateSlot: Activated video3 for window 312846 (Arc - Overlay)
+2026/01/09 00:37:11 AddWindowDynamic: Notifying stream activated video3 (NO renegotiation)
+2026/01/09 00:37:11 Remote: broadcasting stream-activated: video3 (fast path)
+2026/01/09 00:37:11 Added window dynamically: video3 (windowID=312846, fastPath=true)
+2026/01/09 00:37:11 Auto-share: Successfully added Overlay
+2026/01/09 00:37:11 Topmost captured window changed to: 312846 (was 332249)
+2026/01/09 00:37:11 Focus set to track=video3, windowID=312846, name=Overlay
+2026/01/09 00:37:11 Calling NotifyFocusChange for track: video3
+2026/01/09 00:37:11 NotifyFocusChange: callback exists, calling with trackID: video3
+2026/01/09 00:37:11 Remote focus change callback triggered for track: video3
+2026/01/09 00:37:11 Sent focus-change message to signal server
+2026/01/09 00:37:11 Track video2 bitrate changed to 25000 kbps (focused: false)
+2026/01/09 00:37:11 Track video3 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 00:37:11 sendLoop: Writing frame 1 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:11 Remote size change callback triggered for track video3: 2560x1409
+2026/01/09 00:37:12 sendLoop: Writing frame 101 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:13 sendLoop: Writing frame 7501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:37:13 sendLoop: Writing frame 7501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:14 sendLoop: Writing frame 101 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:14 Topmost captured window changed to: 325008 (was 312846)
+2026/01/09 00:37:14 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:37:14 Calling NotifyFocusChange for track: video1
+2026/01/09 00:37:14 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:37:14 Remote focus change callback triggered for track: video1
+2026/01/09 00:37:14 Sent focus-change message to signal server
+2026/01/09 00:37:14 Track video3 bitrate changed to 25000 kbps (focused: false)
+2026/01/09 00:37:14 sendLoop: Writing frame 201 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:15 sendLoop: Writing frame 7601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
+2026/01/09 00:37:15 sendLoop: Writing frame 7601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:15 sendLoop: Writing frame 201 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:16 Auto-share: Pool full, removing LRU window 317592
+2026/01/09 00:37:16 Removing window dynamically: video0 (windowID=317592, fastPath=true)
+2026/01/09 00:37:16 sendLoop: Writing frame 301 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:17 DeactivateSlot: Deactivated video0
+2026/01/09 00:37:17 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/09 00:37:17 Remote: broadcasting stream-deactivated: video0 (fast path)
+2026/01/09 00:37:17 Auto-share: Adding window 211498 (Untitled)
+2026/01/09 00:37:17 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:37:17 ActivateSlot: Activated video0 for window 211498 (Toggl Track - Untitled)
+2026/01/09 00:37:17 sendLoop: Writing frame 7701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:17 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/09 00:37:17 Remote: broadcasting stream-activated: video0 (fast path)
+2026/01/09 00:37:17 Added window dynamically: video0 (windowID=211498, fastPath=true)
+2026/01/09 00:37:17 Auto-share: Successfully added Untitled
+2026/01/09 00:37:17 sendLoop: Writing frame 1 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:17 Topmost captured window changed to: 211498 (was 325008)
+2026/01/09 00:37:17 Focus set to track=video0, windowID=211498, name=Untitled
+2026/01/09 00:37:17 Calling NotifyFocusChange for track: video0
+2026/01/09 00:37:17 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:37:17 Remote focus change callback triggered for track: video0
+2026/01/09 00:37:17 Sent focus-change message to signal server
+2026/01/09 00:37:17 Track video0 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 00:37:18 sendLoop: Writing frame 301 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:18 sendLoop: Writing frame 401 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:19 sendLoop: Writing frame 7801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:19 Topmost captured window changed to: 312846 (was 211498)
+2026/01/09 00:37:19 Focus set to track=video3, windowID=312846, name=Overlay
+2026/01/09 00:37:19 Calling NotifyFocusChange for track: video3
+2026/01/09 00:37:19 NotifyFocusChange: callback exists, calling with trackID: video3
+2026/01/09 00:37:19 Remote focus change callback triggered for track: video3
+2026/01/09 00:37:19 Sent focus-change message to signal server
+2026/01/09 00:37:19 Track video0 bitrate changed to 25000 kbps (focused: false)
+2026/01/09 00:37:19 Track video3 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 00:37:19 sendLoop: Writing frame 101 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:20 sendLoop: Writing frame 401 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:20 sendLoop: Writing frame 501 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:21 sendLoop: Writing frame 7901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:21 sendLoop: Writing frame 201 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:21 sendLoop: Writing frame 501 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:22 sendLoop: Writing frame 601 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:23 sendLoop: Writing frame 8001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:23 sendLoop: Writing frame 301 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:23 sendLoop: Writing frame 601 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:24 sendLoop: Writing frame 701 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:25 sendLoop: Writing frame 8101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:25 sendLoop: Writing frame 401 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:25 sendLoop: Writing frame 701 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:26 sendLoop: Writing frame 801 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:26 sendLoop: Writing frame 8201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:27 sendLoop: Writing frame 501 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:27 sendLoop: Writing frame 801 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:28 sendLoop: Writing frame 901 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:28 sendLoop: Writing frame 8301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:29 Auto-share: Pool full, removing LRU window 332249
+2026/01/09 00:37:29 Removing window dynamically: video2 (windowID=332249, fastPath=true)
+2026/01/09 00:37:29 sendLoop: Writing frame 601 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:29 DeactivateSlot: Deactivated video2
+2026/01/09 00:37:29 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/09 00:37:29 Remote: broadcasting stream-deactivated: video2 (fast path)
+2026/01/09 00:37:29 Auto-share: Adding window 332705 (overlay-enhancements.md)
+2026/01/09 00:37:29 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:37:29 ActivateSlot: Activated video2 for window 332705 (Code - overlay-enhancements.md)
+2026/01/09 00:37:29 sendLoop: Writing frame 901 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:30 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 00:37:30 Remote: broadcasting stream-activated: video2 (fast path)
+2026/01/09 00:37:30 Added window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 00:37:30 Auto-share: Successfully added overlay-enhancements.md
+2026/01/09 00:37:30 Topmost captured window changed to: 332705 (was 312846)
+2026/01/09 00:37:30 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 00:37:30 Calling NotifyFocusChange for track: video2
+2026/01/09 00:37:30 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:37:30 Remote focus change callback triggered for track: video2
+2026/01/09 00:37:30 Sent focus-change message to signal server
+2026/01/09 00:37:30 Track video2 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 00:37:30 Track video3 bitrate changed to 25000 kbps (focused: false)
+2026/01/09 00:37:30 sendLoop: Writing frame 1 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:37:30 Remote size change callback triggered for track video2: 1498x1107
+2026/01/09 00:37:30 sendLoop: Writing frame 8401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:31 sendLoop: Writing frame 701 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:31 sendLoop: Writing frame 1001 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:32 sendLoop: Writing frame 101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:37:32 sendLoop: Writing frame 8501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:33 Topmost captured window changed to: 312846 (was 332705)
+2026/01/09 00:37:33 Focus set to track=video3, windowID=312846, name=Overlay
+2026/01/09 00:37:33 Calling NotifyFocusChange for track: video3
+2026/01/09 00:37:33 NotifyFocusChange: callback exists, calling with trackID: video3
+2026/01/09 00:37:33 Remote focus change callback triggered for track: video3
+2026/01/09 00:37:33 Sent focus-change message to signal server
+2026/01/09 00:37:33 Track video2 bitrate changed to 25000 kbps (focused: false)
+2026/01/09 00:37:33 Track video3 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 00:37:33 sendLoop: Writing frame 801 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:33 sendLoop: Writing frame 1101 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:34 sendLoop: Writing frame 201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:37:34 sendLoop: Writing frame 8601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:34 Topmost captured window changed to: 325008 (was 312846)
+2026/01/09 00:37:34 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:37:34 Calling NotifyFocusChange for track: video1
+2026/01/09 00:37:34 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:37:34 Remote focus change callback triggered for track: video1
+2026/01/09 00:37:34 Sent focus-change message to signal server
+2026/01/09 00:37:34 Track video3 bitrate changed to 25000 kbps (focused: false)
+2026/01/09 00:37:35 sendLoop: Writing frame 901 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/09 00:37:35 sendLoop: Writing frame 1201 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:36 sendLoop: Writing frame 301 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:37:36 Auto-share: Pool full, removing LRU window 211498
+2026/01/09 00:37:36 Removing window dynamically: video0 (windowID=211498, fastPath=true)
+2026/01/09 00:37:36 sendLoop: Writing frame 8701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:37 DeactivateSlot: Deactivated video0
+2026/01/09 00:37:37 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/09 00:37:37 Remote: broadcasting stream-deactivated: video0 (fast path)
+2026/01/09 00:37:37 Auto-share: Adding window 318244 (OpenCode)
+2026/01/09 00:37:37 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:37:37 ActivateSlot: Activated video0 for window 318244 (OpenCode - OpenCode)
+2026/01/09 00:37:37 sendLoop: Writing frame 1301 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:37 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/09 00:37:37 Remote: broadcasting stream-activated: video0 (fast path)
+2026/01/09 00:37:37 Added window dynamically: video0 (windowID=318244, fastPath=true)
+2026/01/09 00:37:37 Auto-share: Successfully added OpenCode
+2026/01/09 00:37:37 sendLoop: Writing frame 1 to track video0 (windowID=318244, streamID=gopeep-stream-0)
+2026/01/09 00:37:37 Topmost captured window changed to: 318244 (was 325008)
+2026/01/09 00:37:37 Focus set to track=video0, windowID=318244, name=OpenCode
+2026/01/09 00:37:37 Calling NotifyFocusChange for track: video0
+2026/01/09 00:37:37 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 00:37:37 Remote focus change callback triggered for track: video0
+2026/01/09 00:37:37 Sent focus-change message to signal server
+2026/01/09 00:37:37 Track video0 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 00:37:38 sendLoop: Writing frame 401 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:37:38 sendLoop: Writing frame 8801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:39 sendLoop: Writing frame 1401 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:39 sendLoop: Writing frame 101 to track video0 (windowID=318244, streamID=gopeep-stream-0)
+2026/01/09 00:37:40 sendLoop: Writing frame 501 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:37:40 sendLoop: Writing frame 8901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:41 sendLoop: Writing frame 1501 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:41 sendLoop: Writing frame 201 to track video0 (windowID=318244, streamID=gopeep-stream-0)
+2026/01/09 00:37:41 sendLoop: Writing frame 601 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:37:42 sendLoop: Writing frame 9001 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:43 sendLoop: Writing frame 1601 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:43 Topmost captured window changed to: 325008 (was 318244)
+2026/01/09 00:37:43 Focus set to track=video1, windowID=325008, name=Julia Hellberg
+2026/01/09 00:37:43 Calling NotifyFocusChange for track: video1
+2026/01/09 00:37:43 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 00:37:43 Remote focus change callback triggered for track: video1
+2026/01/09 00:37:43 Sent focus-change message to signal server
+2026/01/09 00:37:43 Track video0 bitrate changed to 25000 kbps (focused: false)
+2026/01/09 00:37:43 sendLoop: Writing frame 301 to track video0 (windowID=318244, streamID=gopeep-stream-0)
+2026/01/09 00:37:43 sendLoop: Writing frame 701 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 00:37:44 sendLoop: Writing frame 9101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/09 00:37:44 Auto-share: Pool full, removing LRU window 332705
+2026/01/09 00:37:44 Removing window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 00:37:44 DeactivateSlot: Deactivated video2
+2026/01/09 00:37:44 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/09 00:37:44 Remote: broadcasting stream-deactivated: video2 (fast path)
+2026/01/09 00:37:44 Auto-share: Adding window 332249 (GoPeep - Screen Sharing)
+2026/01/09 00:37:44 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 00:37:44 ActivateSlot: Activated video2 for window 332249 (Ghostty - GoPeep - Screen Sharing)
+2026/01/09 00:37:45 sendLoop: Writing frame 1701 to track video3 (windowID=312846, streamID=gopeep-stream-3)
+2026/01/09 00:37:45 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 00:37:45 Remote: broadcasting stream-activated: video2 (fast path)
+2026/01/09 00:37:45 Added window dynamically: video2 (windowID=332249, fastPath=true)
+2026/01/09 00:37:45 Auto-share: Successfully added GoPeep - Screen Sharing
+2026/01/09 00:37:45 Topmost captured window changed to: 332249 (was 325008)
+2026/01/09 00:37:45 Focus set to track=video2, windowID=332249, name=GoPeep - Screen Sharing
+2026/01/09 00:37:45 Calling NotifyFocusChange for track: video2
+2026/01/09 00:37:45 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 00:37:45 Remote focus change callback triggered for track: video2
+2026/01/09 00:37:45 Sent focus-change message to signal server
+2026/01/09 00:37:45 Track video2 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 00:37:45 sendLoop: Writing frame 1 to track video2 (windowID=332249, streamID=gopeep-stream-2)
+2026/01/09 00:37:45 sendLoop: Writing frame 401 to track video0 (windowID=318244, streamID=gopeep-stream-0)
+2026/01/09 00:37:45 Focus detection loop stopped
+2026/01/09 00:37:45 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/09 00:37:45 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/09 00:37:45 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/09 00:37:45 encodeLoop: Encode failed for track video1 (error #2): encoder not initialized
+2026/01/09 00:37:45 encodeLoop: Encode failed for track video3 (error #1): encoder not initialized
+2026/01/09 00:37:45 encodeLoop: Encode failed for track video3 (error #2): encoder not initialized
+2026/01/09 00:37:45 Remote: broadcasting stream-removed: video0
+2026/01/09 00:37:45 Remote: broadcasting stream-removed: video1
+2026/01/09 00:37:45 Remote: broadcasting stream-removed: video2
+2026/01/09 00:37:45 Remote: broadcasting stream-removed: video3
+2026/01/09 00:37:45 Peer viewer-3 connection state: closed

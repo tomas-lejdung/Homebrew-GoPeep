@@ -166,10 +166,10 @@ In `handleOverlayToggle`:
   - Automatically trigger share start (same as pressing Enter)
 
 ### Acceptance Criteria
-- [ ] First window click starts sharing immediately
-- [ ] Subsequent clicks just toggle selection (existing behavior)
-- [ ] Works correctly if sharing is stopped and restarted
-- [ ] TUI state stays in sync
+- [x] First window click starts sharing immediately
+- [x] Subsequent clicks just toggle selection (existing behavior)
+- [x] Works correctly if sharing is stopped and restarted
+- [x] TUI state stays in sync
 
 ---
 
