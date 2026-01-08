@@ -25,17 +25,31 @@ typedef struct {
     int bytes_per_row;
 } MCFrameData;
 
+// Buffer states for triple buffering
+#define BUFFER_FREE         0  // Available for writing
+#define BUFFER_WRITING      1  // Currently being written by callback
+#define BUFFER_READY        2  // Contains valid frame, ready for reading
+#define BUFFER_IN_USE       3  // Consumer is using this buffer
+
 // Per-instance capture state
 typedef struct {
     SCStream* stream;
     SCStreamConfiguration* config;
     dispatch_queue_t queue;
-    MCFrameData latest_frame;
     dispatch_semaphore_t frame_semaphore;
     pthread_mutex_t frame_mutex;
     int active;
     uint32_t window_id;
     id output_delegate;  // Store delegate reference
+
+    // Triple buffer system for zero-copy frame handling
+    uint8_t* frame_buffers[3];      // Pre-allocated frame data buffers
+    size_t buffer_capacities[3];    // Current capacity of each buffer
+    MCFrameData frame_info[3];      // Metadata (width, height, stride) for each
+    int buffer_state[3];            // BUFFER_FREE, BUFFER_WRITING, BUFFER_READY, BUFFER_IN_USE
+    int write_idx;                  // Next buffer for callback to write to
+    int ready_idx;                  // Most recent complete frame (-1 if none)
+    pthread_mutex_t buffer_mutex;   // Protects buffer state transitions
 } CaptureInstance;
 
 // Global array of capture instances
@@ -66,29 +80,68 @@ static int g_mc_initialized = 0;
     size_t height = CVPixelBufferGetHeight(imageBuffer);
     size_t bytesPerRow = CVPixelBufferGetBytesPerRow(imageBuffer);
     void* baseAddress = CVPixelBufferGetBaseAddress(imageBuffer);
-
     size_t dataSize = height * bytesPerRow;
-    uint8_t* newData = (uint8_t*)malloc(dataSize);
-    if (newData != NULL) {
-        memcpy(newData, baseAddress, dataSize);
 
-        pthread_mutex_lock(&inst->frame_mutex);
+    pthread_mutex_lock(&inst->buffer_mutex);
 
-        uint8_t* oldData = inst->latest_frame.data;
-        inst->latest_frame.data = newData;
-        inst->latest_frame.width = (int)width;
-        inst->latest_frame.height = (int)height;
-        inst->latest_frame.bytes_per_row = (int)bytesPerRow;
+    // Get current write buffer index
+    int widx = inst->write_idx;
 
-        pthread_mutex_unlock(&inst->frame_mutex);
+    // Ensure buffer has enough capacity (realloc only if needed)
+    if (inst->buffer_capacities[widx] < dataSize) {
+        // Free old buffer if exists
+        if (inst->frame_buffers[widx] != NULL) {
+            free(inst->frame_buffers[widx]);
+        }
+        inst->frame_buffers[widx] = (uint8_t*)malloc(dataSize);
+        inst->buffer_capacities[widx] = (inst->frame_buffers[widx] != NULL) ? dataSize : 0;
+    }
 
-        if (oldData != NULL) {
-            free(oldData);
+    if (inst->frame_buffers[widx] != NULL) {
+        // Mark as being written
+        inst->buffer_state[widx] = BUFFER_WRITING;
+
+        // Unlock during memcpy (the expensive part)
+        pthread_mutex_unlock(&inst->buffer_mutex);
+
+        // Single memcpy - the only copy in the zero-copy path
+        memcpy(inst->frame_buffers[widx], baseAddress, dataSize);
+
+        pthread_mutex_lock(&inst->buffer_mutex);
+
+        // Update metadata for this buffer
+        inst->frame_info[widx].data = inst->frame_buffers[widx];
+        inst->frame_info[widx].width = (int)width;
+        inst->frame_info[widx].height = (int)height;
+        inst->frame_info[widx].bytes_per_row = (int)bytesPerRow;
+
+        // Mark previous ready buffer as free (if not in use by consumer)
+        int prev_ready = inst->ready_idx;
+        if (prev_ready >= 0 && inst->buffer_state[prev_ready] == BUFFER_READY) {
+            inst->buffer_state[prev_ready] = BUFFER_FREE;
         }
 
+        // This buffer is now ready for reading
+        inst->buffer_state[widx] = BUFFER_READY;
+        inst->ready_idx = widx;
+
+        // Find next free buffer for writing
+        for (int i = 1; i <= 3; i++) {
+            int next = (widx + i) % 3;
+            if (inst->buffer_state[next] == BUFFER_FREE) {
+                inst->write_idx = next;
+                break;
+            }
+        }
+
+        pthread_mutex_unlock(&inst->buffer_mutex);
+
+        // Signal that a new frame is available
         if (inst->frame_semaphore != nil) {
             dispatch_semaphore_signal(inst->frame_semaphore);
         }
+    } else {
+        pthread_mutex_unlock(&inst->buffer_mutex);
     }
 
     CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
@@ -104,6 +157,14 @@ void mc_init() {
     for (int i = 0; i < MAX_CAPTURE_INSTANCES; i++) {
         memset(&g_instances[i], 0, sizeof(CaptureInstance));
         pthread_mutex_init(&g_instances[i].frame_mutex, NULL);
+        pthread_mutex_init(&g_instances[i].buffer_mutex, NULL);
+        g_instances[i].ready_idx = -1;  // No frame ready initially
+        g_instances[i].write_idx = 0;   // Start writing to buffer 0
+        for (int j = 0; j < 3; j++) {
+            g_instances[i].buffer_state[j] = BUFFER_FREE;
+            g_instances[i].frame_buffers[j] = NULL;
+            g_instances[i].buffer_capacities[j] = 0;
+        }
     }
     g_mc_initialized = 1;
     pthread_mutex_unlock(&g_instances_mutex);
@@ -316,12 +377,20 @@ void mc_stop_capture(int slot) {
         inst->output_delegate = nil;
     }
 
-    pthread_mutex_lock(&inst->frame_mutex);
-    if (inst->latest_frame.data != NULL) {
-        free(inst->latest_frame.data);
-        inst->latest_frame.data = NULL;
+    // Clean up triple buffer system
+    pthread_mutex_lock(&inst->buffer_mutex);
+    for (int i = 0; i < 3; i++) {
+        if (inst->frame_buffers[i] != NULL) {
+            free(inst->frame_buffers[i]);
+            inst->frame_buffers[i] = NULL;
+        }
+        inst->buffer_capacities[i] = 0;
+        inst->buffer_state[i] = BUFFER_FREE;
+        memset(&inst->frame_info[i], 0, sizeof(MCFrameData));
     }
-    pthread_mutex_unlock(&inst->frame_mutex);
+    inst->ready_idx = -1;
+    inst->write_idx = 0;
+    pthread_mutex_unlock(&inst->buffer_mutex);
 
     inst->active = 0;
     inst->window_id = 0;
@@ -417,7 +486,8 @@ int mc_get_config_size(int slot, int* out_width, int* out_height) {
     return 0;
 }
 
-// Get latest frame from an instance
+// Get latest frame from an instance (zero-copy version)
+// Returns pointer to buffer - caller MUST call mc_release_frame_buffer when done!
 MCFrameData mc_get_latest_frame(int slot, int timeout_ms) {
     MCFrameData result = {NULL, 0, 0, 0};
 
@@ -431,44 +501,67 @@ MCFrameData mc_get_latest_frame(int slot, int timeout_ms) {
 
     // Wait for new frame
     dispatch_time_t timeout = dispatch_time(DISPATCH_TIME_NOW, timeout_ms * NSEC_PER_MSEC);
-    if (dispatch_semaphore_wait(inst->frame_semaphore, timeout) != 0) {
-        // Timeout - return last known frame if available
-        pthread_mutex_lock(&inst->frame_mutex);
-        if (inst->latest_frame.data != NULL) {
-            size_t dataSize = inst->latest_frame.height * inst->latest_frame.bytes_per_row;
-            result.data = (uint8_t*)malloc(dataSize);
-            if (result.data != NULL) {
-                memcpy(result.data, inst->latest_frame.data, dataSize);
-                result.width = inst->latest_frame.width;
-                result.height = inst->latest_frame.height;
-                result.bytes_per_row = inst->latest_frame.bytes_per_row;
+    long wait_result = dispatch_semaphore_wait(inst->frame_semaphore, timeout);
+
+    pthread_mutex_lock(&inst->buffer_mutex);
+
+    int ridx = inst->ready_idx;
+
+    // Check if we have a ready frame
+    if (ridx >= 0 && inst->buffer_state[ridx] == BUFFER_READY) {
+        // Mark buffer as in_use (consumer owns it now)
+        inst->buffer_state[ridx] = BUFFER_IN_USE;
+
+        // Return pointer to buffer (NO COPY - zero-copy!)
+        result = inst->frame_info[ridx];
+
+        // Clear ready_idx - callback will set a new one
+        inst->ready_idx = -1;
+    } else if (wait_result != 0) {
+        // Timeout - try to find any buffer that's in_use or ready
+        // This handles the case where consumer calls repeatedly without new frames
+        for (int i = 0; i < 3; i++) {
+            if (inst->buffer_state[i] == BUFFER_IN_USE && inst->frame_info[i].data != NULL) {
+                // Return the currently in-use buffer again (consumer still has it)
+                result = inst->frame_info[i];
+                break;
             }
         }
-        pthread_mutex_unlock(&inst->frame_mutex);
-        return result;
     }
 
-    pthread_mutex_lock(&inst->frame_mutex);
-    if (inst->latest_frame.data != NULL) {
-        size_t dataSize = inst->latest_frame.height * inst->latest_frame.bytes_per_row;
-        result.data = (uint8_t*)malloc(dataSize);
-        if (result.data != NULL) {
-            memcpy(result.data, inst->latest_frame.data, dataSize);
-            result.width = inst->latest_frame.width;
-            result.height = inst->latest_frame.height;
-            result.bytes_per_row = inst->latest_frame.bytes_per_row;
-        }
-    }
-    pthread_mutex_unlock(&inst->frame_mutex);
+    pthread_mutex_unlock(&inst->buffer_mutex);
 
     return result;
 }
 
-// Free frame data
-void mc_free_frame(MCFrameData frame) {
-    if (frame.data != NULL) {
-        free(frame.data);
+// Release a frame buffer back to the pool (zero-copy version)
+// Must be called when consumer is done with frame from mc_get_latest_frame
+void mc_release_frame_buffer(int slot, uint8_t* data) {
+    if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES || data == NULL) return;
+
+    CaptureInstance* inst = &g_instances[slot];
+
+    pthread_mutex_lock(&inst->buffer_mutex);
+
+    // Find which buffer this pointer belongs to and release it
+    for (int i = 0; i < 3; i++) {
+        if (inst->frame_buffers[i] == data) {
+            if (inst->buffer_state[i] == BUFFER_IN_USE) {
+                inst->buffer_state[i] = BUFFER_FREE;
+            }
+            break;
+        }
     }
+
+    pthread_mutex_unlock(&inst->buffer_mutex);
+}
+
+// Free frame data - legacy function, now a no-op for zero-copy frames
+// Kept for backward compatibility. Use mc_release_frame_buffer instead.
+void mc_free_frame(MCFrameData frame) {
+    // No-op: buffers are managed by the triple buffer pool
+    // They are released via mc_release_frame_buffer
+    (void)frame;  // Suppress unused parameter warning
 }
 
 // Check if instance is active
@@ -560,6 +653,18 @@ import (
 	"time"
 	"unsafe"
 )
+
+// Release returns the frame buffer to the capture pool.
+// Must be called when done with zero-copy frames from GetLatestFrameBGRA.
+// Safe to call multiple times or on Go-owned frames (no-op).
+func (f *BGRAFrame) Release() {
+	if f.cData != nil && f.slot >= 0 {
+		C.mc_release_frame_buffer(C.int(f.slot), (*C.uint8_t)(f.cData))
+		f.cData = nil
+		f.Data = nil
+		f.slot = -1
+	}
+}
 
 // MaxCaptureInstances is the maximum number of concurrent captures
 const MaxCaptureInstances = 4
@@ -745,7 +850,9 @@ func (mc *MultiCapture) GetConfigSize(inst *CaptureInstance) (width, height int,
 	return int(w), int(h), nil
 }
 
-// GetLatestFrameBGRA gets the latest frame from a capture instance
+// GetLatestFrameBGRA gets the latest frame from a capture instance (zero-copy).
+// IMPORTANT: Caller MUST call frame.Release() when done with the frame!
+// The frame data is backed by C memory and will be reused after Release().
 func (mc *MultiCapture) GetLatestFrameBGRA(inst *CaptureInstance, timeout time.Duration) (*BGRAFrame, error) {
 	if inst == nil || !inst.active {
 		return nil, fmt.Errorf("capture instance not active")
@@ -755,22 +862,20 @@ func (mc *MultiCapture) GetLatestFrameBGRA(inst *CaptureInstance, timeout time.D
 	if frame.data == nil {
 		return nil, fmt.Errorf("no frame available")
 	}
-	defer C.mc_free_frame(frame)
 
 	width := int(frame.width)
 	height := int(frame.height)
 	bytesPerRow := int(frame.bytes_per_row)
 	dataSize := height * bytesPerRow
 
-	srcData := unsafe.Slice((*byte)(unsafe.Pointer(frame.data)), dataSize)
-	data := make([]byte, dataSize)
-	copy(data, srcData)
-
+	// Zero-copy: wrap C memory directly with unsafe.Slice (NO allocation, NO copy!)
 	return &BGRAFrame{
-		Data:   data,
+		Data:   unsafe.Slice((*byte)(unsafe.Pointer(frame.data)), dataSize),
 		Width:  width,
 		Height: height,
 		Stride: bytesPerRow,
+		cData:  unsafe.Pointer(frame.data),
+		slot:   inst.slot,
 	}, nil
 }
 

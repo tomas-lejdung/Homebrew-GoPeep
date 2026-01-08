@@ -597,6 +597,9 @@ type BGRAFrame struct {
 	Width  int
 	Height int
 	Stride int
+	// Zero-copy support fields
+	cData unsafe.Pointer // Original C pointer (nil if Go-owned copy)
+	slot  int            // Capture slot for release (-1 if Go-owned)
 }
 
 // frameDataToImage converts C FrameData (BGRA) to Go image.RGBA

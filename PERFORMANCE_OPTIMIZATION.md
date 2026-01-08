@@ -36,10 +36,10 @@ This document tracks performance optimizations to improve visual quality and red
   - Pool pre-allocated byte slices for encoded frame data
   - Impact: ~40% reduction in memory allocations
 
-- [ ] **2.2 Use sync.Pool for captured frame buffers** _(Deferred - requires interface changes)_
-  - File: `capture_multi_darwin.go:765-767`
-  - Pool BGRAFrame data buffers in Go layer
-  - Impact: Reduces GC pressure significantly
+- [x] **2.2 Zero-copy capture with triple buffering** _(Superseded by Phase 3.2)_
+  - File: `capture_multi_darwin.go`
+  - Triple buffer in C layer eliminates Go allocations entirely
+  - See Phase 3.2 for implementation details
 
 - [x] **2.3 Use CVPixelBufferPool in VideoToolbox encoder**
   - File: `encoder_videotoolbox.go:342-358`
@@ -57,11 +57,18 @@ This document tracks performance optimizations to improve visual quality and red
   - Implementation: Added `capturedFrames` and `encodedFrames` channels with buffer size 2
   - Added `encodeLoop()` and `sendLoop()` goroutines
 
-- [ ] **3.2 Reduce frame copies in capture path** _(Deferred - complex, diminishing returns)_
-  - File: `capture_multi_darwin.go`
-  - Currently: 3 copies per frame (callback → get_frame → Go)
-  - Target: 1-2 copies maximum
-  - Impact: Major latency reduction for high-res streams
+- [x] **3.2 Zero-copy capture path with triple buffering**
+  - Files: `capture_multi_darwin.go`, `capture_darwin.go`, `multistream.go`
+  - Implementation:
+    - Added triple buffer system in C layer (3 rotating buffers)
+    - Buffer states: FREE, WRITING, READY, IN_USE
+    - Callback writes to rotating buffer (single memcpy from CVPixelBuffer)
+    - `mc_get_latest_frame()` returns pointer without copy
+    - Go wraps C memory with `unsafe.Slice` (no allocation)
+    - `BGRAFrame.Release()` returns buffer to pool
+    - `encodeLoop()` calls Release() after encoding
+  - Result: Reduced from 3 copies to 1 copy per frame
+  - Impact: At 4K@30fps: 2.8 GB/s → 0.9 GB/s memory bandwidth (-67%)
 
 ---
 
@@ -91,8 +98,8 @@ This document tracks performance optimizations to improve visual quality and red
 | Phase | Items | Completed | Status |
 |-------|-------|-----------|--------|
 | Phase 1 | 3 | 3 | Complete |
-| Phase 2 | 3 | 1 | Partial (2 deferred) |
-| Phase 3 | 2 | 1 | Partial (1 deferred) |
+| Phase 2 | 3 | 2 | Partial (1 deferred) |
+| Phase 3 | 2 | 2 | Complete |
 | Phase 4 | 2 | 2 | Complete |
 
 ---

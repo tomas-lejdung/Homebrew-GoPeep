@@ -1860,6 +1860,8 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 			default:
 				// Buffer full - drop frame to maintain timing
 				// This prevents capture from blocking if encoding is slow
+				// Release the frame back to capture pool since encode loop won't see it
+				frame.Release()
 			}
 		}
 	}
@@ -1880,6 +1882,11 @@ func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
 
 			// Encode the frame
 			data, err := p.encoder.EncodeBGRAFrame(cf.frame)
+
+			// Release frame buffer back to capture pool (zero-copy)
+			// Must be done after encoding, whether it succeeded or not
+			cf.frame.Release()
+
 			if err != nil {
 				continue
 			}
