@@ -236,9 +236,26 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 		log.Printf("Renegotiation: sending offer to peer %s", peerID)
 		offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
 		localSharer.SendToViewer(peerID, offerMsg)
+
+		// Also send updated streams-info after renegotiation offer
+		tracks := pm.GetTracks()
+		streams := make([]sig.StreamInfo, len(tracks))
+		for i, t := range tracks {
+			streams[i] = sig.StreamInfo{
+				TrackID:    t.TrackID,
+				WindowName: t.WindowName,
+				AppName:    t.AppName,
+				IsFocused:  t.IsFocused,
+				Width:      t.Width,
+				Height:     t.Height,
+			}
+		}
+		streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
+		localSharer.SendToViewer(peerID, streamsMsg)
+		log.Printf("Renegotiation: sent streams-info with %d tracks to peer %s", len(tracks), peerID)
 	})
 
-	// Set up stream change callbacks
+	// Set up stream change callbacks (legacy mode - requires renegotiation)
 	pm.SetStreamChangeCallbacks(
 		func(info sig.StreamInfo) {
 			// Broadcast stream-added to all viewers
@@ -250,6 +267,22 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 			// Broadcast stream-removed to all viewers
 			log.Printf("Broadcasting stream-removed: %s", trackID)
 			msg := sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
+			localSharer.SendToAllViewers(msg)
+		},
+	)
+
+	// Set up stream activation callbacks (fast path - no renegotiation needed)
+	pm.SetStreamActivationCallbacks(
+		func(info sig.StreamInfo) {
+			// Broadcast stream-activated to all viewers (no renegotiation!)
+			log.Printf("Broadcasting stream-activated: %s (fast path)", info.TrackID)
+			msg := sig.SignalMessage{Type: "stream-activated", StreamActivated: &info}
+			localSharer.SendToAllViewers(msg)
+		},
+		func(trackID string) {
+			// Broadcast stream-deactivated to all viewers (no renegotiation!)
+			log.Printf("Broadcasting stream-deactivated: %s (fast path)", trackID)
+			msg := sig.SignalMessage{Type: "stream-deactivated", StreamDeactivated: trackID}
 			localSharer.SendToAllViewers(msg)
 		},
 	)
@@ -382,9 +415,28 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 		if err != nil {
 			log.Printf("Failed to send renegotiation offer: %v", err)
 		}
+
+		// Also send updated streams-info after renegotiation offer
+		tracks := pm.GetTracks()
+		streams := make([]sig.StreamInfo, len(tracks))
+		for i, t := range tracks {
+			streams[i] = sig.StreamInfo{
+				TrackID:    t.TrackID,
+				WindowName: t.WindowName,
+				AppName:    t.AppName,
+				IsFocused:  t.IsFocused,
+				Width:      t.Width,
+				Height:     t.Height,
+			}
+		}
+		streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
+		connMu.Lock()
+		conn.WriteJSON(streamsMsg)
+		connMu.Unlock()
+		log.Printf("Remote renegotiation: sent streams-info with %d tracks", len(tracks))
 	})
 
-	// Set up stream change callbacks
+	// Set up stream change callbacks (legacy mode - requires renegotiation)
 	pm.SetStreamChangeCallbacks(
 		func(info sig.StreamInfo) {
 			log.Printf("Remote: broadcasting stream-added: %s", info.TrackID)
@@ -396,6 +448,24 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 		func(trackID string) {
 			log.Printf("Remote: broadcasting stream-removed: %s", trackID)
 			msg := sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
+			connMu.Lock()
+			conn.WriteJSON(msg)
+			connMu.Unlock()
+		},
+	)
+
+	// Set up stream activation callbacks (fast path - no renegotiation needed)
+	pm.SetStreamActivationCallbacks(
+		func(info sig.StreamInfo) {
+			log.Printf("Remote: broadcasting stream-activated: %s (fast path)", info.TrackID)
+			msg := sig.SignalMessage{Type: "stream-activated", StreamActivated: &info}
+			connMu.Lock()
+			conn.WriteJSON(msg)
+			connMu.Unlock()
+		},
+		func(trackID string) {
+			log.Printf("Remote: broadcasting stream-deactivated: %s (fast path)", trackID)
+			msg := sig.SignalMessage{Type: "stream-deactivated", StreamDeactivated: trackID}
 			connMu.Lock()
 			conn.WriteJSON(msg)
 			connMu.Unlock()

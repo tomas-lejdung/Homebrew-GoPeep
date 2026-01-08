@@ -59,7 +59,7 @@ func (c *Client) handleMessage(msg SignalMessage) {
 		c.forwardToSharer(room, msg)
 	case "ice":
 		c.forwardICE(room, msg)
-	case "streams-info", "focus-change", "stream-added", "stream-removed", "size-change":
+	case "streams-info", "focus-change", "stream-added", "stream-removed", "stream-activated", "stream-deactivated", "size-change":
 		// Forward stream metadata from sharer to all viewers
 		c.forwardToViewers(room, msg)
 	default:

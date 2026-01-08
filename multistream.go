@@ -6,6 +6,7 @@ import (
 	"log"
 	"sort"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/pion/webrtc/v3"
@@ -45,6 +46,16 @@ type PeerInfo struct {
 	renegotiating bool                         // Whether renegotiation is in progress
 }
 
+// TrackSlot represents a pre-allocated track slot for instant window sharing
+// All 4 slots are created upfront and included in the initial SDP offer,
+// eliminating the need for renegotiation when adding new windows.
+type TrackSlot struct {
+	TrackID string                         // "video0", "video1", etc.
+	Track   *webrtc.TrackLocalStaticSample // The actual WebRTC track
+	Active  bool                           // Whether this slot has an active stream
+	Info    *StreamTrackInfo               // Window info when active, nil when inactive
+}
+
 // PeerManager manages WebRTC connections with multiple video tracks
 type PeerManager struct {
 	config        webrtc.Configuration
@@ -66,6 +77,14 @@ type PeerManager struct {
 	onRenegotiate   func(peerID string, offer string)
 	onStreamAdded   func(info sig.StreamInfo)
 	onStreamRemoved func(trackID string)
+
+	// Pre-allocated track slots for instant window sharing
+	slots      [4]*TrackSlot // Pre-allocated track slots (matches MaxCaptureInstances)
+	slotsReady bool          // Whether slots have been initialized
+
+	// Stream activation callbacks (no renegotiation needed)
+	onStreamActivated   func(info sig.StreamInfo)
+	onStreamDeactivated func(trackID string)
 }
 
 // NewPeerManager creates a new multi-track peer manager
@@ -105,6 +124,331 @@ func NewPeerManager(iceConfig ICEConfig, codecType CodecType) (*PeerManager, err
 		connections:  make(map[string]*PeerInfo),
 		viewerStates: make(map[string]*ViewerInfo),
 	}, nil
+}
+
+// getMimeType returns the MIME type for the current codec
+func (mpm *PeerManager) getMimeType() string {
+	switch mpm.codecType {
+	case CodecVP9:
+		return webrtc.MimeTypeVP9
+	case CodecH264:
+		return webrtc.MimeTypeH264
+	default:
+		return webrtc.MimeTypeVP8
+	}
+}
+
+// InitializeTrackSlots creates all 4 track slots upfront for instant window sharing.
+// This must be called before any viewers connect to ensure all tracks are in the initial SDP.
+func (mpm *PeerManager) InitializeTrackSlots() error {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+
+	if mpm.slotsReady {
+		return nil // Already initialized
+	}
+
+	mimeType := mpm.getMimeType()
+	log.Printf("InitializeTrackSlots: Creating 4 pre-allocated track slots with codec %s", mimeType)
+
+	for i := 0; i < 4; i++ {
+		trackID := fmt.Sprintf("video%d", i)
+		streamID := fmt.Sprintf("gopeep-stream-%d", i) // Unique stream ID per slot
+
+		// Create the WebRTC track
+		track, err := webrtc.NewTrackLocalStaticSample(
+			webrtc.RTPCodecCapability{MimeType: mimeType},
+			trackID,
+			streamID,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create track slot %d: %w", i, err)
+		}
+
+		mpm.slots[i] = &TrackSlot{
+			TrackID: trackID,
+			Track:   track,
+			Active:  false,
+			Info:    nil,
+		}
+		log.Printf("InitializeTrackSlots: Created slot %d (trackID=%s, streamID=%s)", i, trackID, streamID)
+	}
+
+	// Set trackCounter to 4 so legacy AddTrack won't conflict with slot IDs
+	mpm.trackCounter = 4
+
+	mpm.slotsReady = true
+	log.Printf("InitializeTrackSlots: All 4 track slots ready")
+	return nil
+}
+
+// AreSlotsReady returns whether track slots have been initialized
+func (mpm *PeerManager) AreSlotsReady() bool {
+	mpm.mu.RLock()
+	defer mpm.mu.RUnlock()
+	return mpm.slotsReady
+}
+
+// RecreateSlots recreates all track slots with a new codec.
+// This is called during codec change to update the pre-allocated slots.
+// Active slots are preserved (their window info is kept) but tracks are recreated.
+// Returns info about which slots were active so pipelines can be reconnected.
+func (mpm *PeerManager) RecreateSlots(newCodec CodecType) ([]SlotInfo, error) {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+
+	if !mpm.slotsReady {
+		return nil, fmt.Errorf("track slots not initialized")
+	}
+
+	// Collect info about currently active slots
+	type activeSlotInfo struct {
+		slotIndex  int
+		windowID   uint32
+		windowName string
+		appName    string
+		width      int
+		height     int
+		isFocused  bool
+	}
+	activeSlots := make([]activeSlotInfo, 0)
+	for i := 0; i < 4; i++ {
+		if mpm.slots[i] != nil && mpm.slots[i].Active && mpm.slots[i].Info != nil {
+			activeSlots = append(activeSlots, activeSlotInfo{
+				slotIndex:  i,
+				windowID:   mpm.slots[i].Info.WindowID,
+				windowName: mpm.slots[i].Info.WindowName,
+				appName:    mpm.slots[i].Info.AppName,
+				width:      mpm.slots[i].Info.Width,
+				height:     mpm.slots[i].Info.Height,
+				isFocused:  mpm.slots[i].Info.IsFocused,
+			})
+		}
+	}
+
+	// Update codec type
+	mpm.codecType = newCodec
+	mimeType := mpm.getMimeType()
+	log.Printf("RecreateSlots: Recreating 4 track slots with new codec %s", mimeType)
+
+	// Clear tracks map (will be repopulated for active slots)
+	mpm.tracks = make(map[string]*StreamTrackInfo)
+
+	// Recreate all 4 slots with new codec
+	for i := 0; i < 4; i++ {
+		trackID := fmt.Sprintf("video%d", i)
+		streamID := fmt.Sprintf("gopeep-stream-%d", i)
+
+		// Create new WebRTC track with new codec
+		track, err := webrtc.NewTrackLocalStaticSample(
+			webrtc.RTPCodecCapability{MimeType: mimeType},
+			trackID,
+			streamID,
+		)
+		if err != nil {
+			return nil, fmt.Errorf("failed to recreate track slot %d: %w", i, err)
+		}
+
+		mpm.slots[i] = &TrackSlot{
+			TrackID: trackID,
+			Track:   track,
+			Active:  false,
+			Info:    nil,
+		}
+		log.Printf("RecreateSlots: Recreated slot %d (trackID=%s, streamID=%s)", i, trackID, streamID)
+	}
+
+	// Restore active slots with their window info
+	result := make([]SlotInfo, 0, len(activeSlots))
+	for _, active := range activeSlots {
+		slot := mpm.slots[active.slotIndex]
+		slot.Active = true
+		slot.Info = &StreamTrackInfo{
+			TrackID:    slot.TrackID,
+			WindowID:   active.windowID,
+			WindowName: active.windowName,
+			AppName:    active.appName,
+			Track:      slot.Track,
+			Width:      active.width,
+			Height:     active.height,
+			IsFocused:  active.isFocused,
+		}
+		mpm.tracks[slot.TrackID] = slot.Info
+
+		result = append(result, SlotInfo{
+			TrackID:    slot.TrackID,
+			WindowID:   active.windowID,
+			WindowName: active.windowName,
+			AppName:    active.appName,
+			Track:      slot.Track,
+			IsFocused:  active.isFocused,
+		})
+		log.Printf("RecreateSlots: Restored active slot %d for window %d (%s)", active.slotIndex, active.windowID, active.windowName)
+	}
+
+	log.Printf("RecreateSlots: Completed - %d active slots restored", len(result))
+	return result, nil
+}
+
+// SlotInfo contains information about an active slot after recreation
+type SlotInfo struct {
+	TrackID    string
+	WindowID   uint32
+	WindowName string
+	AppName    string
+	Track      *webrtc.TrackLocalStaticSample
+	IsFocused  bool
+}
+
+// ActivateSlot activates a pre-allocated slot for a window.
+// Returns the activated slot with its StreamTrackInfo populated.
+// This is the fast path for adding windows - no renegotiation needed.
+func (mpm *PeerManager) ActivateSlot(windowID uint32, windowName, appName string, width, height int) (*TrackSlot, error) {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+
+	if !mpm.slotsReady {
+		return nil, fmt.Errorf("track slots not initialized - call InitializeTrackSlots first")
+	}
+
+	// Check if this window is already active in a slot
+	for i := 0; i < 4; i++ {
+		slot := mpm.slots[i]
+		if slot != nil && slot.Active && slot.Info != nil && slot.Info.WindowID == windowID {
+			return nil, fmt.Errorf("window %d already has an active slot", windowID)
+		}
+	}
+
+	// Find first inactive slot
+	var slot *TrackSlot
+	for i := 0; i < 4; i++ {
+		if mpm.slots[i] != nil && !mpm.slots[i].Active {
+			slot = mpm.slots[i]
+			break
+		}
+	}
+
+	if slot == nil {
+		return nil, fmt.Errorf("no available track slots (max 4 windows)")
+	}
+
+	// Activate the slot
+	slot.Active = true
+	slot.Info = &StreamTrackInfo{
+		TrackID:    slot.TrackID,
+		WindowID:   windowID,
+		WindowName: windowName,
+		AppName:    appName,
+		Track:      slot.Track,
+		Width:      width,
+		Height:     height,
+		IsFocused:  len(mpm.tracks) == 0, // First active slot is focused by default
+	}
+
+	// Also add to tracks map for backward compatibility with existing code
+	mpm.tracks[slot.TrackID] = slot.Info
+
+	log.Printf("ActivateSlot: Activated %s for window %d (%s - %s)", slot.TrackID, windowID, appName, windowName)
+	return slot, nil
+}
+
+// DeactivateSlot deactivates a slot when a window is unshared.
+// The slot remains in the SDP but stops sending data.
+func (mpm *PeerManager) DeactivateSlot(trackID string) error {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+
+	for i := 0; i < 4; i++ {
+		slot := mpm.slots[i]
+		if slot != nil && slot.TrackID == trackID {
+			if !slot.Active {
+				return fmt.Errorf("slot %s is not active", trackID)
+			}
+
+			slot.Active = false
+			slot.Info = nil
+			delete(mpm.tracks, trackID)
+
+			log.Printf("DeactivateSlot: Deactivated %s", trackID)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("slot not found: %s", trackID)
+}
+
+// GetActiveSlotCount returns the number of currently active slots
+func (mpm *PeerManager) GetActiveSlotCount() int {
+	mpm.mu.RLock()
+	defer mpm.mu.RUnlock()
+
+	count := 0
+	for i := 0; i < 4; i++ {
+		if mpm.slots[i] != nil && mpm.slots[i].Active {
+			count++
+		}
+	}
+	return count
+}
+
+// GetActiveStreamsInfo returns StreamInfo for all active slots
+// Used for sending initial streams-info to new viewers
+func (mpm *PeerManager) GetActiveStreamsInfo() []sig.StreamInfo {
+	mpm.mu.RLock()
+	defer mpm.mu.RUnlock()
+
+	result := make([]sig.StreamInfo, 0, 4)
+	for i := 0; i < 4; i++ {
+		slot := mpm.slots[i]
+		if slot != nil && slot.Active && slot.Info != nil {
+			result = append(result, sig.StreamInfo{
+				TrackID:    slot.Info.TrackID,
+				WindowName: slot.Info.WindowName,
+				AppName:    slot.Info.AppName,
+				IsFocused:  slot.Info.IsFocused,
+				Width:      slot.Info.Width,
+				Height:     slot.Info.Height,
+			})
+		}
+	}
+	return result
+}
+
+// SetStreamActivationCallbacks sets callbacks for stream activation/deactivation events
+func (mpm *PeerManager) SetStreamActivationCallbacks(onActivated func(info sig.StreamInfo), onDeactivated func(trackID string)) {
+	mpm.onStreamActivated = onActivated
+	mpm.onStreamDeactivated = onDeactivated
+}
+
+// NotifyStreamActivated notifies that a stream was activated (no renegotiation)
+func (mpm *PeerManager) NotifyStreamActivated(info sig.StreamInfo) {
+	if mpm.onStreamActivated != nil {
+		mpm.onStreamActivated(info)
+	}
+}
+
+// NotifyStreamDeactivated notifies that a stream was deactivated
+func (mpm *PeerManager) NotifyStreamDeactivated(trackID string) {
+	if mpm.onStreamDeactivated != nil {
+		mpm.onStreamDeactivated(trackID)
+	}
+}
+
+// GetTrackInfo returns the StreamTrackInfo for a given track ID
+func (mpm *PeerManager) GetTrackInfo(trackID string) *StreamTrackInfo {
+	mpm.mu.RLock()
+	defer mpm.mu.RUnlock()
+	return mpm.tracks[trackID]
+}
+
+// GetSlot returns the TrackSlot at the given index (0-3)
+func (mpm *PeerManager) GetSlot(index int) *TrackSlot {
+	mpm.mu.RLock()
+	defer mpm.mu.RUnlock()
+	if index < 0 || index >= 4 || !mpm.slotsReady {
+		return nil
+	}
+	return mpm.slots[index]
 }
 
 // AddTrack creates a new video track for a window
@@ -302,22 +646,43 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 		Senders: make(map[string]*webrtc.RTPSender),
 	}
 
-	// Add all video tracks in sorted order (video0, video1, video2...)
-	// This ensures the viewer receives tracks in the same order as their IDs
-	trackIDs := make([]string, 0, len(mpm.tracks))
-	for id := range mpm.tracks {
-		trackIDs = append(trackIDs, id)
-	}
-	sort.Strings(trackIDs)
-
-	for _, id := range trackIDs {
-		trackInfo := mpm.tracks[id]
-		sender, err := pc.AddTrack(trackInfo.Track)
-		if err != nil {
-			pc.Close()
-			return "", fmt.Errorf("failed to add video track %s: %w", trackInfo.TrackID, err)
+	// Add tracks to the peer connection
+	// If slots are ready, add ALL pre-allocated slots (enables instant window sharing)
+	// Otherwise, fall back to adding only active tracks (legacy mode)
+	if mpm.slotsReady {
+		// Add all 4 pre-allocated track slots
+		// This eliminates the need for renegotiation when adding new windows
+		log.Printf("CreateOffer: Using pre-allocated slots (4 tracks)")
+		for i := 0; i < 4; i++ {
+			slot := mpm.slots[i]
+			if slot == nil {
+				continue
+			}
+			sender, err := pc.AddTrack(slot.Track)
+			if err != nil {
+				pc.Close()
+				return "", fmt.Errorf("failed to add track slot %d: %w", i, err)
+			}
+			peerInfo.Senders[slot.TrackID] = sender
 		}
-		peerInfo.Senders[id] = sender
+	} else {
+		// Legacy mode: add only active tracks (requires renegotiation for new windows)
+		log.Printf("CreateOffer: Using legacy mode (only active tracks)")
+		trackIDs := make([]string, 0, len(mpm.tracks))
+		for id := range mpm.tracks {
+			trackIDs = append(trackIDs, id)
+		}
+		sort.Strings(trackIDs)
+
+		for _, id := range trackIDs {
+			trackInfo := mpm.tracks[id]
+			sender, err := pc.AddTrack(trackInfo.Track)
+			if err != nil {
+				pc.Close()
+				return "", fmt.Errorf("failed to add video track %s: %w", trackInfo.TrackID, err)
+			}
+			peerInfo.Senders[id] = sender
+		}
 	}
 
 	// Handle ICE candidates
@@ -590,6 +955,37 @@ func (mpm *PeerManager) RemoveTrackFromAllPeers(trackID string) error {
 	return nil
 }
 
+// ReplaceTrackOnAllPeers replaces a track on all existing peer connections
+// This preserves the transceiver and its mid, avoiding renegotiation issues with codec changes
+func (mpm *PeerManager) ReplaceTrackOnAllPeers(trackID string, newTrack *webrtc.TrackLocalStaticSample) error {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+
+	log.Printf("ReplaceTrackOnAllPeers: Replacing track %s on %d peer connections", trackID, len(mpm.connections))
+
+	for peerID, peerInfo := range mpm.connections {
+		if sender, ok := peerInfo.Senders[trackID]; ok {
+			log.Printf("ReplaceTrackOnAllPeers: Replacing track %s on peer %s", trackID, peerID)
+			if err := sender.ReplaceTrack(newTrack); err != nil {
+				log.Printf("ReplaceTrackOnAllPeers: Failed to replace track %s on peer %s: %v", trackID, peerID, err)
+				continue
+			}
+			log.Printf("ReplaceTrackOnAllPeers: Successfully replaced track %s on peer %s", trackID, peerID)
+		} else {
+			log.Printf("ReplaceTrackOnAllPeers: No sender for track %s on peer %s, will add new", trackID, peerID)
+			// If no sender exists, add the track (shouldn't happen normally during codec change)
+			sender, err := peerInfo.PC.AddTrack(newTrack)
+			if err != nil {
+				log.Printf("ReplaceTrackOnAllPeers: Failed to add track %s to peer %s: %v", trackID, peerID, err)
+				continue
+			}
+			peerInfo.Senders[trackID] = sender
+			log.Printf("ReplaceTrackOnAllPeers: Added new track %s to peer %s", trackID, peerID)
+		}
+	}
+	return nil
+}
+
 // RenegotiateAllPeers triggers renegotiation with all connected peers
 // Runs in a goroutine to not block the caller
 func (mpm *PeerManager) RenegotiateAllPeers() {
@@ -743,6 +1139,18 @@ func (mpm *PeerManager) NotifyStreamRemoved(trackID string) {
 }
 
 // StreamPipeline manages capture-encode-stream for a single window
+// capturedFrame holds a frame ready for encoding
+type capturedFrame struct {
+	frame         *BGRAFrame
+	frameDuration time.Duration
+}
+
+// encodedFrame holds encoded data ready for sending
+type encodedFrame struct {
+	data          []byte
+	frameDuration time.Duration
+}
+
 type StreamPipeline struct {
 	trackInfo    *StreamTrackInfo
 	capture      *CaptureInstance
@@ -759,9 +1167,14 @@ type StreamPipeline struct {
 	mu           sync.Mutex
 	wg           sync.WaitGroup // For waiting on run loop to exit
 
+	// Pipeline channels for decoupled capture/encode/send
+	capturedFrames chan capturedFrame // Buffer between capture and encode
+	encodedFrames  chan encodedFrame  // Buffer between encode and send
+
 	// Stats tracking
 	frameCount     uint64    // Total frames encoded
 	byteCount      uint64    // Total bytes sent
+	encodeErrors   uint64    // Consecutive encode errors (for logging)
 	lastFrameTime  time.Time // For FPS calculation
 	lastByteCount  uint64    // For bitrate calculation
 	lastStatsTime  time.Time // When we last calculated rates
@@ -769,10 +1182,14 @@ type StreamPipeline struct {
 	currentBitrate float64   // Calculated bitrate in kbps
 
 	// Size change tracking (for debounced notifications)
-	lastWidth       int
-	lastHeight      int
-	sizeChangeTimer *time.Timer
-	sizeChangeMu    sync.Mutex
+	lastWidth          int
+	lastHeight         int
+	sizeChangeTimer    *time.Timer
+	sizeChangePending  bool
+	sizeChangeMu       sync.Mutex
+	pendingSizeTrackID string
+	pendingSizeWidth   int
+	pendingSizeHeight  int
 }
 
 // Streamer manages multiple stream pipelines
@@ -838,19 +1255,46 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 		return nil, fmt.Errorf("maximum windows (%d) reached", MaxCaptureInstances)
 	}
 
-	// Create track in peer manager
-	trackInfo, err := ms.peerManager.AddTrack(window.ID, window.WindowName, window.OwnerName)
-	if err != nil {
-		return nil, err
+	var trackInfo *StreamTrackInfo
+
+	// Use pre-allocated slots if available (fast path)
+	if ms.peerManager.AreSlotsReady() {
+		slot, err := ms.peerManager.ActivateSlot(
+			window.ID,
+			window.WindowName,
+			window.OwnerName,
+			int(window.Width),
+			int(window.Height),
+		)
+		if err != nil {
+			return nil, err
+		}
+		trackInfo = slot.Info
+	} else {
+		// Legacy path: create new track
+		var err error
+		trackInfo, err = ms.peerManager.AddTrack(window.ID, window.WindowName, window.OwnerName)
+		if err != nil {
+			return nil, err
+		}
+		trackInfo.Width = int(window.Width)
+		trackInfo.Height = int(window.Height)
 	}
 
-	trackInfo.Width = int(window.Width)
-	trackInfo.Height = int(window.Height)
+	// Helper to clean up track on error
+	useFastPath := ms.peerManager.AreSlotsReady()
+	cleanupTrack := func() {
+		if useFastPath {
+			ms.peerManager.DeactivateSlot(trackInfo.TrackID)
+		} else {
+			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		}
+	}
 
 	// Start capture
 	capture, err := ms.multiCapture.StartWindowCapture(window.ID, 0, 0, ms.fps)
 	if err != nil {
-		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		cleanupTrack()
 		return nil, fmt.Errorf("failed to start capture: %w", err)
 	}
 
@@ -865,7 +1309,7 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
 	if err != nil {
 		ms.multiCapture.StopCapture(capture)
-		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		cleanupTrack()
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
@@ -874,19 +1318,21 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 		encoder.SetQualityMode(true, bitrate)
 	}
 
-	// Create pipeline
+	// Create pipeline with buffered channels for decoupled processing
 	pipeline := &StreamPipeline{
-		trackInfo:    trackInfo,
-		capture:      capture,
-		encoder:      encoder,
-		fps:          ms.fps,
-		bitrate:      bitrate,
-		focusBitrate: ms.focusBitrate,
-		bgBitrate:    ms.bgBitrate,
-		adaptiveBR:   ms.adaptiveBitrate,
-		qualityMode:  ms.qualityMode,
-		stopChan:     make(chan struct{}),
-		fpsChanged:   make(chan int, 1),
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     ms.adaptiveBitrate,
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2), // Small buffer to decouple capture/encode
+		encodedFrames:  make(chan encodedFrame, 2),  // Small buffer to decouple encode/send
 	}
 
 	ms.pipelines[trackInfo.TrackID] = pipeline
@@ -1186,14 +1632,17 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 
 	log.Printf("SetCodec: Changing codec from %v to %v", ms.codecType, newCodec)
 
-	// 1. Collect pipeline info before stopping (including track IDs to preserve them)
+	// Check if we're using pre-allocated slots
+	useSlotsPath := ms.peerManager.AreSlotsReady()
+
+	// 1. Collect pipeline info before stopping (including captures to reuse)
 	type pipelineInfo struct {
-		trackID    string // Preserve the original track ID
+		trackID    string
 		windowID   uint32
 		windowName string
 		appName    string
 		wasFocused bool
-		capture    *CaptureInstance // Reuse existing capture
+		capture    *CaptureInstance
 	}
 
 	pipelineInfos := make([]pipelineInfo, 0, len(ms.pipelines))
@@ -1213,87 +1662,195 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 		pipeline.stopEncoderOnly()
 	}
 
-	// 3. Remove all tracks from all peer connections
-	// NOTE: We do NOT notify viewers of stream removal since we're keeping the same track IDs
-	// The renegotiation will handle updating the codec
-	for trackID := range ms.pipelines {
-		if err := ms.peerManager.RemoveTrackFromAllPeers(trackID); err != nil {
-			log.Printf("SetCodec: Failed to remove track %s from peers: %v", trackID, err)
-		}
-		ms.peerManager.RemoveTrack(trackID)
-	}
-
-	// 4. Update codec type
-	ms.peerManager.SetCodecType(newCodec)
-	ms.codecType = newCodec
-
-	// 5. Clear pipelines map
+	// 3. Clear pipelines map
 	ms.pipelines = make(map[string]*StreamPipeline)
 
-	// 6. Recreate pipelines with new codec, preserving track IDs
+	// 4. Update codec type on streamer
+	ms.codecType = newCodec
+
+	// 5. Recreate tracks/slots with new codec
 	factory := NewEncoderFactory()
 
-	for _, info := range pipelineInfos {
-		// Create new track with SAME track ID but new codec
-		trackInfo, err := ms.peerManager.AddTrackWithID(info.trackID, info.windowID, info.windowName, info.appName)
+	if useSlotsPath {
+		// SLOTS PATH: Recreate pre-allocated slots with new codec
+		log.Printf("SetCodec: Using slots path - recreating slots with new codec")
+
+		// First, remove all existing tracks from peer connections
+		// This is necessary because codec change requires new transceivers
+		for i := 0; i < 4; i++ {
+			trackID := fmt.Sprintf("video%d", i)
+			if err := ms.peerManager.RemoveTrackFromAllPeers(trackID); err != nil {
+				log.Printf("SetCodec: Failed to remove track %s: %v", trackID, err)
+			}
+		}
+
+		// Recreate slots with new codec
+		slotInfos, err := ms.peerManager.RecreateSlots(newCodec)
 		if err != nil {
-			log.Printf("SetCodec: Failed to create track for window %d: %v", info.windowID, err)
-			continue
-		}
-		trackInfo.IsFocused = info.wasFocused
-
-		// Determine bitrate based on focus
-		bitrate := ms.bgBitrate
-		if info.wasFocused {
-			bitrate = ms.focusBitrate
+			return fmt.Errorf("failed to recreate slots: %w", err)
 		}
 
-		// Create new encoder with new codec
-		encoder, err := factory.CreateEncoder(newCodec, ms.fps, bitrate)
-		if err != nil {
-			log.Printf("SetCodec: Failed to create encoder: %v", err)
-			ms.peerManager.RemoveTrack(trackInfo.TrackID)
-			continue
+		// Create a map of trackID -> capture for quick lookup
+		captureByTrackID := make(map[string]*CaptureInstance)
+		for _, info := range pipelineInfos {
+			captureByTrackID[info.trackID] = info.capture
 		}
 
-		// Apply quality mode if enabled
-		if ms.qualityMode {
-			encoder.SetQualityMode(true, bitrate)
+		// Add all slots to peer connections (including inactive ones for pre-allocation)
+		for i := 0; i < 4; i++ {
+			slot := ms.peerManager.GetSlot(i)
+			if slot != nil {
+				trackInfo := &StreamTrackInfo{
+					TrackID: slot.TrackID,
+					Track:   slot.Track,
+				}
+				if slot.Info != nil {
+					trackInfo.WindowID = slot.Info.WindowID
+					trackInfo.WindowName = slot.Info.WindowName
+					trackInfo.AppName = slot.Info.AppName
+					trackInfo.Width = slot.Info.Width
+					trackInfo.Height = slot.Info.Height
+					trackInfo.IsFocused = slot.Info.IsFocused
+				}
+				if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
+					log.Printf("SetCodec: Failed to add slot %s to peers: %v", slot.TrackID, err)
+				}
+			}
 		}
 
-		if err := encoder.Start(); err != nil {
-			log.Printf("SetCodec: Failed to start encoder: %v", err)
-			ms.peerManager.RemoveTrack(trackInfo.TrackID)
-			continue
+		// Recreate pipelines using the new slot tracks
+		for _, slotInfo := range slotInfos {
+			// Find the capture for this track
+			capture, ok := captureByTrackID[slotInfo.TrackID]
+			if !ok {
+				log.Printf("SetCodec: No capture found for track %s, skipping", slotInfo.TrackID)
+				continue
+			}
+
+			// Determine bitrate based on focus
+			bitrate := ms.bgBitrate
+			if slotInfo.IsFocused {
+				bitrate = ms.focusBitrate
+			}
+
+			// Create new encoder with new codec
+			encoder, err := factory.CreateEncoder(newCodec, ms.fps, bitrate)
+			if err != nil {
+				log.Printf("SetCodec: Failed to create encoder for %s: %v", slotInfo.TrackID, err)
+				continue
+			}
+
+			// Apply quality mode if enabled
+			if ms.qualityMode {
+				encoder.SetQualityMode(true, bitrate)
+			}
+
+			if err := encoder.Start(); err != nil {
+				log.Printf("SetCodec: Failed to start encoder for %s: %v", slotInfo.TrackID, err)
+				continue
+			}
+
+			// Get the track info from the slot (it has the new Track pointer)
+			trackInfo := ms.peerManager.GetTrackInfo(slotInfo.TrackID)
+			if trackInfo == nil {
+				log.Printf("SetCodec: Could not get track info for %s", slotInfo.TrackID)
+				continue
+			}
+
+			// Create new pipeline with new encoder and new track reference
+			pipeline := &StreamPipeline{
+				trackInfo:      trackInfo,
+				capture:        capture,
+				encoder:        encoder,
+				stopChan:       make(chan struct{}),
+				fpsChanged:     make(chan int, 1),
+				capturedFrames: make(chan capturedFrame, 2),
+				encodedFrames:  make(chan encodedFrame, 2),
+				fps:            ms.fps,
+				bitrate:        bitrate,
+				focusBitrate:   ms.focusBitrate,
+				bgBitrate:      ms.bgBitrate,
+				adaptiveBR:     ms.adaptiveBitrate,
+				qualityMode:    ms.qualityMode,
+				running:        false,
+			}
+
+			ms.pipelines[trackInfo.TrackID] = pipeline
+			log.Printf("SetCodec: Created pipeline for slot %s (window %d)", slotInfo.TrackID, slotInfo.WindowID)
 		}
 
-		// Create new pipeline (reusing capture)
-		// Note: running must be false so run() can start properly
-		pipeline := &StreamPipeline{
-			trackInfo:    trackInfo,
-			capture:      info.capture,
-			encoder:      encoder,
-			stopChan:     make(chan struct{}),
-			fpsChanged:   make(chan int, 1),
-			fps:          ms.fps,
-			bitrate:      bitrate,
-			focusBitrate: ms.focusBitrate,
-			bgBitrate:    ms.bgBitrate,
-			adaptiveBR:   ms.adaptiveBitrate,
-			qualityMode:  ms.qualityMode,
-			running:      false,
+	} else {
+		// LEGACY PATH: Remove tracks and add new ones
+		log.Printf("SetCodec: Using legacy path - creating new tracks")
+
+		// First remove old tracks
+		for _, info := range pipelineInfos {
+			if err := ms.peerManager.RemoveTrackFromAllPeers(info.trackID); err != nil {
+				log.Printf("SetCodec: Failed to remove track %s: %v", info.trackID, err)
+			}
 		}
 
-		ms.pipelines[trackInfo.TrackID] = pipeline
+		ms.peerManager.SetCodecType(newCodec)
 
-		// Add track to all peers
-		if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
-			log.Printf("SetCodec: Failed to add track to peers: %v", err)
+		for _, info := range pipelineInfos {
+			// Create new track with SAME track ID but new codec
+			trackInfo, err := ms.peerManager.AddTrackWithID(info.trackID, info.windowID, info.windowName, info.appName)
+			if err != nil {
+				log.Printf("SetCodec: Failed to create track for window %d: %v", info.windowID, err)
+				continue
+			}
+			trackInfo.IsFocused = info.wasFocused
+
+			// Determine bitrate based on focus
+			bitrate := ms.bgBitrate
+			if info.wasFocused {
+				bitrate = ms.focusBitrate
+			}
+
+			// Create new encoder with new codec
+			encoder, err := factory.CreateEncoder(newCodec, ms.fps, bitrate)
+			if err != nil {
+				log.Printf("SetCodec: Failed to create encoder: %v", err)
+				ms.peerManager.RemoveTrack(trackInfo.TrackID)
+				continue
+			}
+
+			// Apply quality mode if enabled
+			if ms.qualityMode {
+				encoder.SetQualityMode(true, bitrate)
+			}
+
+			if err := encoder.Start(); err != nil {
+				log.Printf("SetCodec: Failed to start encoder: %v", err)
+				ms.peerManager.RemoveTrack(trackInfo.TrackID)
+				continue
+			}
+
+			// Create new pipeline (reusing capture)
+			pipeline := &StreamPipeline{
+				trackInfo:      trackInfo,
+				capture:        info.capture,
+				encoder:        encoder,
+				stopChan:       make(chan struct{}),
+				fpsChanged:     make(chan int, 1),
+				capturedFrames: make(chan capturedFrame, 2),
+				encodedFrames:  make(chan encodedFrame, 2),
+				fps:            ms.fps,
+				bitrate:        bitrate,
+				focusBitrate:   ms.focusBitrate,
+				bgBitrate:      ms.bgBitrate,
+				adaptiveBR:     ms.adaptiveBitrate,
+				qualityMode:    ms.qualityMode,
+				running:        false,
+			}
+
+			ms.pipelines[trackInfo.TrackID] = pipeline
+
+			// Add track to all peers
+			if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
+				log.Printf("SetCodec: Failed to add track to peers: %v", err)
+			}
 		}
-
-		// NOTE: We do NOT notify viewers of stream-added since we're keeping the same track IDs
-		// The renegotiation will handle updating the codec, and the viewer's ontrack will
-		// receive the new track with the same ID
 	}
 
 	// 7. Trigger renegotiation with all peers
@@ -1335,7 +1892,9 @@ func (ms *Streamer) GetStreamingWindowIDs() map[uint32]bool {
 	return result
 }
 
-// AddWindowDynamic adds a window without stopping other streams (for renegotiation)
+// AddWindowDynamic adds a window without stopping other streams.
+// If pre-allocated slots are ready, this is instant (no renegotiation).
+// Otherwise, falls back to legacy mode with renegotiation.
 func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error) {
 	ms.mu.Lock()
 
@@ -1353,19 +1912,45 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 	}
 	ms.mu.Unlock()
 
-	// Create track in peer manager
-	trackInfo, err := ms.peerManager.AddTrack(window.ID, window.WindowName, window.OwnerName)
-	if err != nil {
-		return nil, err
-	}
+	// Determine whether to use pre-allocated slots (fast path) or legacy mode
+	useFastPath := ms.peerManager.AreSlotsReady()
 
-	trackInfo.Width = int(window.Width)
-	trackInfo.Height = int(window.Height)
+	var trackInfo *StreamTrackInfo
+
+	if useFastPath {
+		// FAST PATH: Activate a pre-allocated slot (no renegotiation needed!)
+		log.Printf("AddWindowDynamic: Using fast path (pre-allocated slots)")
+		slot, err := ms.peerManager.ActivateSlot(
+			window.ID,
+			window.WindowName,
+			window.OwnerName,
+			int(window.Width),
+			int(window.Height),
+		)
+		if err != nil {
+			return nil, err
+		}
+		trackInfo = slot.Info
+	} else {
+		// LEGACY PATH: Create new track (requires renegotiation)
+		log.Printf("AddWindowDynamic: Using legacy path (new track creation)")
+		var err error
+		trackInfo, err = ms.peerManager.AddTrack(window.ID, window.WindowName, window.OwnerName)
+		if err != nil {
+			return nil, err
+		}
+		trackInfo.Width = int(window.Width)
+		trackInfo.Height = int(window.Height)
+	}
 
 	// Start capture for this window
 	capture, err := ms.multiCapture.StartWindowCapture(window.ID, 0, 0, ms.fps)
 	if err != nil {
-		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		if useFastPath {
+			ms.peerManager.DeactivateSlot(trackInfo.TrackID)
+		} else {
+			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		}
 		return nil, fmt.Errorf("failed to start capture: %w", err)
 	}
 
@@ -1380,7 +1965,11 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
 	if err != nil {
 		ms.multiCapture.StopCapture(capture)
-		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		if useFastPath {
+			ms.peerManager.DeactivateSlot(trackInfo.TrackID)
+		} else {
+			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		}
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
@@ -1389,19 +1978,21 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 		encoder.SetQualityMode(true, bitrate)
 	}
 
-	// Create pipeline
+	// Create pipeline with buffered channels
 	pipeline := &StreamPipeline{
-		trackInfo:    trackInfo,
-		capture:      capture,
-		encoder:      encoder,
-		fps:          ms.fps,
-		bitrate:      bitrate,
-		focusBitrate: ms.focusBitrate,
-		bgBitrate:    ms.bgBitrate,
-		adaptiveBR:   ms.adaptiveBitrate,
-		qualityMode:  ms.qualityMode,
-		stopChan:     make(chan struct{}),
-		fpsChanged:   make(chan int, 1),
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     ms.adaptiveBitrate,
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2),
+		encodedFrames:  make(chan encodedFrame, 2),
 	}
 
 	ms.mu.Lock()
@@ -1413,7 +2004,11 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 	if isRunning {
 		if err := encoder.Start(); err != nil {
 			ms.multiCapture.StopCapture(capture)
-			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+			if useFastPath {
+				ms.peerManager.DeactivateSlot(trackInfo.TrackID)
+			} else {
+				ms.peerManager.RemoveTrack(trackInfo.TrackID)
+			}
 			ms.mu.Lock()
 			delete(ms.pipelines, trackInfo.TrackID)
 			ms.mu.Unlock()
@@ -1422,33 +2017,42 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 		go pipeline.run(ms.peerManager, ms.multiCapture, ms.onSizeChange)
 	}
 
-	// Add track to all existing peer connections
-	log.Printf("AddWindowDynamic: Adding track %s to all peers", trackInfo.TrackID)
-	if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
-		log.Printf("Warning: failed to add track to some peers: %v", err)
-	}
-
-	// Notify about new stream BEFORE renegotiation so viewer knows to expect it
-	log.Printf("AddWindowDynamic: Notifying about new stream %s", trackInfo.TrackID)
-	ms.peerManager.NotifyStreamAdded(sig.StreamInfo{
+	// Notify viewers about the stream
+	streamInfo := sig.StreamInfo{
 		TrackID:    trackInfo.TrackID,
 		WindowName: trackInfo.WindowName,
 		AppName:    trackInfo.AppName,
 		IsFocused:  trackInfo.IsFocused,
 		Width:      trackInfo.Width,
 		Height:     trackInfo.Height,
-	})
+	}
 
-	// Trigger renegotiation with all viewers
-	log.Printf("AddWindowDynamic: Triggering renegotiation for track %s", trackInfo.TrackID)
-	ms.peerManager.RenegotiateAllPeers()
+	if useFastPath {
+		// FAST PATH: Just notify about activation (no renegotiation!)
+		log.Printf("AddWindowDynamic: Notifying stream activated %s (NO renegotiation)", trackInfo.TrackID)
+		ms.peerManager.NotifyStreamActivated(streamInfo)
+	} else {
+		// LEGACY PATH: Add track to peers and trigger renegotiation
+		log.Printf("AddWindowDynamic: Adding track %s to all peers", trackInfo.TrackID)
+		if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
+			log.Printf("Warning: failed to add track to some peers: %v", err)
+		}
 
-	log.Printf("Added window dynamically: %s (windowID=%d)", trackInfo.TrackID, window.ID)
+		log.Printf("AddWindowDynamic: Notifying about new stream %s", trackInfo.TrackID)
+		ms.peerManager.NotifyStreamAdded(streamInfo)
+
+		log.Printf("AddWindowDynamic: Triggering renegotiation for track %s", trackInfo.TrackID)
+		ms.peerManager.RenegotiateAllPeers()
+	}
+
+	log.Printf("Added window dynamically: %s (windowID=%d, fastPath=%v)", trackInfo.TrackID, window.ID, useFastPath)
 
 	return trackInfo, nil
 }
 
-// RemoveWindowDynamic removes a window without stopping other streams (for renegotiation)
+// RemoveWindowDynamic removes a window without stopping other streams.
+// If pre-allocated slots are in use, this is instant (no renegotiation).
+// Otherwise, falls back to legacy mode with renegotiation.
 func (ms *Streamer) RemoveWindowDynamic(windowID uint32) error {
 	ms.mu.Lock()
 
@@ -1469,7 +2073,10 @@ func (ms *Streamer) RemoveWindowDynamic(windowID uint32) error {
 		return fmt.Errorf("window %d not found in active streams", windowID)
 	}
 
-	log.Printf("Removing window dynamically: %s (windowID=%d)", trackIDToRemove, windowID)
+	// Determine whether slots are in use
+	useFastPath := ms.peerManager.AreSlotsReady()
+
+	log.Printf("Removing window dynamically: %s (windowID=%d, fastPath=%v)", trackIDToRemove, windowID, useFastPath)
 
 	// Stop the pipeline
 	pipelineToStop.stop()
@@ -1477,19 +2084,26 @@ func (ms *Streamer) RemoveWindowDynamic(windowID uint32) error {
 	// Stop capture for this window
 	ms.multiCapture.StopCapture(pipelineToStop.capture)
 
-	// Remove track from all peer connections
-	if err := ms.peerManager.RemoveTrackFromAllPeers(trackIDToRemove); err != nil {
-		log.Printf("Warning: failed to remove track from some peers: %v", err)
+	if useFastPath {
+		// FAST PATH: Deactivate the slot (no renegotiation!)
+		// The track remains in the SDP but stops sending data
+		if err := ms.peerManager.DeactivateSlot(trackIDToRemove); err != nil {
+			log.Printf("Warning: failed to deactivate slot: %v", err)
+		}
+
+		// Notify about deactivated stream
+		log.Printf("RemoveWindowDynamic: Notifying stream deactivated %s (NO renegotiation)", trackIDToRemove)
+		ms.peerManager.NotifyStreamDeactivated(trackIDToRemove)
+	} else {
+		// LEGACY PATH: Remove track and renegotiate
+		if err := ms.peerManager.RemoveTrackFromAllPeers(trackIDToRemove); err != nil {
+			log.Printf("Warning: failed to remove track from some peers: %v", err)
+		}
+
+		ms.peerManager.RemoveTrack(trackIDToRemove)
+		ms.peerManager.RenegotiateAllPeers()
+		ms.peerManager.NotifyStreamRemoved(trackIDToRemove)
 	}
-
-	// Remove track from peer manager
-	ms.peerManager.RemoveTrack(trackIDToRemove)
-
-	// Trigger renegotiation with all viewers
-	ms.peerManager.RenegotiateAllPeers()
-
-	// Notify about removed stream (for signaling to broadcast stream-removed)
-	ms.peerManager.NotifyStreamRemoved(trackIDToRemove)
 
 	return nil
 }
@@ -1511,16 +2125,38 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 		}
 	}
 
-	// Create track in peer manager (windowID=0 for display)
-	trackInfo, err := ms.peerManager.AddTrack(0, "Fullscreen", "Display")
-	if err != nil {
-		return nil, err
+	var trackInfo *StreamTrackInfo
+
+	// Use pre-allocated slots if available (fast path)
+	if ms.peerManager.AreSlotsReady() {
+		slot, err := ms.peerManager.ActivateSlot(0, "Fullscreen", "Display", 0, 0)
+		if err != nil {
+			return nil, err
+		}
+		trackInfo = slot.Info
+	} else {
+		// Legacy path: create new track
+		var err error
+		trackInfo, err = ms.peerManager.AddTrack(0, "Fullscreen", "Display")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Helper to clean up track on error
+	useFastPath := ms.peerManager.AreSlotsReady()
+	cleanupTrack := func() {
+		if useFastPath {
+			ms.peerManager.DeactivateSlot(trackInfo.TrackID)
+		} else {
+			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		}
 	}
 
 	// Start display capture
 	capture, err := ms.multiCapture.StartDisplayCapture(0, 0, ms.fps)
 	if err != nil {
-		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		cleanupTrack()
 		return nil, fmt.Errorf("failed to start display capture: %w", err)
 	}
 
@@ -1532,7 +2168,7 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
 	if err != nil {
 		ms.multiCapture.StopCapture(capture)
-		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		cleanupTrack()
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
@@ -1541,19 +2177,21 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 		encoder.SetQualityMode(true, bitrate)
 	}
 
-	// Create pipeline
+	// Create pipeline with buffered channels
 	pipeline := &StreamPipeline{
-		trackInfo:    trackInfo,
-		capture:      capture,
-		encoder:      encoder,
-		fps:          ms.fps,
-		bitrate:      bitrate,
-		focusBitrate: ms.focusBitrate,
-		bgBitrate:    ms.bgBitrate,
-		adaptiveBR:   false, // No adaptive bitrate for display
-		qualityMode:  ms.qualityMode,
-		stopChan:     make(chan struct{}),
-		fpsChanged:   make(chan int, 1),
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     false, // No adaptive bitrate for display
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2),
+		encodedFrames:  make(chan encodedFrame, 2),
 	}
 
 	ms.pipelines[trackInfo.TrackID] = pipeline
@@ -1571,7 +2209,9 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 	return trackInfo, nil
 }
 
-// AddDisplayDynamic adds display capture without stopping other streams (for renegotiation)
+// AddDisplayDynamic adds display capture without stopping other streams.
+// If pre-allocated slots are ready, this is instant (no renegotiation).
+// Otherwise, falls back to legacy mode with renegotiation.
 func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 	ms.mu.Lock()
 
@@ -1589,16 +2229,42 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 	}
 	ms.mu.Unlock()
 
-	// Create track in peer manager
-	trackInfo, err := ms.peerManager.AddTrack(0, "Fullscreen", "Display")
-	if err != nil {
-		return nil, err
+	// Determine whether to use pre-allocated slots (fast path) or legacy mode
+	useFastPath := ms.peerManager.AreSlotsReady()
+
+	var trackInfo *StreamTrackInfo
+
+	if useFastPath {
+		// FAST PATH: Activate a pre-allocated slot (no renegotiation needed!)
+		log.Printf("AddDisplayDynamic: Using fast path (pre-allocated slots)")
+		slot, err := ms.peerManager.ActivateSlot(0, "Fullscreen", "Display", 0, 0)
+		if err != nil {
+			return nil, err
+		}
+		trackInfo = slot.Info
+	} else {
+		// LEGACY PATH: Create new track (requires renegotiation)
+		log.Printf("AddDisplayDynamic: Using legacy path (new track creation)")
+		var err error
+		trackInfo, err = ms.peerManager.AddTrack(0, "Fullscreen", "Display")
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	// Helper to clean up track on error
+	cleanupTrack := func() {
+		if useFastPath {
+			ms.peerManager.DeactivateSlot(trackInfo.TrackID)
+		} else {
+			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		}
 	}
 
 	// Start display capture
 	capture, err := ms.multiCapture.StartDisplayCapture(0, 0, ms.fps)
 	if err != nil {
-		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		cleanupTrack()
 		return nil, fmt.Errorf("failed to start display capture: %w", err)
 	}
 
@@ -1610,7 +2276,7 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
 	if err != nil {
 		ms.multiCapture.StopCapture(capture)
-		ms.peerManager.RemoveTrack(trackInfo.TrackID)
+		cleanupTrack()
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
@@ -1619,19 +2285,21 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 		encoder.SetQualityMode(true, bitrate)
 	}
 
-	// Create pipeline
+	// Create pipeline with buffered channels
 	pipeline := &StreamPipeline{
-		trackInfo:    trackInfo,
-		capture:      capture,
-		encoder:      encoder,
-		fps:          ms.fps,
-		bitrate:      bitrate,
-		focusBitrate: ms.focusBitrate,
-		bgBitrate:    ms.bgBitrate,
-		adaptiveBR:   false,
-		qualityMode:  ms.qualityMode,
-		stopChan:     make(chan struct{}),
-		fpsChanged:   make(chan int, 1),
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     false,
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2),
+		encodedFrames:  make(chan encodedFrame, 2),
 	}
 
 	ms.mu.Lock()
@@ -1643,7 +2311,7 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 	if isRunning {
 		if err := encoder.Start(); err != nil {
 			ms.multiCapture.StopCapture(capture)
-			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+			cleanupTrack()
 			ms.mu.Lock()
 			delete(ms.pipelines, trackInfo.TrackID)
 			ms.mu.Unlock()
@@ -1652,28 +2320,35 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 		go pipeline.run(ms.peerManager, ms.multiCapture, ms.onSizeChange)
 	}
 
-	// Add track to all existing peer connections
-	log.Printf("AddDisplayDynamic: Adding track %s to all peers", trackInfo.TrackID)
-	if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
-		log.Printf("Warning: failed to add track to some peers: %v", err)
-	}
-
-	// Notify about new stream BEFORE renegotiation so viewer knows to expect it
-	log.Printf("AddDisplayDynamic: Notifying about new stream %s", trackInfo.TrackID)
-	ms.peerManager.NotifyStreamAdded(sig.StreamInfo{
+	// Notify viewers about the stream
+	streamInfo := sig.StreamInfo{
 		TrackID:    trackInfo.TrackID,
 		WindowName: trackInfo.WindowName,
 		AppName:    trackInfo.AppName,
 		IsFocused:  true, // Display is always "focused"
 		Width:      trackInfo.Width,
 		Height:     trackInfo.Height,
-	})
+	}
 
-	// Trigger renegotiation with all viewers
-	log.Printf("AddDisplayDynamic: Triggering renegotiation for track %s", trackInfo.TrackID)
-	ms.peerManager.RenegotiateAllPeers()
+	if useFastPath {
+		// FAST PATH: Just notify about activation (no renegotiation!)
+		log.Printf("AddDisplayDynamic: Notifying stream activated %s (NO renegotiation)", trackInfo.TrackID)
+		ms.peerManager.NotifyStreamActivated(streamInfo)
+	} else {
+		// LEGACY PATH: Add track to peers and trigger renegotiation
+		log.Printf("AddDisplayDynamic: Adding track %s to all peers", trackInfo.TrackID)
+		if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
+			log.Printf("Warning: failed to add track to some peers: %v", err)
+		}
 
-	log.Printf("Added display dynamically: %s", trackInfo.TrackID)
+		log.Printf("AddDisplayDynamic: Notifying about new stream %s", trackInfo.TrackID)
+		ms.peerManager.NotifyStreamAdded(streamInfo)
+
+		log.Printf("AddDisplayDynamic: Triggering renegotiation for track %s", trackInfo.TrackID)
+		ms.peerManager.RenegotiateAllPeers()
+	}
+
+	log.Printf("Added display dynamically: %s (fastPath=%v)", trackInfo.TrackID, useFastPath)
 
 	return trackInfo, nil
 }
@@ -1705,6 +2380,17 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 	p.mu.Unlock()
 
 	frameDuration := time.Second / time.Duration(currentFPS)
+
+	// Create a done channel for coordinating goroutine shutdown
+	done := make(chan struct{})
+
+	// Start encoder goroutine (consumes captured frames, produces encoded frames)
+	go p.encodeLoop(done)
+
+	// Start sender goroutine (consumes encoded frames, sends to WebRTC)
+	go p.sendLoop(done)
+
+	// Main capture loop
 	ticker := time.NewTicker(frameDuration)
 	defer ticker.Stop()
 
@@ -1713,6 +2399,13 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 	defer statsTicker.Stop()
 
 	var framesSinceLastStats uint64
+
+	defer func() {
+		// Signal goroutines to stop and close channels
+		close(done)
+		close(p.capturedFrames)
+		// encodedFrames will be closed by encodeLoop when it exits
+	}()
 
 	for {
 		select {
@@ -1729,21 +2422,21 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 
 		case <-statsTicker.C:
 			// Update FPS and bitrate calculations
-			p.mu.Lock()
 			now := time.Now()
+			currentByteCount := atomic.LoadUint64(&p.byteCount)
+			p.mu.Lock()
 			elapsed := now.Sub(p.lastStatsTime).Seconds()
 			if elapsed > 0 {
 				p.currentFPS = float64(framesSinceLastStats) / elapsed
-				bytesDiff := p.byteCount - p.lastByteCount
+				bytesDiff := currentByteCount - p.lastByteCount
 				p.currentBitrate = float64(bytesDiff) * 8 / elapsed / 1000 // kbps
 			}
 			p.lastStatsTime = now
-			p.lastByteCount = p.byteCount
+			p.lastByteCount = currentByteCount
 			framesSinceLastStats = 0
 			p.mu.Unlock()
 
 			// Check if window has been resized and update stream configuration
-			// Run in separate goroutine to avoid any blocking
 			if p.capture != nil && p.trackInfo.WindowID != 0 {
 				go func(capture *CaptureInstance, windowID uint32) {
 					actualW, actualH, err := mc.GetWindowSize(capture)
@@ -1773,42 +2466,121 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 				p.trackInfo.Height = frame.Height
 
 				// Debounced size change notification (only for focused track)
-				// Uses both the local callback and PeerManager notification for signaling
 				if p.trackInfo.IsFocused {
 					p.sizeChangeMu.Lock()
-					if p.sizeChangeTimer != nil {
-						p.sizeChangeTimer.Stop()
+					p.pendingSizeTrackID = p.trackInfo.TrackID
+					p.pendingSizeWidth = frame.Width
+					p.pendingSizeHeight = frame.Height
+					p.sizeChangePending = true
+
+					if p.sizeChangeTimer == nil {
+						p.sizeChangeTimer = time.AfterFunc(250*time.Millisecond, func() {
+							p.sizeChangeMu.Lock()
+							if p.sizeChangePending {
+								trackID := p.pendingSizeTrackID
+								width := p.pendingSizeWidth
+								height := p.pendingSizeHeight
+								p.sizeChangePending = false
+								p.sizeChangeMu.Unlock()
+								pm.NotifySizeChange(trackID, width, height)
+								if onSizeChange != nil {
+									onSizeChange(trackID, width, height)
+								}
+							} else {
+								p.sizeChangeMu.Unlock()
+							}
+						})
+					} else {
+						p.sizeChangeTimer.Reset(250 * time.Millisecond)
 					}
-					trackID := p.trackInfo.TrackID
-					width := frame.Width
-					height := frame.Height
-					p.sizeChangeTimer = time.AfterFunc(250*time.Millisecond, func() {
-						// Notify via PeerManager for WebSocket signaling
-						pm.NotifySizeChange(trackID, width, height)
-						// Also call local callback if set
-						if onSizeChange != nil {
-							onSizeChange(trackID, width, height)
-						}
-					})
 					p.sizeChangeMu.Unlock()
 				}
 			}
 
-			// Encode
-			data, err := p.encoder.EncodeBGRAFrame(frame)
+			// Send frame to encode goroutine (non-blocking with small buffer)
+			select {
+			case p.capturedFrames <- capturedFrame{frame: frame, frameDuration: frameDuration}:
+				framesSinceLastStats++
+			default:
+				// Buffer full - drop frame to maintain timing
+				// This prevents capture from blocking if encoding is slow
+				// Release the frame back to capture pool since encode loop won't see it
+				frame.Release()
+			}
+		}
+	}
+}
+
+// encodeLoop runs in a separate goroutine, encoding frames as they arrive
+func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
+	defer close(p.encodedFrames)
+
+	for {
+		select {
+		case <-done:
+			return
+		case cf, ok := <-p.capturedFrames:
+			if !ok {
+				return
+			}
+
+			// Encode the frame
+			data, err := p.encoder.EncodeBGRAFrame(cf.frame)
+
+			// Release frame buffer back to capture pool (zero-copy)
+			// Must be done after encoding, whether it succeeded or not
+			cf.frame.Release()
+
 			if err != nil {
+				// Log encode failures (first 5 after any recreation)
+				errCount := atomic.LoadUint64(&p.encodeErrors)
+				atomic.AddUint64(&p.encodeErrors, 1)
+				if errCount < 5 {
+					log.Printf("encodeLoop: Encode failed for track %s (error #%d): %v", p.trackInfo.TrackID, errCount+1, err)
+				}
 				continue
 			}
 
-			p.mu.Lock()
-			p.frameCount++
-			p.byteCount += uint64(len(data))
-			p.mu.Unlock()
-			framesSinceLastStats++
+			// Reset error counter on successful encode
+			atomic.StoreUint64(&p.encodeErrors, 0)
 
-			// Write to track
-			if err := pm.WriteVideoSample(p.trackInfo.TrackID, data, frameDuration); err != nil {
-				continue
+			atomic.AddUint64(&p.frameCount, 1)
+			atomic.AddUint64(&p.byteCount, uint64(len(data)))
+
+			// Send to sender goroutine (non-blocking)
+			select {
+			case p.encodedFrames <- encodedFrame{data: data, frameDuration: cf.frameDuration}:
+			default:
+				// Buffer full - drop encoded frame
+			}
+		}
+	}
+}
+
+// sendLoop runs in a separate goroutine, sending encoded frames to WebRTC
+func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
+	frameCount := 0
+	for {
+		select {
+		case <-done:
+			return
+		case ef, ok := <-p.encodedFrames:
+			if !ok {
+				return
+			}
+
+			// Write directly to track
+			if p.trackInfo.Track != nil {
+				p.trackInfo.Track.WriteSample(media.Sample{
+					Data:     ef.data,
+					Duration: ef.frameDuration,
+				})
+				frameCount++
+				// Log every 100 frames to confirm which track is receiving data
+				if frameCount%100 == 1 {
+					log.Printf("sendLoop: Writing frame %d to track %s (windowID=%d, streamID=%s)",
+						frameCount, p.trackInfo.TrackID, p.trackInfo.WindowID, p.trackInfo.Track.StreamID())
+				}
 			}
 		}
 	}
@@ -1817,17 +2589,19 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 // GetStats returns current statistics for this pipeline
 func (p *StreamPipeline) GetStats() StreamPipelineStats {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	fps := p.currentFPS
+	bitrate := p.currentBitrate
+	p.mu.Unlock()
 
 	return StreamPipelineStats{
 		TrackID:   p.trackInfo.TrackID,
 		AppName:   p.trackInfo.AppName,
 		Width:     p.trackInfo.Width,
 		Height:    p.trackInfo.Height,
-		FPS:       p.currentFPS,
-		Bitrate:   p.currentBitrate,
-		Frames:    p.frameCount,
-		Bytes:     p.byteCount,
+		FPS:       fps,
+		Bitrate:   bitrate,
+		Frames:    atomic.LoadUint64(&p.frameCount),
+		Bytes:     atomic.LoadUint64(&p.byteCount),
 		IsFocused: p.trackInfo.IsFocused,
 	}
 }

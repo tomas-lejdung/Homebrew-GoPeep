@@ -2,7 +2,7 @@ package signal
 
 // SignalMessage represents a WebSocket signaling message
 type SignalMessage struct {
-	Type      string `json:"type"`                // join, offer, answer, ice, error, streams-info, focus-change, stream-added, stream-removed, renegotiate-answer, size-change
+	Type      string `json:"type"`                // join, offer, answer, ice, error, streams-info, focus-change, stream-added, stream-removed, stream-activated, stream-deactivated, renegotiate-answer, size-change
 	Room      string `json:"room,omitempty"`      // room code
 	Role      string `json:"role,omitempty"`      // sharer or viewer
 	SDP       string `json:"sdp,omitempty"`       // SDP offer/answer
@@ -15,8 +15,12 @@ type SignalMessage struct {
 	// Multi-stream fields
 	Streams       []StreamInfo `json:"streams,omitempty"`       // list of available streams
 	FocusedTrack  string       `json:"focusedTrack,omitempty"`  // currently focused stream track ID
-	StreamAdded   *StreamInfo  `json:"streamAdded,omitempty"`   // info about newly added stream
-	StreamRemoved string       `json:"streamRemoved,omitempty"` // trackID of removed stream
+	StreamAdded   *StreamInfo  `json:"streamAdded,omitempty"`   // info about newly added stream (legacy, requires renegotiation)
+	StreamRemoved string       `json:"streamRemoved,omitempty"` // trackID of removed stream (legacy, requires renegotiation)
+
+	// Pre-allocated slots fields (no renegotiation needed)
+	StreamActivated   *StreamInfo `json:"streamActivated,omitempty"`   // info about activated stream (fast path, no renegotiation)
+	StreamDeactivated string      `json:"streamDeactivated,omitempty"` // trackID of deactivated stream (fast path, no renegotiation)
 
 	// Size change fields (for size-change message type)
 	Width  int `json:"width,omitempty"`  // new width after resize
