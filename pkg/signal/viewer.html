@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>GoPeep - Viewing</title>
   <style>
     * {
@@ -12,39 +12,75 @@
     }
     
     :root {
-      --bg-primary: #0a0a0a;
-      --bg-secondary: #1a1a1a;
-      --bg-overlay: rgba(0, 0, 0, 0.85);
-      --text-primary: #ffffff;
-      --text-secondary: #a0a0a0;
-      --text-dim: #666666;
-      --accent: #60a5fa;
-      --success: #10b981;
+      --bg-primary: #09090b;
+      --bg-secondary: #18181b;
+      --bg-tertiary: #27272a;
+      --bg-overlay: rgba(9, 9, 11, 0.88);
+      --bg-elevated: rgba(39, 39, 42, 0.65);
+      --text-primary: #fafafa;
+      --text-secondary: #a1a1aa;
+      --text-dim: #71717a;
+      --accent: #3b82f6;
+      --accent-soft: rgba(59, 130, 246, 0.15);
+      --accent-glow: rgba(59, 130, 246, 0.4);
+      --success: #22c55e;
+      --success-soft: rgba(34, 197, 94, 0.15);
       --warning: #f59e0b;
+      --warning-soft: rgba(245, 158, 11, 0.15);
       --error: #ef4444;
-      --border: rgba(255, 255, 255, 0.1);
-      --focus-ring: #60a5fa;
+      --error-soft: rgba(239, 68, 68, 0.15);
+      --border: rgba(255, 255, 255, 0.08);
+      --border-subtle: rgba(255, 255, 255, 0.04);
+      --focus-ring: #3b82f6;
+      --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+      --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.5);
+      --shadow-lg: 0 8px 32px rgba(0, 0, 0, 0.6);
+      --shadow-glow: 0 0 20px rgba(59, 130, 246, 0.15);
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+      --radius-xl: 20px;
+      --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-normal: 250ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-slow: 350ms cubic-bezier(0.4, 0, 0.2, 1);
+      --transition-bounce: 500ms cubic-bezier(0.34, 1.56, 0.64, 1);
     }
     
     body {
       background: var(--bg-primary);
       color: var(--text-primary);
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
       overflow: hidden;
       cursor: none;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
     
     body.show-ui {
       cursor: default;
     }
     
+    /* Subtle vignette overlay for depth */
+    body::after {
+      content: '';
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(ellipse at center, transparent 0%, transparent 60%, rgba(0, 0, 0, 0.3) 100%);
+      z-index: 1;
+    }
+    
     /* Main container - flex column for main + thumbnails */
     #container {
       width: 100vw;
       height: 100vh;
+      height: 100dvh; /* Dynamic viewport height - accounts for mobile browser chrome */
       display: flex;
       flex-direction: column;
       background: var(--bg-primary);
+      /* Safe area padding for notched devices */
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
     
     /* Main video area */
@@ -55,14 +91,32 @@
       justify-content: center;
       min-height: 0;
       position: relative;
+      background: radial-gradient(ellipse at center, #111113 0%, var(--bg-primary) 100%);
+      overflow: hidden;
+    }
+    
+    #pan-zoom-container {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+    }
+    
+    #pan-zoom-content {
+      display: flex;
+      align-items: center;
+      justify-content: center;
     }
     
     .main-video {
-      background: #000;
+      background: transparent;
       outline: none;
       max-width: 100%;
       max-height: 100%;
       object-fit: contain;
+      transition: opacity 0.2s ease;
     }
     
     .main-video.scale-fit {
@@ -88,14 +142,32 @@
     
     /* Thumbnails bar */
     #thumbnails-bar {
-      display: none; /* Hidden when single stream */
-      height: 120px;
-      background: var(--bg-secondary);
-      border-top: 1px solid var(--border);
-      padding: 10px 20px;
-      gap: 10px;
+      display: none;
+      min-height: 110px;
+      background: linear-gradient(to top, var(--bg-secondary) 0%, rgba(24, 24, 27, 0.95) 100%);
+      border-top: 1px solid var(--border-subtle);
+      padding: 12px 24px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      gap: 12px;
       align-items: center;
       overflow-x: auto;
+      overflow-y: hidden;
+      scrollbar-width: thin;
+      scrollbar-color: var(--bg-tertiary) transparent;
+      z-index: 10;
+    }
+    
+    #thumbnails-bar::-webkit-scrollbar {
+      height: 4px;
+    }
+    
+    #thumbnails-bar::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    #thumbnails-bar::-webkit-scrollbar-thumb {
+      background: var(--bg-tertiary);
+      border-radius: 2px;
     }
     
     #thumbnails-bar.visible {
@@ -106,30 +178,36 @@
       position: relative;
       flex-shrink: 0;
       cursor: pointer;
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       overflow: hidden;
-      border: 2px solid transparent;
-      transition: border-color 0.2s ease, transform 0.2s ease;
+      border: 2px solid var(--border);
+      background: var(--bg-primary);
+      transition: all var(--transition-normal);
+      box-shadow: var(--shadow-sm);
     }
     
     .thumbnail-container:hover {
-      border-color: var(--accent);
-      transform: scale(1.05);
+      border-color: rgba(59, 130, 246, 0.5);
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: var(--shadow-md), 0 0 20px rgba(59, 130, 246, 0.1);
     }
     
     .thumbnail-container.focused {
       border-color: var(--success);
+      box-shadow: var(--shadow-md), 0 0 16px rgba(34, 197, 94, 0.2);
     }
     
     .thumbnail-container.active {
       border-color: var(--accent);
+      box-shadow: var(--shadow-md), var(--shadow-glow);
     }
     
     .thumbnail-video {
-      width: 160px;
-      height: 90px;
+      width: 142px;
+      height: 80px;
       object-fit: cover;
-      background: #000;
+      background: var(--bg-primary);
+      display: block;
     }
     
     .thumbnail-label {
@@ -137,32 +215,624 @@
       bottom: 0;
       left: 0;
       right: 0;
-      padding: 4px 8px;
-      background: var(--bg-overlay);
-      font-size: 11px;
+      padding: 6px 10px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.6) 60%, transparent 100%);
+      font-size: 10px;
+      font-weight: 500;
       color: var(--text-secondary);
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      letter-spacing: 0.01em;
     }
     
     .thumbnail-container.focused .thumbnail-label {
       color: var(--success);
     }
     
+    .thumbnail-container.active .thumbnail-label {
+      color: var(--text-primary);
+    }
+    
     .thumbnail-focus-indicator {
       position: absolute;
-      top: 4px;
-      right: 4px;
+      top: 6px;
+      right: 6px;
       width: 8px;
       height: 8px;
       border-radius: 50%;
       background: var(--success);
       display: none;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+      animation: pulse-glow 2s ease-in-out infinite;
     }
     
     .thumbnail-container.focused .thumbnail-focus-indicator {
       display: block;
+    }
+    
+    @keyframes pulse-glow {
+      0%, 100% { opacity: 1; box-shadow: 0 0 8px rgba(34, 197, 94, 0.6); }
+      50% { opacity: 0.7; box-shadow: 0 0 12px rgba(34, 197, 94, 0.8); }
+    }
+    
+    /* Grid Layout System */
+    #video-grid {
+      display: none;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      gap: 4px;
+      padding: 4px;
+      background: var(--bg-primary);
+    }
+    
+    #video-grid.visible {
+      display: grid;
+    }
+    
+    /* Grid layouts based on stream count */
+    #video-grid.grid-1 {
+      grid-template-columns: 1fr;
+      grid-template-rows: 1fr;
+    }
+    
+    #video-grid.grid-2 {
+      grid-template-columns: var(--col-1, 1fr) var(--col-2, 1fr);
+      grid-template-rows: 1fr;
+    }
+    
+    #video-grid.grid-3 {
+      grid-template-columns: var(--col-1, 1fr) var(--col-2, 1fr);
+      grid-template-rows: var(--row-1, 1fr) var(--row-2, 1fr);
+    }
+    
+    #video-grid.grid-3 .grid-cell:first-child {
+      grid-row: span 2;
+    }
+    
+    #video-grid.grid-4 {
+      grid-template-columns: var(--col-1, 1fr) var(--col-2, 1fr);
+      grid-template-rows: var(--row-1, 1fr) var(--row-2, 1fr);
+    }
+    
+    /* Equal sizing mode */
+    #video-grid.equal-size {
+      --col-1: 1fr;
+      --col-2: 1fr;
+      --row-1: 1fr;
+      --row-2: 1fr;
+    }
+    
+    .grid-cell {
+      position: relative;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 2px solid transparent;
+    }
+    
+    .grid-cell:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    
+    .grid-cell.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    }
+    
+    .grid-cell.sharer-focused {
+      border-color: var(--success);
+    }
+    
+    .grid-cell.sharer-focused::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 10px;
+      height: 10px;
+      background: var(--success);
+      border-radius: 50%;
+      z-index: 10;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    .grid-cell video {
+      width: 100%;
+      height: 100%;
+      object-fit: contain;
+      background: transparent;
+    }
+    
+    .grid-cell-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 12px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
+      pointer-events: none;
+    }
+    
+    .grid-cell:hover .grid-cell-label,
+    .grid-cell.selected .grid-cell-label {
+      opacity: 1;
+    }
+    
+    /* Row Layout Mode */
+    #video-row {
+      display: none;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      overflow-x: auto;
+      overflow-y: auto;
+      background: var(--bg-primary);
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+      position: relative;
+    }
+    
+    #video-row.dragging {
+      cursor: grabbing;
+      user-select: none;
+    }
+    
+    #video-row.visible {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      padding-top: 60px; /* Space for header */
+      padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); /* Space for minimap */
+      padding-left: calc(8px + env(safe-area-inset-left, 0px));
+      padding-right: calc(8px + env(safe-area-inset-right, 0px));
+    }
+    
+    #video-row::-webkit-scrollbar {
+      height: 6px;
+    }
+    
+    #video-row::-webkit-scrollbar-track {
+      background: var(--bg-secondary);
+      border-radius: 3px;
+    }
+    
+    #video-row::-webkit-scrollbar-thumb {
+      background: var(--bg-tertiary);
+      border-radius: 3px;
+    }
+    
+    #video-row::-webkit-scrollbar-thumb:hover {
+      background: var(--text-dim);
+    }
+    
+    .row-cell {
+      position: relative;
+      flex-shrink: 0;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 2px solid transparent;
+      scroll-snap-align: center;
+    }
+    
+    .row-cell:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    
+    .row-cell.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    }
+    
+    .row-cell.sharer-focused {
+      border-color: var(--success);
+    }
+    
+    .row-cell.sharer-focused::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 10px;
+      height: 10px;
+      background: var(--success);
+      border-radius: 50%;
+      z-index: 10;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    .row-cell video {
+      display: block;
+      background: transparent;
+      /* Native size - no object-fit scaling */
+    }
+    
+    .row-cell-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 12px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      /* Always visible in row mode for orientation */
+      opacity: 1;
+    }
+    
+    .row-cell.sharer-focused .row-cell-label {
+      color: var(--success);
+    }
+    
+    .row-cell.selected .row-cell-label {
+      color: var(--text-primary);
+    }
+    
+    /* Row scroll indicator */
+    .row-scroll-hint {
+      position: absolute;
+      bottom: 50%;
+      transform: translateY(50%);
+      width: 40px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(to right, var(--bg-primary) 0%, transparent 100%);
+      color: var(--text-dim);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+      z-index: 20;
+    }
+    
+    .row-scroll-hint.right {
+      right: 0;
+      background: linear-gradient(to left, var(--bg-primary) 0%, transparent 100%);
+    }
+    
+    .row-scroll-hint.left {
+      left: 0;
+    }
+    
+    #video-row.can-scroll-right .row-scroll-hint.right,
+    #video-row.can-scroll-left .row-scroll-hint.left {
+      opacity: 0.7;
+    }
+    
+    /* Row minimap */
+    .row-minimap {
+      position: fixed;
+      bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      height: 48px;
+      max-width: 80vw;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      padding: 6px;
+      display: none;
+      align-items: center;
+      gap: 4px;
+      z-index: 100;
+      box-shadow: var(--shadow-lg);
+      overflow-x: auto;
+      cursor: pointer;
+    }
+    
+    .row-minimap.visible {
+      display: flex;
+    }
+    
+    .row-minimap::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .row-minimap-item {
+      flex-shrink: 0;
+      height: 36px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: all var(--transition-fast);
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .row-minimap-item:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    
+    .row-minimap-item.in-view {
+      border-color: var(--accent);
+    }
+    
+    .row-minimap-item.sharer-focused::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 6px;
+      height: 6px;
+      background: var(--success);
+      border-radius: 50%;
+    }
+    
+    .row-minimap-item canvas {
+      height: 100%;
+      width: auto;
+      display: block;
+    }
+    
+    .row-minimap-viewport {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: rgba(59, 130, 246, 0.1);
+      border-left: 2px solid var(--accent);
+      border-right: 2px solid var(--accent);
+      pointer-events: none;
+      display: none;
+    }
+    
+    /* Layout selector */
+    .layout-selector {
+      display: none;
+      align-items: center;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      gap: 2px;
+    }
+    
+    .layout-selector.visible {
+      display: flex;
+    }
+    
+    .layout-btn {
+      width: 34px;
+      height: 34px;
+      border: none;
+      background: transparent;
+      color: var(--text-dim);
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all var(--transition-fast);
+    }
+    
+    .layout-btn:hover {
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.04);
+    }
+    
+    .layout-btn.active {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+    }
+    
+    .layout-btn svg {
+      width: 18px;
+      height: 18px;
+    }
+    
+    /* Proportional toggle */
+    .proportional-toggle {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    
+    .proportional-toggle.visible {
+      display: flex;
+    }
+    
+    .toggle-switch {
+      position: relative;
+      width: 36px;
+      height: 20px;
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      cursor: pointer;
+      transition: background var(--transition-fast);
+    }
+    
+    .toggle-switch.active {
+      background: var(--accent);
+    }
+    
+    .toggle-switch::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      background: white;
+      border-radius: 50%;
+      transition: transform var(--transition-fast);
+      box-shadow: var(--shadow-sm);
+    }
+    
+    .toggle-switch.active::after {
+      transform: translateX(16px);
+    }
+    
+    /* Pan/Zoom container for Native view */
+    .pan-zoom-container {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      cursor: grab;
+    }
+    
+    .pan-zoom-container.panning {
+      cursor: grabbing;
+    }
+    
+    .pan-zoom-container.can-pan {
+      cursor: grab;
+    }
+    
+    .pan-zoom-content {
+      position: absolute;
+      transform-origin: 0 0;
+      transition: none;
+    }
+    
+    .pan-zoom-content.animating {
+      transition: transform 0.2s ease-out;
+    }
+    
+    /* Minimap */
+    .minimap {
+      position: absolute;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      right: calc(16px + env(safe-area-inset-right, 0px));
+      width: 120px;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
+      overflow: hidden;
+      opacity: 0;
+      transform: scale(0.9);
+      transition: all var(--transition-normal);
+      pointer-events: none;
+      z-index: 50;
+    }
+    
+    .minimap.visible {
+      opacity: 1;
+      transform: scale(1);
+    }
+    
+    .minimap-content {
+      position: relative;
+      width: 100%;
+    }
+    
+    .minimap-image {
+      width: 100%;
+      height: auto;
+      display: block;
+      opacity: 0.6;
+    }
+    
+    .minimap-viewport {
+      position: absolute;
+      border: 2px solid var(--accent);
+      background: rgba(59, 130, 246, 0.15);
+      border-radius: 2px;
+      pointer-events: none;
+    }
+    
+    /* Mobile-specific styles */
+    @media (max-width: 768px) {
+      #video-grid {
+        gap: 2px;
+        padding: 2px;
+      }
+      
+      .grid-cell {
+        border-radius: var(--radius-sm);
+      }
+      
+      .grid-cell-label {
+        font-size: 10px;
+        padding: 6px 8px;
+        opacity: 1;
+      }
+      
+      #control-bar {
+        padding: 6px 10px;
+        gap: 2px;
+      }
+      
+      .control-btn {
+        width: 38px;
+        height: 38px;
+      }
+      
+      .layout-btn {
+        width: 30px;
+        height: 30px;
+      }
+      
+      .scale-btn {
+        padding: 6px 10px;
+        font-size: 10px;
+      }
+      
+      .proportional-toggle {
+        font-size: 10px;
+      }
+      
+      .toggle-switch {
+        width: 32px;
+        height: 18px;
+      }
+      
+      .toggle-switch::after {
+        width: 14px;
+        height: 14px;
+      }
+      
+      .toggle-switch.active::after {
+        transform: translateX(14px);
+      }
+      
+      .minimap {
+        width: 100px;
+        bottom: 12px;
+        right: 12px;
+      }
+      
+      /* Force focus layout on very small screens */
+      @media (max-width: 480px) {
+        #video-grid.grid-3,
+        #video-grid.grid-4 {
+          grid-template-columns: 1fr;
+          grid-template-rows: repeat(auto-fit, minmax(150px, 1fr));
+        }
+        
+        #video-grid.grid-3 .grid-cell:first-child {
+          grid-row: span 1;
+        }
+      }
+    }
+    
+    /* Landscape mobile */
+    @media (max-width: 768px) and (orientation: landscape) {
+      #video-grid.grid-2 {
+        grid-template-columns: 1fr 1fr;
+      }
     }
     
     /* Top status bar */
@@ -171,10 +841,10 @@
       top: 0;
       left: 0;
       right: 0;
-      padding: 12px 20px;
-      background: var(--bg-overlay);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
+      padding: 14px 24px;
+      background: linear-gradient(to bottom, var(--bg-overlay) 0%, rgba(9, 9, 11, 0.7) 100%);
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
       display: flex;
       align-items: center;
       gap: 16px;
@@ -182,8 +852,8 @@
       z-index: 100;
       opacity: 0;
       transform: translateY(-100%);
-      transition: opacity 0.3s ease, transform 0.3s ease;
-      border-bottom: 1px solid var(--border);
+      transition: opacity var(--transition-normal), transform var(--transition-slow);
+      border-bottom: 1px solid var(--border-subtle);
     }
     
     #status-bar.visible {
@@ -194,7 +864,17 @@
     .status-section {
       display: flex;
       align-items: center;
+      gap: 10px;
+    }
+    
+    .status-pill {
+      display: flex;
+      align-items: center;
       gap: 8px;
+      padding: 6px 12px;
+      background: var(--bg-elevated);
+      border-radius: 100px;
+      border: 1px solid var(--border);
     }
     
     .status-dot {
@@ -203,54 +883,73 @@
       border-radius: 50%;
       background: var(--text-dim);
       flex-shrink: 0;
+      transition: all var(--transition-normal);
     }
     
     .status-dot.connecting {
       background: var(--warning);
-      animation: pulse 1.5s ease-in-out infinite;
+      box-shadow: 0 0 8px var(--warning);
+      animation: status-pulse 1.5s ease-in-out infinite;
     }
     
     .status-dot.connected {
       background: var(--success);
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.5);
     }
     
     .status-dot.degraded {
       background: var(--warning);
+      box-shadow: 0 0 8px rgba(245, 158, 11, 0.5);
     }
     
     .status-dot.error {
       background: var(--error);
+      box-shadow: 0 0 8px rgba(239, 68, 68, 0.5);
     }
     
-    @keyframes pulse {
+    @keyframes status-pulse {
       0%, 100% { opacity: 1; transform: scale(1); }
-      50% { opacity: 0.5; transform: scale(0.9); }
+      50% { opacity: 0.6; transform: scale(0.85); }
+    }
+    
+    #status-text {
+      font-weight: 500;
+      font-size: 12px;
+      letter-spacing: 0.01em;
     }
     
     #room-code {
-      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+      font-family: "SF Mono", Monaco, "Cascadia Code", "Consolas", monospace;
       font-weight: 600;
       color: var(--accent);
       font-size: 14px;
+      padding: 5px 12px;
+      background: var(--accent-soft);
+      border-radius: var(--radius-sm);
+      border: 1px solid rgba(59, 130, 246, 0.2);
+      letter-spacing: 0.05em;
     }
     
     .divider {
       width: 1px;
-      height: 20px;
+      height: 24px;
       background: var(--border);
+      opacity: 0.5;
     }
     
     .stat-label {
       color: var(--text-dim);
-      font-size: 11px;
+      font-size: 10px;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.08em;
+      font-weight: 600;
     }
     
     .stat-value {
       color: var(--text-primary);
-      font-family: "SF Mono", Monaco, monospace;
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
       font-size: 12px;
+      font-weight: 500;
     }
     
     #status-right {
@@ -264,34 +963,55 @@
       display: none;
       align-items: center;
       gap: 6px;
-      padding: 4px 8px;
-      background: rgba(255,255,255,0.1);
-      border-radius: 4px;
+      padding: 6px 10px;
+      background: var(--bg-elevated);
+      border-radius: var(--radius-sm);
+      border: 1px solid var(--border);
       font-size: 12px;
+      font-weight: 500;
+    }
+    
+    #stream-count svg {
+      opacity: 0.7;
     }
     
     #stream-count.visible {
       display: flex;
     }
     
+    /* Stream stats in status bar */
+    #stream-stats {
+      display: none;
+      align-items: center;
+      gap: 16px;
+      margin-left: 8px;
+      padding-left: 16px;
+      border-left: 1px solid var(--border);
+    }
+    
+    #stream-stats[style*="flex"] {
+      display: flex !important;
+    }
+    
     /* Control bar */
     #control-bar {
       position: fixed;
-      bottom: 24px;
+      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%) translateY(100px);
-      padding: 10px 16px;
+      padding: 8px 12px;
       background: var(--bg-overlay);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: 12px;
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-radius: var(--radius-xl);
       display: flex;
       align-items: center;
-      gap: 8px;
+      gap: 4px;
       z-index: 100;
       opacity: 0;
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      transition: opacity var(--transition-normal), transform var(--transition-bounce);
       border: 1px solid var(--border);
+      box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.03) inset;
     }
     
     #control-bar.visible {
@@ -301,74 +1021,99 @@
     
     /* Adjust control bar position when thumbnails visible */
     body.multi-stream #control-bar {
-      bottom: 144px;
+      bottom: calc(134px + env(safe-area-inset-bottom, 0px));
     }
     
     .control-btn {
-      width: 40px;
-      height: 40px;
+      width: 42px;
+      height: 42px;
       border: none;
       background: transparent;
-      color: var(--text-primary);
-      border-radius: 8px;
+      color: var(--text-secondary);
+      border-radius: var(--radius-md);
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: background 0.2s ease;
+      transition: all var(--transition-fast);
+      position: relative;
+      overflow: hidden;
+    }
+    
+    .control-btn::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(255, 255, 255, 0.15) 0%, transparent 70%);
+      opacity: 0;
+      transition: opacity var(--transition-fast);
     }
     
     .control-btn:hover {
-      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.08);
+    }
+    
+    .control-btn:hover::before {
+      opacity: 1;
     }
     
     .control-btn:active {
-      background: rgba(255, 255, 255, 0.15);
+      transform: scale(0.95);
+      background: rgba(255, 255, 255, 0.12);
     }
     
     .control-btn.active {
       color: var(--accent);
+      background: var(--accent-soft);
     }
     
     .control-btn svg {
       width: 20px;
       height: 20px;
+      position: relative;
+      z-index: 1;
     }
     
     .control-divider {
       width: 1px;
-      height: 24px;
+      height: 28px;
       background: var(--border);
-      margin: 0 4px;
+      margin: 0 6px;
+      opacity: 0.6;
     }
     
     /* Scale mode selector */
     .scale-selector {
       display: flex;
-      background: rgba(255, 255, 255, 0.05);
-      border-radius: 6px;
-      padding: 2px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: var(--radius-sm);
+      padding: 3px;
+      gap: 2px;
     }
     
     .scale-btn {
-      padding: 6px 12px;
+      padding: 7px 14px;
       border: none;
       background: transparent;
-      color: var(--text-secondary);
+      color: var(--text-dim);
       font-size: 11px;
-      font-weight: 500;
-      border-radius: 4px;
+      font-weight: 600;
+      border-radius: 5px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all var(--transition-fast);
+      letter-spacing: 0.02em;
     }
     
     .scale-btn:hover {
-      color: var(--text-primary);
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.04);
     }
     
     .scale-btn.active {
       background: rgba(255, 255, 255, 0.1);
       color: var(--text-primary);
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
     }
     
     /* Waiting screen */
@@ -384,66 +1129,119 @@
       justify-content: center;
       background: var(--bg-primary);
       z-index: 50;
+      animation: waiting-fade-in 0.5s ease-out;
+    }
+    
+    @keyframes waiting-fade-in {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
     
     #waiting.hidden {
       display: none;
     }
     
+    .spinner-container {
+      position: relative;
+      width: 64px;
+      height: 64px;
+      margin-bottom: 32px;
+    }
+    
     .spinner {
-      width: 48px;
-      height: 48px;
-      border: 3px solid var(--bg-secondary);
+      width: 64px;
+      height: 64px;
+      border: 2px solid var(--border);
+      border-radius: 50%;
+      position: absolute;
+      inset: 0;
+    }
+    
+    .spinner::before {
+      content: '';
+      position: absolute;
+      inset: -2px;
+      border: 2px solid transparent;
       border-top-color: var(--accent);
       border-radius: 50%;
-      animation: spin 1s linear infinite;
-      margin-bottom: 24px;
+      animation: spin 1s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+    }
+    
+    .spinner::after {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border: 2px solid transparent;
+      border-top-color: rgba(59, 130, 246, 0.4);
+      border-radius: 50%;
+      animation: spin 1.5s cubic-bezier(0.4, 0, 0.2, 1) infinite reverse;
+    }
+    
+    .spinner-glow {
+      position: absolute;
+      inset: -8px;
+      border-radius: 50%;
+      background: radial-gradient(circle, var(--accent-glow) 0%, transparent 70%);
+      animation: glow-pulse 2s ease-in-out infinite;
+      filter: blur(8px);
     }
     
     @keyframes spin {
       to { transform: rotate(360deg); }
     }
     
+    @keyframes glow-pulse {
+      0%, 100% { opacity: 0.4; transform: scale(1); }
+      50% { opacity: 0.7; transform: scale(1.1); }
+    }
+    
     #waiting h2 {
-      font-size: 20px;
-      font-weight: 500;
+      font-size: 18px;
+      font-weight: 600;
       margin-bottom: 8px;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
     }
     
     #waiting p {
-      color: var(--text-secondary);
+      color: var(--text-dim);
       font-size: 14px;
+      font-weight: 400;
     }
     
     #waiting-room {
-      margin-top: 24px;
-      padding: 12px 20px;
-      background: var(--bg-secondary);
-      border-radius: 8px;
-      font-family: "SF Mono", Monaco, monospace;
+      margin-top: 28px;
+      padding: 14px 24px;
+      background: var(--accent-soft);
+      border: 1px solid rgba(59, 130, 246, 0.25);
+      border-radius: var(--radius-md);
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
       color: var(--accent);
-      font-size: 16px;
+      font-size: 18px;
       font-weight: 600;
+      letter-spacing: 0.1em;
+      box-shadow: 0 0 24px rgba(59, 130, 246, 0.1);
     }
     
     /* Keyboard shortcuts help */
     #shortcuts-help {
       position: fixed;
-      bottom: 80px;
+      bottom: calc(90px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%) translateY(20px);
-      padding: 12px 20px;
+      padding: 14px 24px;
       background: var(--bg-overlay);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: 8px;
+      backdrop-filter: blur(20px) saturate(180%);
+      -webkit-backdrop-filter: blur(20px) saturate(180%);
+      border-radius: var(--radius-lg);
       font-size: 12px;
       color: var(--text-secondary);
       opacity: 0;
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      transition: all var(--transition-normal);
       pointer-events: none;
       border: 1px solid var(--border);
       z-index: 99;
+      box-shadow: var(--shadow-md);
     }
     
     #shortcuts-help.visible {
@@ -452,90 +1250,117 @@
     }
     
     body.multi-stream #shortcuts-help {
-      bottom: 200px;
+      bottom: calc(200px + env(safe-area-inset-bottom, 0px));
     }
     
     .shortcut {
       display: inline-flex;
       align-items: center;
-      gap: 16px;
+      gap: 6px;
+      font-weight: 500;
+      font-size: 11px;
     }
     
     .shortcut + .shortcut {
-      margin-left: 20px;
+      margin-left: 18px;
+      padding-left: 18px;
+      border-left: 1px solid var(--border);
     }
     
     kbd {
-      display: inline-block;
-      padding: 2px 6px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: 4px;
-      font-family: "SF Mono", Monaco, monospace;
-      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 22px;
+      height: 22px;
+      padding: 0 6px;
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
+      font-size: 10px;
+      font-weight: 600;
       color: var(--text-primary);
-      margin-right: 6px;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
     
     /* Stats panel */
     #stats-panel {
       position: fixed;
-      top: 60px;
+      top: 70px;
       right: 20px;
-      padding: 16px;
+      padding: 16px 18px;
       background: var(--bg-overlay);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-      border-radius: 8px;
+      backdrop-filter: blur(24px) saturate(180%);
+      -webkit-backdrop-filter: blur(24px) saturate(180%);
+      border-radius: var(--radius-lg);
       font-size: 12px;
       opacity: 0;
-      transform: translateX(20px);
-      transition: opacity 0.3s ease, transform 0.3s ease;
+      transform: translateX(20px) scale(0.95);
+      transition: all var(--transition-normal);
       pointer-events: none;
       border: 1px solid var(--border);
       z-index: 100;
-      min-width: 180px;
+      min-width: 200px;
+      box-shadow: var(--shadow-lg);
     }
     
     #stats-panel.visible {
       opacity: 1;
-      transform: translateX(0);
+      transform: translateX(0) scale(1);
       pointer-events: auto;
     }
     
     .stats-title {
-      font-size: 11px;
-      font-weight: 600;
+      font-size: 10px;
+      font-weight: 700;
       text-transform: uppercase;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.1em;
       color: var(--text-dim);
-      margin-bottom: 12px;
+      margin-bottom: 14px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid var(--border-subtle);
     }
     
     .stats-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: 4px 0;
+      padding: 8px 0;
     }
     
     .stats-row + .stats-row {
-      border-top: 1px solid var(--border);
-      margin-top: 4px;
-      padding-top: 8px;
+      border-top: 1px solid var(--border-subtle);
     }
     
     .stats-label {
-      color: var(--text-secondary);
+      color: var(--text-dim);
+      font-size: 11px;
+      font-weight: 500;
     }
     
     .stats-value {
-      font-family: "SF Mono", Monaco, monospace;
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
       color: var(--text-primary);
+      font-size: 12px;
+      font-weight: 500;
+      padding: 2px 6px;
+      background: rgba(255, 255, 255, 0.04);
+      border-radius: 4px;
     }
     
-    .stats-value.good { color: var(--success); }
-    .stats-value.warn { color: var(--warning); }
-    .stats-value.bad { color: var(--error); }
+    .stats-value.good { 
+      color: var(--success); 
+      background: var(--success-soft);
+    }
+    .stats-value.warn { 
+      color: var(--warning); 
+      background: var(--warning-soft);
+    }
+    .stats-value.bad { 
+      color: var(--error); 
+      background: var(--error-soft);
+    }
     
     /* Password dialog */
     #password-dialog {
@@ -547,102 +1372,145 @@
       display: none;
       align-items: center;
       justify-content: center;
-      background: var(--bg-primary);
+      background: rgba(9, 9, 11, 0.95);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       z-index: 200;
     }
     
     #password-dialog.visible {
       display: flex;
+      animation: dialog-fade-in 0.3s ease-out;
+    }
+    
+    @keyframes dialog-fade-in {
+      from { 
+        opacity: 0; 
+      }
+      to { 
+        opacity: 1; 
+      }
     }
     
     .password-box {
       background: var(--bg-secondary);
       border: 1px solid var(--border);
-      border-radius: 12px;
-      padding: 32px;
+      border-radius: var(--radius-xl);
+      padding: 40px;
       text-align: center;
-      max-width: 400px;
+      max-width: 420px;
       width: 90%;
+      box-shadow: var(--shadow-lg), 0 0 80px rgba(0, 0, 0, 0.5);
+      animation: dialog-box-in 0.4s cubic-bezier(0.34, 1.56, 0.64, 1);
+    }
+    
+    @keyframes dialog-box-in {
+      from { 
+        opacity: 0; 
+        transform: scale(0.9) translateY(20px); 
+      }
+      to { 
+        opacity: 1; 
+        transform: scale(1) translateY(0); 
+      }
     }
     
     .password-box h2 {
-      font-size: 20px;
-      font-weight: 500;
+      font-size: 22px;
+      font-weight: 600;
       margin-bottom: 8px;
+      letter-spacing: -0.02em;
     }
     
     .password-box p {
       color: var(--text-secondary);
       font-size: 14px;
-      margin-bottom: 24px;
+      margin-bottom: 28px;
+      line-height: 1.5;
     }
     
     .password-box .room-code {
-      font-family: "SF Mono", Monaco, monospace;
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
       color: var(--accent);
       font-weight: 600;
+      background: var(--accent-soft);
+      padding: 2px 8px;
+      border-radius: 4px;
     }
     
     .password-input-group {
       display: flex;
-      gap: 8px;
+      gap: 10px;
       margin-bottom: 16px;
     }
     
     .password-input {
       flex: 1;
-      padding: 12px 16px;
+      padding: 14px 18px;
       background: var(--bg-primary);
       border: 1px solid var(--border);
-      border-radius: 8px;
+      border-radius: var(--radius-md);
       color: var(--text-primary);
       font-size: 16px;
-      font-family: "SF Mono", Monaco, monospace;
+      font-family: "SF Mono", Monaco, "Cascadia Code", monospace;
       outline: none;
+      transition: all var(--transition-fast);
+    }
+    
+    .password-input::placeholder {
+      color: var(--text-dim);
     }
     
     .password-input:focus {
       border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
     }
     
     .password-input.error {
       border-color: var(--error);
+      box-shadow: 0 0 0 3px var(--error-soft);
     }
     
     .password-submit {
-      padding: 12px 24px;
+      padding: 14px 28px;
       background: var(--accent);
       border: none;
-      border-radius: 8px;
-      color: var(--bg-primary);
+      border-radius: var(--radius-md);
+      color: white;
       font-size: 14px;
       font-weight: 600;
       cursor: pointer;
-      transition: opacity 0.2s ease;
+      transition: all var(--transition-fast);
+      box-shadow: 0 2px 8px rgba(59, 130, 246, 0.3);
     }
     
     .password-submit:hover {
-      opacity: 0.9;
+      background: #2563eb;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(59, 130, 246, 0.4);
+    }
+    
+    .password-submit:active {
+      transform: translateY(0);
     }
     
     .password-error {
       color: var(--error);
       font-size: 13px;
       height: 20px;
+      font-weight: 500;
     }
   </style>
 </head>
 <body>
   <!-- Top status bar -->
   <div id="status-bar">
-    <div class="status-section">
+    <div class="status-pill">
       <div class="status-dot connecting" id="status-dot"></div>
       <span id="status-text">Connecting...</span>
     </div>
-    <div class="divider"></div>
     <span id="room-code"></span>
     <div id="stream-stats" style="display: none;">
-      <div class="divider"></div>
       <div class="status-section">
         <span class="stat-label">RES</span>
         <span class="stat-value" id="stat-resolution">--</span>
@@ -670,7 +1538,10 @@
   
   <!-- Waiting screen -->
   <div id="waiting">
-    <div class="spinner"></div>
+    <div class="spinner-container">
+      <div class="spinner-glow"></div>
+      <div class="spinner"></div>
+    </div>
     <h2 id="waiting-title">Connecting...</h2>
     <p id="waiting-subtitle">Establishing connection to sharer</p>
     <div id="waiting-room"></div>
@@ -693,12 +1564,32 @@
   
   <!-- Video container -->
   <div id="container">
-    <!-- Main video area -->
+    <!-- Main video area (Focus mode) -->
     <div id="main-video-container">
-      <video id="main-video" class="main-video scale-fit" autoplay playsinline muted></video>
+      <div class="pan-zoom-container" id="pan-zoom-container">
+        <div class="pan-zoom-content" id="pan-zoom-content">
+          <video id="main-video" class="main-video scale-fit" autoplay playsinline muted></video>
+        </div>
+      </div>
+      <!-- Minimap for panning -->
+      <div class="minimap" id="minimap">
+        <div class="minimap-content">
+          <canvas class="minimap-image" id="minimap-canvas"></canvas>
+          <div class="minimap-viewport" id="minimap-viewport"></div>
+        </div>
+      </div>
     </div>
     
-    <!-- Thumbnails bar for multi-stream -->
+    <!-- Grid view (Grid mode) -->
+    <div id="video-grid"></div>
+    
+    <!-- Row view (Row mode) -->
+    <div id="video-row"></div>
+    
+    <!-- Row minimap navigation -->
+    <div class="row-minimap" id="row-minimap"></div>
+    
+    <!-- Thumbnails bar for multi-stream (Focus mode only) -->
     <div id="thumbnails-bar"></div>
   </div>
   
@@ -716,6 +1607,35 @@
       </svg>
     </button>
     <div class="control-divider"></div>
+    <!-- Layout selector (visible when multiple streams) -->
+    <div class="layout-selector" id="layout-selector">
+      <button class="layout-btn active" data-layout="focus" title="Focus View">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="18" height="18" rx="2"></rect>
+        </svg>
+      </button>
+      <button class="layout-btn" data-layout="grid" title="Grid View">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="8" height="8" rx="1"></rect>
+          <rect x="13" y="3" width="8" height="8" rx="1"></rect>
+          <rect x="3" y="13" width="8" height="8" rx="1"></rect>
+          <rect x="13" y="13" width="8" height="8" rx="1"></rect>
+        </svg>
+      </button>
+      <button class="layout-btn" data-layout="row" title="Row View">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="6" width="6" height="12" rx="1"></rect>
+          <rect x="9" y="6" width="6" height="12" rx="1"></rect>
+          <rect x="16" y="6" width="6" height="12" rx="1"></rect>
+        </svg>
+      </button>
+    </div>
+    <!-- Proportional toggle (visible in grid mode) -->
+    <div class="proportional-toggle" id="proportional-toggle">
+      <span>Auto-size</span>
+      <div class="toggle-switch active" id="proportional-switch" title="Toggle proportional sizing (E)"></div>
+    </div>
+    <div class="control-divider" id="layout-divider" style="display: none;"></div>
     <div class="scale-selector">
       <button class="scale-btn active" data-scale="fit">Fit</button>
       <button class="scale-btn" data-scale="fill">Fill</button>
@@ -740,11 +1660,12 @@
   
   <!-- Keyboard shortcuts help -->
   <div id="shortcuts-help">
-    <span class="shortcut"><kbd>F</kbd> Fullscreen</span>
-    <span class="shortcut"><kbd>P</kbd> Picture-in-Picture</span>
-    <span class="shortcut"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd> Scale</span>
-    <span class="shortcut"><kbd>I</kbd> Stats</span>
-    <span class="shortcut"><kbd>Esc</kbd> Exit</span>
+    <span class="shortcut"><kbd>F</kbd>Fullscreen</span>
+    <span class="shortcut"><kbd>P</kbd>PiP</span>
+    <span class="shortcut"><kbd>G</kbd>Layout</span>
+    <span class="shortcut"><kbd>E</kbd>Auto-size</span>
+    <span class="shortcut"><kbd>1</kbd><kbd>2</kbd><kbd>3</kbd>Scale</span>
+    <span class="shortcut"><kbd>I</kbd>Stats</span>
   </div>
   
   <!-- Stats panel -->
@@ -800,6 +1721,20 @@
     const streamCountEl = document.getElementById('stream-count');
     const streamCountText = document.getElementById('stream-count-text');
     
+    // Layout elements
+    const videoGrid = document.getElementById('video-grid');
+    const layoutSelector = document.getElementById('layout-selector');
+    const proportionalToggle = document.getElementById('proportional-toggle');
+    const proportionalSwitch = document.getElementById('proportional-switch');
+    const layoutDivider = document.getElementById('layout-divider');
+    const panZoomContainer = document.getElementById('pan-zoom-container');
+    const panZoomContent = document.getElementById('pan-zoom-content');
+    const minimap = document.getElementById('minimap');
+    const minimapCanvas = document.getElementById('minimap-canvas');
+    const minimapViewport = document.getElementById('minimap-viewport');
+    const videoRow = document.getElementById('video-row');
+    const rowMinimap = document.getElementById('row-minimap');
+    
     // State
     const roomCode = window.location.pathname.substring(1);
     let ws;
@@ -821,6 +1756,27 @@
     let streamsInfo = []; // Info from sharer (video0, video1, etc.)
     let viewerFocusedIndex = null; // What the viewer has selected (index)
     let sharerFocusedIndex = null; // What the sharer has focused (index from OS)
+    
+    // Layout state
+    let currentLayout = 'focus'; // 'focus', 'grid', or 'row'
+    let proportionalSizing = true; // true = auto-size based on resolution, false = equal size
+    let gridCells = {}; // index -> { cell, video, label }
+    let rowCells = {}; // index -> { cell, video, label } for row mode
+    let selectedGridIndex = null; // Currently selected stream in grid/row mode
+    
+    // Pan/zoom state
+    let panZoomState = {
+      scale: 1,
+      translateX: 0,
+      translateY: 0,
+      isPanning: false,
+      startX: 0,
+      startY: 0,
+      lastX: 0,
+      lastY: 0
+    };
+    let canPan = false; // True when content is larger than viewport
+    let minimapUpdateInterval = null;
     
     // Password dialog elements
     const passwordDialog = document.getElementById('password-dialog');
@@ -906,7 +1862,23 @@
       streamCountText.textContent = streamCount;
       streamCountEl.classList.toggle('visible', streamCount > 1);
       
-      // Show/hide thumbnails bar (show when more than 1 stream)
+      // Update layout selector visibility
+      updateLayoutSelectorVisibility();
+      
+      // Handle based on current layout
+      if (currentLayout === 'grid') {
+        // In grid mode, update the grid
+        updateGridLayout();
+        return;
+      }
+      
+      if (currentLayout === 'row') {
+        // In row mode, update the row
+        updateRowLayout();
+        return;
+      }
+      
+      // Focus mode: Show/hide thumbnails bar (show when more than 1 stream)
       const showThumbnails = streamCount > 1;
       thumbnailsBar.classList.toggle('visible', showThumbnails);
       document.body.classList.toggle('multi-stream', showThumbnails);
@@ -1002,12 +1974,19 @@
       
       // Swap the focused stream
       viewerFocusedIndex = index;
+      selectedGridIndex = index;
       
-      // Update main video
+      // Update main video (for focus mode)
       mainVideo.srcObject = streams[index].stream;
       mainVideo.play().catch(e => console.log('Main video play error:', e.message));
       
-      // Update thumbnails
+      // Reset pan/zoom when switching streams
+      panZoomState.translateX = 0;
+      panZoomState.translateY = 0;
+      applyPanZoomTransform();
+      setTimeout(updatePanZoomState, 100);
+      
+      // Update UI based on current layout
       updateMultiStreamUI();
     }
     
@@ -1092,11 +2071,25 @@
         info.height = height;
       }
       
-      // Extract index from trackId
+      // Also update in streams object
       const match = trackId.match(/video(\d+)/);
       if (!match) return;
       
       const streamIndex = parseInt(match[1], 10);
+      if (streams[streamIndex] && streams[streamIndex].info) {
+        streams[streamIndex].info.width = width;
+        streams[streamIndex].info.height = height;
+      }
+      
+      // If in grid mode with proportional sizing, recalculate layout
+      if (currentLayout === 'grid' && proportionalSizing) {
+        updateGridLayout();
+      }
+      
+      // Update pan/zoom state for focus mode
+      if (currentLayout === 'focus') {
+        setTimeout(updatePanZoomState, 100);
+      }
       
       // If this is the currently displayed stream, reset the video element
       // to force the browser to re-detect the new dimensions
@@ -1381,80 +2374,8 @@
       document.getElementById('btn-pip').classList.remove('active');
     });
     
-    // Scale mode
-    function setScale(mode) {
-      currentScale = mode;
-      mainVideo.className = 'main-video scale-' + mode;
-      
-      document.querySelectorAll('.scale-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.scale === mode);
-      });
-    }
-    
-    document.querySelectorAll('.scale-btn').forEach(btn => {
-      btn.addEventListener('click', () => setScale(btn.dataset.scale));
-    });
-    
-    // Stats toggle
-    function toggleStats() {
-      showStats = !showStats;
-      statsPanel.classList.toggle('visible', showStats);
-      document.getElementById('btn-stats').classList.toggle('active', showStats);
-    }
-    
-    // Help toggle
-    function toggleHelp() {
-      shortcutsHelp.classList.toggle('visible');
-      document.getElementById('btn-help').classList.toggle('active', shortcutsHelp.classList.contains('visible'));
-    }
-    
-    // Button event listeners
-    document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
-    document.getElementById('btn-pip').addEventListener('click', togglePiP);
-    document.getElementById('btn-stats').addEventListener('click', toggleStats);
-    document.getElementById('btn-help').addEventListener('click', toggleHelp);
-    
-    // Keyboard shortcuts
-    document.addEventListener('keydown', (e) => {
-      if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
-      
-      switch (e.key.toLowerCase()) {
-        case 'f':
-          toggleFullscreen();
-          break;
-        case 'p':
-          togglePiP();
-          break;
-        case 'i':
-          toggleStats();
-          break;
-        case '?':
-          toggleHelp();
-          break;
-        case '1':
-          setScale('fit');
-          break;
-        case '2':
-          setScale('fill');
-          break;
-        case '3':
-          setScale('native');
-          break;
-        case 'escape':
-          if (document.fullscreenElement) {
-            document.exitFullscreen();
-          }
-          if (document.pictureInPictureElement) {
-            document.exitPictureInPicture();
-          }
-          shortcutsHelp.classList.remove('visible');
-          document.getElementById('btn-help').classList.remove('active');
-          break;
-      }
-    });
-    
-    // Double-click for fullscreen
-    mainVideo.addEventListener('dblclick', toggleFullscreen);
+    // Note: Scale mode, stats toggle, help toggle, keyboard shortcuts, 
+    // and button event listeners are defined in the Layout Management section below
     
     // Password dialog functions
     function showPasswordDialog(errorText = '') {
@@ -2020,6 +2941,853 @@
         console.error('ICE error:', err);
       }
     }
+    
+    // ==========================================
+    // Layout Management
+    // ==========================================
+    
+    function setLayout(layout) {
+      if (layout === currentLayout) return;
+      
+      currentLayout = layout;
+      console.log('Switching to layout:', layout);
+      
+      // Update button states
+      document.querySelectorAll('.layout-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.layout === layout);
+      });
+      
+      // Show/hide proportional toggle (only in grid mode)
+      proportionalToggle.classList.toggle('visible', layout === 'grid' && streamOrder.length > 1);
+      layoutDivider.style.display = (layout === 'grid' && streamOrder.length > 1) ? '' : 'none';
+      
+      // Hide all layout containers first
+      mainVideoContainer.style.display = 'none';
+      videoGrid.classList.remove('visible');
+      videoRow.classList.remove('visible');
+      rowMinimap.classList.remove('visible');
+      thumbnailsBar.classList.remove('visible');
+      document.body.classList.remove('multi-stream');
+      
+      if (layout === 'focus') {
+        // Switch to focus mode
+        mainVideoContainer.style.display = '';
+        thumbnailsBar.classList.toggle('visible', streamOrder.length > 1);
+        document.body.classList.toggle('multi-stream', streamOrder.length > 1);
+        
+        // Ensure main video has the focused stream
+        if (viewerFocusedIndex !== null && streams[viewerFocusedIndex]) {
+          mainVideo.srcObject = streams[viewerFocusedIndex].stream;
+          mainVideo.play().catch(e => console.log('Play error:', e));
+        }
+        
+        // Clean up grid and row cells
+        videoGrid.innerHTML = '';
+        gridCells = {};
+        cleanupRowCells();
+        
+      } else if (layout === 'grid') {
+        // Switch to grid mode
+        videoGrid.classList.add('visible');
+        
+        // Clean up row cells
+        cleanupRowCells();
+        
+        // Build the grid
+        updateGridLayout();
+        
+      } else if (layout === 'row') {
+        // Switch to row mode
+        videoRow.classList.add('visible');
+        
+        // Clean up grid cells
+        videoGrid.innerHTML = '';
+        gridCells = {};
+        
+        // Build the row
+        updateRowLayout();
+      }
+      
+      // Save preference
+      try {
+        localStorage.setItem('gopeep-layout', layout);
+      } catch (e) {}
+    }
+    
+    function toggleLayout() {
+      // Cycle through: focus -> grid -> row -> focus
+      const layouts = ['focus', 'grid', 'row'];
+      const currentIdx = layouts.indexOf(currentLayout);
+      const nextIdx = (currentIdx + 1) % layouts.length;
+      setLayout(layouts[nextIdx]);
+    }
+    
+    function cleanupRowCells() {
+      videoRow.innerHTML = '';
+      rowMinimap.innerHTML = '';
+      rowMinimap.classList.remove('visible');
+      rowCells = {};
+    }
+    
+    function toggleProportionalSizing() {
+      proportionalSizing = !proportionalSizing;
+      proportionalSwitch.classList.toggle('active', proportionalSizing);
+      
+      if (currentLayout === 'grid') {
+        updateGridLayout();
+      }
+      
+      // Save preference
+      try {
+        localStorage.setItem('gopeep-proportional', proportionalSizing ? '1' : '0');
+      } catch (e) {}
+    }
+    
+    function calculateProportionalSizes() {
+      const activeStreams = streamOrder.map(idx => {
+        const s = streams[idx];
+        const info = s?.info;
+        return {
+          index: idx,
+          width: info?.width || 1920,
+          height: info?.height || 1080,
+          area: (info?.width || 1920) * (info?.height || 1080)
+        };
+      });
+      
+      if (activeStreams.length === 0) return { cols: [], rows: [] };
+      
+      const totalArea = activeStreams.reduce((sum, s) => sum + s.area, 0);
+      
+      // Calculate relative weights with minimum of 25%
+      const weights = activeStreams.map(s => Math.max(0.25, s.area / totalArea));
+      const weightSum = weights.reduce((a, b) => a + b, 0);
+      const normalizedWeights = weights.map(w => w / weightSum);
+      
+      return {
+        streams: activeStreams,
+        weights: normalizedWeights
+      };
+    }
+    
+    function updateGridLayout() {
+      const count = streamOrder.length;
+      
+      if (count === 0) {
+        videoGrid.innerHTML = '';
+        videoGrid.className = 'visible';
+        gridCells = {};
+        return;
+      }
+      
+      // Remove old grid classes
+      videoGrid.className = 'visible';
+      videoGrid.classList.add(`grid-${Math.min(count, 4)}`);
+      videoGrid.classList.toggle('equal-size', !proportionalSizing);
+      
+      // Calculate proportional sizes
+      if (proportionalSizing && count >= 2) {
+        const sizes = calculateProportionalSizes();
+        
+        if (count === 2) {
+          // Side by side: proportional columns
+          const w1 = sizes.weights[0] || 0.5;
+          const w2 = sizes.weights[1] || 0.5;
+          videoGrid.style.setProperty('--col-1', `${w1}fr`);
+          videoGrid.style.setProperty('--col-2', `${w2}fr`);
+        } else if (count === 3) {
+          // 1 large on left, 2 stacked on right
+          const w1 = Math.max(sizes.weights[0], 0.4);
+          const remaining = 1 - w1;
+          videoGrid.style.setProperty('--col-1', `${w1}fr`);
+          videoGrid.style.setProperty('--col-2', `${remaining}fr`);
+          
+          // Row heights for right side
+          const h1 = sizes.weights[1] / (sizes.weights[1] + sizes.weights[2]);
+          videoGrid.style.setProperty('--row-1', `${h1}fr`);
+          videoGrid.style.setProperty('--row-2', `${1 - h1}fr`);
+        } else if (count === 4) {
+          // 2x2 grid with proportional sizing
+          const topWeight = (sizes.weights[0] + sizes.weights[1]) / 2;
+          const bottomWeight = (sizes.weights[2] + sizes.weights[3]) / 2;
+          const leftWeight = (sizes.weights[0] + sizes.weights[2]) / 2;
+          const rightWeight = (sizes.weights[1] + sizes.weights[3]) / 2;
+          
+          videoGrid.style.setProperty('--col-1', `${leftWeight / (leftWeight + rightWeight)}fr`);
+          videoGrid.style.setProperty('--col-2', `${rightWeight / (leftWeight + rightWeight)}fr`);
+          videoGrid.style.setProperty('--row-1', `${topWeight / (topWeight + bottomWeight)}fr`);
+          videoGrid.style.setProperty('--row-2', `${bottomWeight / (topWeight + bottomWeight)}fr`);
+        }
+      } else {
+        // Reset to equal sizing
+        videoGrid.style.removeProperty('--col-1');
+        videoGrid.style.removeProperty('--col-2');
+        videoGrid.style.removeProperty('--row-1');
+        videoGrid.style.removeProperty('--row-2');
+      }
+      
+      // Create or update grid cells
+      const sortedOrder = [...streamOrder].sort((a, b) => a - b);
+      
+      // Remove cells for streams that no longer exist
+      for (const idx in gridCells) {
+        if (!sortedOrder.includes(parseInt(idx))) {
+          gridCells[idx].cell.remove();
+          delete gridCells[idx];
+        }
+      }
+      
+      // Create or update cells
+      for (const idx of sortedOrder) {
+        const data = streams[idx];
+        if (!data || !data.stream) continue;
+        
+        let cell = gridCells[idx];
+        
+        if (!cell) {
+          // Create new cell
+          const cellEl = document.createElement('div');
+          cellEl.className = 'grid-cell';
+          cellEl.dataset.streamIndex = idx;
+          
+          const video = document.createElement('video');
+          video.autoplay = true;
+          video.playsinline = true;
+          video.muted = true;
+          
+          const label = document.createElement('div');
+          label.className = 'grid-cell-label';
+          
+          cellEl.appendChild(video);
+          cellEl.appendChild(label);
+          
+          // Click handlers
+          let clickTimeout = null;
+          cellEl.addEventListener('click', (e) => {
+            if (clickTimeout) {
+              // Double click - switch to focus mode with this stream
+              clearTimeout(clickTimeout);
+              clickTimeout = null;
+              viewerFocusedIndex = idx;
+              setLayout('focus');
+            } else {
+              // Single click - just select
+              clickTimeout = setTimeout(() => {
+                clickTimeout = null;
+                selectGridCell(idx);
+              }, 250);
+            }
+          });
+          
+          cell = { cell: cellEl, video, label };
+          gridCells[idx] = cell;
+        }
+        
+        // Update video source
+        if (cell.video.srcObject !== data.stream) {
+          cell.video.srcObject = data.stream;
+          cell.video.play().catch(e => console.log('Grid video play error:', e));
+        }
+        
+        // Update label
+        const info = data.info;
+        cell.label.textContent = info?.windowName || info?.appName || `Stream ${idx + 1}`;
+        
+        // Update classes
+        cell.cell.classList.toggle('selected', idx === selectedGridIndex);
+        cell.cell.classList.toggle('sharer-focused', idx === sharerFocusedIndex);
+        
+        // Ensure it's in the DOM
+        if (!cell.cell.parentNode) {
+          videoGrid.appendChild(cell.cell);
+        }
+      }
+      
+      // Reorder cells
+      for (const idx of sortedOrder) {
+        if (gridCells[idx]) {
+          videoGrid.appendChild(gridCells[idx].cell);
+        }
+      }
+    }
+    
+    function selectGridCell(index) {
+      selectedGridIndex = index;
+      
+      // Update cell classes in grid
+      for (const idx in gridCells) {
+        gridCells[idx].cell.classList.toggle('selected', parseInt(idx) === index);
+      }
+      
+      // Update cell classes in row
+      for (const idx in rowCells) {
+        rowCells[idx].cell.classList.toggle('selected', parseInt(idx) === index);
+      }
+    }
+    
+    // Update layout selector visibility based on stream count
+    function updateLayoutSelectorVisibility() {
+      const showSelector = streamOrder.length > 1;
+      layoutSelector.classList.toggle('visible', showSelector);
+      layoutDivider.style.display = (showSelector && currentLayout === 'grid') ? '' : 'none';
+      proportionalToggle.classList.toggle('visible', showSelector && currentLayout === 'grid');
+      
+      // If we only have 1 stream, force focus layout
+      if (streamOrder.length <= 1 && (currentLayout === 'grid' || currentLayout === 'row')) {
+        setLayout('focus');
+      }
+    }
+    
+    // ==========================================
+    // Row Layout
+    // ==========================================
+    
+    function updateRowLayout() {
+      const count = streamOrder.length;
+      
+      if (count === 0) {
+        cleanupRowCells();
+        return;
+      }
+      
+      const sortedOrder = [...streamOrder].sort((a, b) => a - b);
+      
+      // Remove cells for streams that no longer exist
+      for (const idx in rowCells) {
+        if (!sortedOrder.includes(parseInt(idx))) {
+          rowCells[idx].cell.remove();
+          if (rowCells[idx].minimapItem) {
+            rowCells[idx].minimapItem.remove();
+          }
+          delete rowCells[idx];
+        }
+      }
+      
+      // Create or update cells
+      for (const idx of sortedOrder) {
+        const data = streams[idx];
+        if (!data || !data.stream) continue;
+        
+        let cell = rowCells[idx];
+        
+        if (!cell) {
+          // Create new row cell
+          const cellEl = document.createElement('div');
+          cellEl.className = 'row-cell';
+          cellEl.dataset.streamIndex = idx;
+          
+          const video = document.createElement('video');
+          video.autoplay = true;
+          video.playsinline = true;
+          video.muted = true;
+          
+          const label = document.createElement('div');
+          label.className = 'row-cell-label';
+          
+          cellEl.appendChild(video);
+          cellEl.appendChild(label);
+          
+          // Double click to focus
+          cellEl.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            viewerFocusedIndex = idx;
+            setLayout('focus');
+          });
+          
+          // Create minimap item
+          const minimapItem = document.createElement('div');
+          minimapItem.className = 'row-minimap-item';
+          minimapItem.dataset.streamIndex = idx;
+          const minimapCanvas = document.createElement('canvas');
+          minimapItem.appendChild(minimapCanvas);
+          
+          // Click on minimap item to scroll to that stream
+          minimapItem.addEventListener('click', () => {
+            const cellElement = rowCells[idx]?.cell;
+            if (cellElement) {
+              cellElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+          });
+          
+          cell = { cell: cellEl, video, label, minimapItem, minimapCanvas };
+          rowCells[idx] = cell;
+        }
+        
+        // Update video source
+        if (cell.video.srcObject !== data.stream) {
+          cell.video.srcObject = data.stream;
+          cell.video.play().catch(e => console.log('Row video play error:', e));
+        }
+        
+        // TRUE NATIVE SIZE - no scaling whatsoever for 100% sharpness
+        const info = data.info;
+        if (info?.width && info?.height) {
+          cell.video.style.width = info.width + 'px';
+          cell.video.style.height = info.height + 'px';
+        } else {
+          // Use video's native dimensions if no info
+          cell.video.style.width = 'auto';
+          cell.video.style.height = 'auto';
+        }
+        
+        // Update label
+        cell.label.textContent = info?.windowName || info?.appName || `Stream ${idx + 1}`;
+        
+        // Update classes
+        cell.cell.classList.toggle('selected', idx === selectedGridIndex);
+        cell.cell.classList.toggle('sharer-focused', idx === sharerFocusedIndex);
+        cell.minimapItem.classList.toggle('sharer-focused', idx === sharerFocusedIndex);
+        
+        // Ensure cell is in the DOM
+        if (!cell.cell.parentNode) {
+          videoRow.appendChild(cell.cell);
+        }
+        
+        // Ensure minimap item is in the DOM
+        if (!cell.minimapItem.parentNode) {
+          rowMinimap.appendChild(cell.minimapItem);
+        }
+      }
+      
+      // Reorder cells
+      for (const idx of sortedOrder) {
+        if (rowCells[idx]) {
+          videoRow.appendChild(rowCells[idx].cell);
+          rowMinimap.appendChild(rowCells[idx].minimapItem);
+        }
+      }
+      
+      // Show minimap if we have content
+      rowMinimap.classList.toggle('visible', count > 0);
+      
+      // Update minimap thumbnails
+      updateRowMinimap();
+    }
+    
+    // Row minimap update
+    let rowMinimapInterval = null;
+    
+    function updateRowMinimap() {
+      const sortedOrder = [...streamOrder].sort((a, b) => a - b);
+      
+      for (const idx of sortedOrder) {
+        const cell = rowCells[idx];
+        if (!cell || !cell.video || !cell.minimapCanvas) continue;
+        
+        const video = cell.video;
+        const canvas = cell.minimapCanvas;
+        
+        // Only draw if video has dimensions
+        if (video.videoWidth && video.videoHeight) {
+          const aspectRatio = video.videoWidth / video.videoHeight;
+          const height = 36;
+          const width = height * aspectRatio;
+          
+          canvas.width = width;
+          canvas.height = height;
+          canvas.style.width = width + 'px';
+          canvas.style.height = height + 'px';
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, width, height);
+        }
+        
+        // Update in-view state
+        const cellRect = cell.cell.getBoundingClientRect();
+        const containerRect = videoRow.getBoundingClientRect();
+        const isInView = cellRect.left < containerRect.right && cellRect.right > containerRect.left;
+        cell.minimapItem.classList.toggle('in-view', isInView);
+      }
+    }
+    
+    function startRowMinimapUpdates() {
+      if (rowMinimapInterval) return;
+      rowMinimapInterval = setInterval(() => {
+        if (currentLayout === 'row' && rowMinimap.classList.contains('visible')) {
+          updateRowMinimap();
+        }
+      }, 200);
+    }
+    
+    function stopRowMinimapUpdates() {
+      if (rowMinimapInterval) {
+        clearInterval(rowMinimapInterval);
+        rowMinimapInterval = null;
+      }
+    }
+    
+    // Row drag-to-scroll
+    let rowDragState = {
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      scrollLeft: 0,
+      scrollTop: 0
+    };
+    
+    videoRow.addEventListener('mousedown', (e) => {
+      // Don't start drag if clicking on a video cell's interactive area
+      if (e.target.closest('.row-cell-label')) return;
+      
+      rowDragState.isDragging = true;
+      rowDragState.startX = e.pageX - videoRow.offsetLeft;
+      rowDragState.startY = e.pageY - videoRow.offsetTop;
+      rowDragState.scrollLeft = videoRow.scrollLeft;
+      rowDragState.scrollTop = videoRow.scrollTop;
+      videoRow.classList.add('dragging');
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!rowDragState.isDragging) return;
+      e.preventDefault();
+      
+      const x = e.pageX - videoRow.offsetLeft;
+      const y = e.pageY - videoRow.offsetTop;
+      const walkX = (x - rowDragState.startX) * 1.5;
+      const walkY = (y - rowDragState.startY) * 1.5;
+      
+      videoRow.scrollLeft = rowDragState.scrollLeft - walkX;
+      videoRow.scrollTop = rowDragState.scrollTop - walkY;
+    });
+    
+    document.addEventListener('mouseup', () => {
+      rowDragState.isDragging = false;
+      videoRow.classList.remove('dragging');
+    });
+    
+    // Touch support for row drag
+    videoRow.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      
+      rowDragState.isDragging = true;
+      rowDragState.startX = touch.pageX - videoRow.offsetLeft;
+      rowDragState.startY = touch.pageY - videoRow.offsetTop;
+      rowDragState.scrollLeft = videoRow.scrollLeft;
+      rowDragState.scrollTop = videoRow.scrollTop;
+    }, { passive: true });
+    
+    videoRow.addEventListener('touchmove', (e) => {
+      if (!rowDragState.isDragging || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      
+      const x = touch.pageX - videoRow.offsetLeft;
+      const y = touch.pageY - videoRow.offsetTop;
+      const walkX = x - rowDragState.startX;
+      const walkY = y - rowDragState.startY;
+      
+      videoRow.scrollLeft = rowDragState.scrollLeft - walkX;
+      videoRow.scrollTop = rowDragState.scrollTop - walkY;
+    }, { passive: true });
+    
+    videoRow.addEventListener('touchend', () => {
+      rowDragState.isDragging = false;
+    });
+    
+    // Update layout on resize
+    window.addEventListener('resize', () => {
+      if (currentLayout === 'row') {
+        updateRowLayout();
+      }
+    });
+    
+    // Start row minimap updates
+    startRowMinimapUpdates();
+    
+    // ==========================================
+    // Pan/Zoom for Native View
+    // ==========================================
+    
+    function updatePanZoomState() {
+      const video = mainVideo;
+      if (!video.videoWidth || !video.videoHeight) {
+        canPan = false;
+        panZoomContainer.classList.remove('can-pan');
+        minimap.classList.remove('visible');
+        return;
+      }
+      
+      const containerRect = mainVideoContainer.getBoundingClientRect();
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+      
+      // Check if content exceeds viewport in native mode
+      canPan = currentScale === 'native' && 
+               (videoWidth > containerRect.width || videoHeight > containerRect.height);
+      
+      panZoomContainer.classList.toggle('can-pan', canPan);
+      
+      if (canPan) {
+        // Calculate bounds
+        const maxX = Math.max(0, videoWidth - containerRect.width);
+        const maxY = Math.max(0, videoHeight - containerRect.height);
+        
+        // Clamp current position
+        panZoomState.translateX = Math.max(-maxX, Math.min(0, panZoomState.translateX));
+        panZoomState.translateY = Math.max(-maxY, Math.min(0, panZoomState.translateY));
+        
+        applyPanZoomTransform();
+        updateMinimap();
+        minimap.classList.add('visible');
+      } else {
+        // Reset transform
+        panZoomState.translateX = 0;
+        panZoomState.translateY = 0;
+        applyPanZoomTransform();
+        minimap.classList.remove('visible');
+      }
+    }
+    
+    function applyPanZoomTransform() {
+      panZoomContent.style.transform = `translate(${panZoomState.translateX}px, ${panZoomState.translateY}px)`;
+    }
+    
+    function updateMinimap() {
+      if (!canPan || !mainVideo.videoWidth) return;
+      
+      const video = mainVideo;
+      const containerRect = mainVideoContainer.getBoundingClientRect();
+      
+      // Update minimap canvas size to match video aspect ratio
+      const aspectRatio = video.videoWidth / video.videoHeight;
+      const minimapWidth = 120;
+      const minimapHeight = minimapWidth / aspectRatio;
+      
+      minimapCanvas.width = minimapWidth;
+      minimapCanvas.height = minimapHeight;
+      minimapCanvas.style.height = minimapHeight + 'px';
+      
+      // Draw video frame to minimap
+      const ctx = minimapCanvas.getContext('2d');
+      ctx.drawImage(video, 0, 0, minimapWidth, minimapHeight);
+      
+      // Calculate viewport rectangle
+      const scaleX = minimapWidth / video.videoWidth;
+      const scaleY = minimapHeight / video.videoHeight;
+      
+      const viewportX = -panZoomState.translateX * scaleX;
+      const viewportY = -panZoomState.translateY * scaleY;
+      const viewportW = containerRect.width * scaleX;
+      const viewportH = containerRect.height * scaleY;
+      
+      minimapViewport.style.left = viewportX + 'px';
+      minimapViewport.style.top = viewportY + 'px';
+      minimapViewport.style.width = Math.min(viewportW, minimapWidth) + 'px';
+      minimapViewport.style.height = Math.min(viewportH, minimapHeight) + 'px';
+    }
+    
+    function startMinimapUpdates() {
+      if (minimapUpdateInterval) return;
+      minimapUpdateInterval = setInterval(() => {
+        if (canPan && minimap.classList.contains('visible')) {
+          updateMinimap();
+        }
+      }, 200);
+    }
+    
+    function stopMinimapUpdates() {
+      if (minimapUpdateInterval) {
+        clearInterval(minimapUpdateInterval);
+        minimapUpdateInterval = null;
+      }
+    }
+    
+    // Pan/zoom event handlers
+    function handlePanStart(e) {
+      if (!canPan) return;
+      
+      panZoomState.isPanning = true;
+      panZoomContainer.classList.add('panning');
+      
+      const point = e.touches ? e.touches[0] : e;
+      panZoomState.startX = point.clientX - panZoomState.translateX;
+      panZoomState.startY = point.clientY - panZoomState.translateY;
+      
+      e.preventDefault();
+    }
+    
+    function handlePanMove(e) {
+      if (!panZoomState.isPanning) return;
+      
+      const point = e.touches ? e.touches[0] : e;
+      const containerRect = mainVideoContainer.getBoundingClientRect();
+      
+      const maxX = Math.max(0, mainVideo.videoWidth - containerRect.width);
+      const maxY = Math.max(0, mainVideo.videoHeight - containerRect.height);
+      
+      panZoomState.translateX = Math.max(-maxX, Math.min(0, point.clientX - panZoomState.startX));
+      panZoomState.translateY = Math.max(-maxY, Math.min(0, point.clientY - panZoomState.startY));
+      
+      applyPanZoomTransform();
+      updateMinimap();
+      
+      e.preventDefault();
+    }
+    
+    function handlePanEnd(e) {
+      panZoomState.isPanning = false;
+      panZoomContainer.classList.remove('panning');
+    }
+    
+    // Set up pan/zoom listeners
+    panZoomContainer.addEventListener('mousedown', handlePanStart);
+    document.addEventListener('mousemove', handlePanMove);
+    document.addEventListener('mouseup', handlePanEnd);
+    
+    panZoomContainer.addEventListener('touchstart', handlePanStart, { passive: false });
+    document.addEventListener('touchmove', handlePanMove, { passive: false });
+    document.addEventListener('touchend', handlePanEnd);
+    
+    // Update pan state when scale changes or video loads
+    mainVideo.addEventListener('loadedmetadata', () => {
+      setTimeout(updatePanZoomState, 100);
+    });
+    
+    mainVideo.addEventListener('resize', updatePanZoomState);
+    
+    // ==========================================
+    // Layout Event Listeners
+    // ==========================================
+    
+    // Layout buttons
+    document.querySelectorAll('.layout-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setLayout(btn.dataset.layout);
+      });
+    });
+    
+    // Proportional toggle
+    proportionalSwitch.addEventListener('click', toggleProportionalSizing);
+    
+    // ==========================================
+    // Keyboard Shortcuts (updated)
+    // ==========================================
+    
+    document.addEventListener('keydown', (e) => {
+      // Ignore if typing in an input
+      if (e.target.tagName === 'INPUT') return;
+      
+      switch (e.key.toLowerCase()) {
+        case 'f':
+          toggleFullscreen();
+          break;
+        case 'p':
+          togglePiP();
+          break;
+        case 'g':
+          if (streamOrder.length > 1) {
+            toggleLayout();
+          }
+          break;
+        case 'e':
+          if (currentLayout === 'grid') {
+            toggleProportionalSizing();
+          }
+          break;
+        case 'i':
+          showStats = !showStats;
+          document.getElementById('btn-stats').classList.toggle('active', showStats);
+          statsPanel.classList.toggle('visible', showStats);
+          break;
+        case '1':
+          setScaleMode('fit');
+          break;
+        case '2':
+          setScaleMode('fill');
+          break;
+        case '3':
+          setScaleMode('native');
+          break;
+        case '?':
+          shortcutsHelp.classList.toggle('visible');
+          break;
+        case 'escape':
+          if (document.fullscreenElement) {
+            document.exitFullscreen();
+          } else if (document.pictureInPictureElement) {
+            document.exitPictureInPicture();
+          }
+          break;
+        case 'arrowleft':
+        case 'arrowup':
+          if (currentLayout === 'grid' && streamOrder.length > 0) {
+            const currentIdx = streamOrder.indexOf(selectedGridIndex);
+            const newIdx = currentIdx <= 0 ? streamOrder.length - 1 : currentIdx - 1;
+            selectGridCell(streamOrder[newIdx]);
+          }
+          break;
+        case 'arrowright':
+        case 'arrowdown':
+          if (currentLayout === 'grid' && streamOrder.length > 0) {
+            const currentIdx = streamOrder.indexOf(selectedGridIndex);
+            const newIdx = currentIdx >= streamOrder.length - 1 ? 0 : currentIdx + 1;
+            selectGridCell(streamOrder[newIdx]);
+          }
+          break;
+        case 'enter':
+          if (currentLayout === 'grid' && selectedGridIndex !== null) {
+            viewerFocusedIndex = selectedGridIndex;
+            setLayout('focus');
+          }
+          break;
+      }
+    });
+    
+    function setScaleMode(mode) {
+      currentScale = mode;
+      mainVideo.className = `main-video scale-${mode}`;
+      
+      // Update scale buttons
+      document.querySelectorAll('.scale-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.scale === mode);
+      });
+      
+      // Update grid cell videos too
+      for (const idx in gridCells) {
+        gridCells[idx].video.style.objectFit = mode === 'fill' ? 'cover' : 'contain';
+      }
+      
+      // Update pan/zoom state
+      setTimeout(updatePanZoomState, 50);
+    }
+    
+    // Scale button event listeners
+    document.querySelectorAll('.scale-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        setScaleMode(btn.dataset.scale);
+      });
+    });
+    
+    // Control button event listeners
+    document.getElementById('btn-fullscreen').addEventListener('click', toggleFullscreen);
+    document.getElementById('btn-pip').addEventListener('click', togglePiP);
+    document.getElementById('btn-stats').addEventListener('click', () => {
+      showStats = !showStats;
+      document.getElementById('btn-stats').classList.toggle('active', showStats);
+      statsPanel.classList.toggle('visible', showStats);
+    });
+    document.getElementById('btn-help').addEventListener('click', () => {
+      shortcutsHelp.classList.toggle('visible');
+    });
+    
+    // Double-click to fullscreen
+    mainVideoContainer.addEventListener('dblclick', toggleFullscreen);
+    
+    // Load saved preferences
+    try {
+      const savedLayout = localStorage.getItem('gopeep-layout');
+      if (savedLayout === 'grid' || savedLayout === 'row') {
+        currentLayout = savedLayout;
+      }
+      const savedProportional = localStorage.getItem('gopeep-proportional');
+      if (savedProportional === '0') {
+        proportionalSizing = false;
+        proportionalSwitch.classList.remove('active');
+      }
+    } catch (e) {}
+    
+    // Start minimap updates
+    startMinimapUpdates();
     
     // Start
     connect();
