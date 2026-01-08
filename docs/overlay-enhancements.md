@@ -34,10 +34,10 @@ When clicking the arrow to move the overlay between corners, animate the transit
 ```
 
 ### Acceptance Criteria
-- [ ] Overlay slides smoothly between corners
-- [ ] Animation takes ~250ms
-- [ ] No visual glitches during animation
-- [ ] Clicking arrow during animation works correctly
+- [x] Overlay slides smoothly between corners
+- [x] Animation takes ~250ms
+- [x] No visual glitches during animation
+- [x] Clicking arrow during animation works correctly (g_isAnimating guard prevents re-entry)
 
 ---
 
