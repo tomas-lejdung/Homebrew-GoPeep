@@ -163,6 +163,13 @@ func (mpm *PeerManager) RemoveTrack(trackID string) {
 	delete(mpm.tracks, trackID)
 }
 
+// RemoveAllTracks removes all video tracks (used for FPS/settings restart)
+func (mpm *PeerManager) RemoveAllTracks() {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+	mpm.tracks = make(map[string]*StreamTrackInfo)
+}
+
 // GetTracks returns all current tracks in sorted order by TrackID
 func (mpm *PeerManager) GetTracks() []*StreamTrackInfo {
 	mpm.mu.RLock()
@@ -692,6 +699,7 @@ type StreamPipeline struct {
 	encoder      VideoEncoder
 	running      bool
 	stopChan     chan struct{}
+	fpsChanged   chan int // Signal to update FPS in run loop
 	fps          int
 	bitrate      int
 	focusBitrate int // bitrate when focused
@@ -815,6 +823,7 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 		adaptiveBR:   ms.adaptiveBitrate,
 		qualityMode:  ms.qualityMode,
 		stopChan:     make(chan struct{}),
+		fpsChanged:   make(chan int, 1),
 	}
 
 	ms.pipelines[trackInfo.TrackID] = pipeline
@@ -1067,6 +1076,33 @@ func (ms *Streamer) SetBitrate(focusBitrate, bgBitrate int) {
 	log.Printf("Streamer bitrate updated: focus=%d kbps, bg=%d kbps", focusBitrate, bgBitrate)
 }
 
+// SetFPS updates the FPS for all active streams (requires capture restart)
+func (ms *Streamer) SetFPS(newFPS int) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	if ms.fps == newFPS {
+		return nil
+	}
+
+	ms.fps = newFPS
+
+	var lastErr error
+	for _, pipeline := range ms.pipelines {
+		if err := pipeline.SetFPS(newFPS, ms.multiCapture, ms.codecType); err != nil {
+			log.Printf("Failed to set FPS for pipeline: %v", err)
+			lastErr = err
+		}
+	}
+
+	if lastErr != nil {
+		return lastErr
+	}
+
+	log.Printf("Streamer FPS updated to %d", newFPS)
+	return nil
+}
+
 // GetStreamingWindowIDs returns a map of currently streaming window IDs
 func (ms *Streamer) GetStreamingWindowIDs() map[uint32]bool {
 	ms.mu.RLock()
@@ -1145,6 +1181,7 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 		adaptiveBR:   ms.adaptiveBitrate,
 		qualityMode:  ms.qualityMode,
 		stopChan:     make(chan struct{}),
+		fpsChanged:   make(chan int, 1),
 	}
 
 	ms.mu.Lock()
@@ -1296,6 +1333,7 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 		adaptiveBR:   false, // No adaptive bitrate for display
 		qualityMode:  ms.qualityMode,
 		stopChan:     make(chan struct{}),
+		fpsChanged:   make(chan int, 1),
 	}
 
 	ms.pipelines[trackInfo.TrackID] = pipeline
@@ -1373,6 +1411,7 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 		adaptiveBR:   false,
 		qualityMode:  ms.qualityMode,
 		stopChan:     make(chan struct{}),
+		fpsChanged:   make(chan int, 1),
 	}
 
 	ms.mu.Lock()
@@ -1438,7 +1477,11 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture) {
 	p.lastByteCount = 0
 	p.mu.Unlock()
 
-	frameDuration := time.Second / time.Duration(p.fps)
+	p.mu.Lock()
+	currentFPS := p.fps
+	p.mu.Unlock()
+
+	frameDuration := time.Second / time.Duration(currentFPS)
 	ticker := time.NewTicker(frameDuration)
 	defer ticker.Stop()
 
@@ -1452,6 +1495,15 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture) {
 		select {
 		case <-p.stopChan:
 			return
+
+		case newFPS := <-p.fpsChanged:
+			// FPS changed - update ticker
+			ticker.Stop()
+			currentFPS = newFPS
+			frameDuration = time.Second / time.Duration(currentFPS)
+			ticker = time.NewTicker(frameDuration)
+			log.Printf("Pipeline ticker updated to %d FPS", currentFPS)
+
 		case <-statsTicker.C:
 			// Update FPS and bitrate calculations
 			p.mu.Lock()
@@ -1579,6 +1631,72 @@ func (p *StreamPipeline) SetBitrate(focusBitrate, bgBitrate int) {
 			}
 		}
 	}
+}
+
+// SetFPS updates the FPS for this pipeline (requires capture restart)
+func (p *StreamPipeline) SetFPS(newFPS int, mc *MultiCapture, codecType CodecType) error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.fps == newFPS {
+		return nil
+	}
+
+	oldFPS := p.fps
+	p.fps = newFPS
+
+	// Stop current capture
+	if p.capture != nil {
+		mc.StopCapture(p.capture)
+	}
+
+	// Stop current encoder
+	if p.encoder != nil {
+		p.encoder.Stop()
+	}
+
+	// Restart capture with new FPS
+	var err error
+	if p.trackInfo.WindowID == 0 {
+		// Display capture
+		p.capture, err = mc.StartDisplayCapture(0, 0, newFPS)
+	} else {
+		// Window capture
+		p.capture, err = mc.StartWindowCapture(p.trackInfo.WindowID, 0, 0, newFPS)
+	}
+	if err != nil {
+		p.fps = oldFPS // Restore on error
+		return fmt.Errorf("failed to restart capture with new FPS: %w", err)
+	}
+
+	// Create new encoder with new FPS
+	factory := NewEncoderFactory()
+	p.encoder, err = factory.CreateEncoder(codecType, newFPS, p.bitrate)
+	if err != nil {
+		p.fps = oldFPS
+		return fmt.Errorf("failed to create encoder with new FPS: %w", err)
+	}
+
+	// Apply quality mode if enabled
+	if p.qualityMode {
+		p.encoder.SetQualityMode(true, p.bitrate)
+	}
+
+	if err := p.encoder.Start(); err != nil {
+		p.fps = oldFPS
+		return fmt.Errorf("failed to start encoder: %w", err)
+	}
+
+	log.Printf("Track %s FPS changed from %d to %d", p.trackInfo.TrackID, oldFPS, newFPS)
+
+	// Signal the run loop to update its ticker
+	select {
+	case p.fpsChanged <- newFPS:
+	default:
+		// Channel full, run loop will pick up new FPS from p.fps
+	}
+
+	return nil
 }
 
 // SetQualityMode updates the quality mode for this pipeline

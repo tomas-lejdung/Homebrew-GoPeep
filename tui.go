@@ -804,42 +804,75 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 }
 
 // restartWithCodec restarts streaming with a new codec (requires full restart)
+// Codec change affects WebRTC track negotiation, so we need to recreate peer manager
 func (m model) restartWithCodec() (tea.Model, tea.Cmd) {
 	if !m.sharing {
 		return m, nil
 	}
 
-	// Remember room code and capture settings including selection
+	// Remember room code
 	savedRoomCode := m.roomCode
 	savedShareURL := m.shareURL
-	savedIsFullscreen := m.isFullscreen
-	savedWindowID := m.activeWindowID
-	savedSelectedSource := m.selectedSource
 
-	// Full cleanup of current session (preserve state for restart)
-	m.stopCapture(true)
+	// Stop streamer
+	if m.streamer != nil {
+		m.streamer.Stop()
+		m.streamer = nil
+	}
+	StopCapture()
 
-	// Close existing peer manager and connections
+	// Close existing peer manager (codec change requires new tracks)
 	if m.peerManager != nil {
 		m.peerManager.Close()
 		m.peerManager = nil
 	}
 
-	// Close WebSocket connection if remote
+	// Close WebSocket connection if remote (will reconnect)
 	if m.wsConn != nil {
 		m.wsConn.Close()
 		m.wsConn = nil
 	}
 
 	// Mark server as not started so it will reinitialize with new codec
-	// but preserve the room code and selection
 	m.serverStarted = false
 	m.roomCode = savedRoomCode
 	m.shareURL = savedShareURL
-	m.selectedSource = savedSelectedSource
 
-	// Restart capture directly with saved settings
-	return m.restartCaptureWithSettings(savedIsFullscreen, savedWindowID)
+	m.starting = true
+
+	// Initialize server (this creates new peer manager with new codec)
+	if err := m.initMultiServer(); err != nil {
+		m.lastError = err.Error()
+		m.starting = false
+		return m, nil
+	}
+
+	// Collect selected windows info
+	var selectedWindowInfos []WindowInfo
+	if !m.fullscreenSelected {
+		for _, source := range m.sources {
+			if !source.IsFullscreen && source.Window != nil {
+				if m.selectedWindows[source.Window.ID] {
+					selectedWindowInfos = append(selectedWindowInfos, *source.Window)
+				}
+			}
+		}
+	}
+
+	// Capture config values for async command
+	fps := m.getSelectedFPS()
+	focusBitrate := QualityPresets[m.selectedQuality].Bitrate
+	bgBitrate := focusBitrate / 3
+	if bgBitrate < 500 {
+		bgBitrate = 500
+	}
+	adaptiveBR := m.adaptiveBitrate
+	qualityMode := m.qualityMode
+	codecType := m.getSelectedCodecType()
+	fullscreen := m.fullscreenSelected
+	peerManager := m.peerManager
+
+	return m, startMultiCaptureAsync(peerManager, selectedWindowInfos, fullscreen, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode, codecType)
 }
 
 // getSelectedCodecType returns the currently selected codec type
@@ -858,7 +891,7 @@ func (m model) getSelectedFPS() int {
 	return 30 // default
 }
 
-// applyFPS changes the FPS setting
+// applyFPS changes the FPS setting dynamically without full restart
 func (m model) applyFPS(index int) (tea.Model, tea.Cmd) {
 	if index < 0 || index >= len(FPSPresets) {
 		return m, nil
@@ -868,68 +901,15 @@ func (m model) applyFPS(index int) (tea.Model, tea.Cmd) {
 	m.selectedFPS = index
 	m.fpsCursor = index
 
-	// If we're sharing and FPS changed, need full restart (capture + streamer)
-	if m.sharing && oldFPS != m.selectedFPS {
-		return m.restartWithFPS()
-	}
-
-	return m, nil
-}
-
-// restartWithFPS restarts capture and streaming with new FPS (requires full restart)
-func (m model) restartWithFPS() (tea.Model, tea.Cmd) {
-	if !m.sharing {
-		return m, nil
-	}
-
-	// Remember all capture settings including selection
-	savedIsFullscreen := m.isFullscreen
-	savedWindowID := m.activeWindowID
-	savedSelectedSource := m.selectedSource
-
-	// Stop capture and streamer (preserve state for restart)
-	m.stopCapture(true)
-
-	// Restore selectedSource (stopCapture doesn't touch it with preserveState=true, but be explicit)
-	m.selectedSource = savedSelectedSource
-
-	// Restart capture directly with saved settings
-	return m.restartCaptureWithSettings(savedIsFullscreen, savedWindowID)
-}
-
-// restartCaptureWithSettings restarts capture with specific settings (used by codec/fps change)
-func (m model) restartCaptureWithSettings(isFullscreen bool, windowID uint32) (tea.Model, tea.Cmd) {
-	m.isFullscreen = isFullscreen
-	m.activeWindowID = windowID
-	m.lastError = ""
-
-	// Initialize server if not already running
-	if err := m.initServer(); err != nil {
-		m.lastError = err.Error()
-		return m, nil
-	}
-
-	m.starting = true
-
-	// Look up full window info for stats display
-	var windowInfo *WindowInfo
-	if !isFullscreen && windowID != 0 {
-		for _, source := range m.sources {
-			if !source.IsFullscreen && source.Window != nil && source.Window.ID == windowID {
-				windowInfo = source.Window
-				break
-			}
+	// If we're sharing and FPS changed, update dynamically
+	if m.sharing && m.streamer != nil && oldFPS != m.selectedFPS {
+		fps := m.getSelectedFPS()
+		if err := m.streamer.SetFPS(fps); err != nil {
+			m.lastError = fmt.Sprintf("FPS change failed: %v", err)
 		}
 	}
 
-	// Capture config values for the async command
-	fps := m.getSelectedFPS()
-	bitrate := QualityPresets[m.selectedQuality].Bitrate
-	codecType := m.getSelectedCodecType()
-	peerManager := m.peerManager
-
-	// Return immediately with a command that does the heavy work async
-	return m, startCaptureAsync(peerManager, isFullscreen, windowInfo, fps, bitrate, codecType)
+	return m, nil
 }
 
 // applyBitrateChange applies a new bitrate to the running streamer without restart
@@ -1132,59 +1112,36 @@ func (m *model) initRemoteSignaling() error {
 }
 
 func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
-	if index >= len(m.sources) {
+	if m.starting || m.sharing {
 		return m, nil
 	}
 
-	// If already starting, ignore
-	if m.starting {
+	if index < 0 || index >= len(m.sources) {
 		return m, nil
 	}
-
-	// Stop any existing capture synchronously (this is fast)
-	// Full stop since we're switching to a new source
-	m.stopCapture(false)
 
 	source := m.sources[index]
 	m.selectedSource = index
-	m.isFullscreen = source.IsFullscreen
 	m.lastError = ""
 
-	// Store window ID for restarts
-	var windowID uint32
-	if !source.IsFullscreen && source.Window != nil {
-		windowID = source.Window.ID
-		m.activeWindowID = windowID
-	} else {
-		windowID = 0
+	// Set up selection state for unified path
+	if source.IsFullscreen {
+		// Fullscreen selected - clear window selection
+		m.fullscreenSelected = true
+		m.selectedWindows = make(map[uint32]bool)
+		m.isFullscreen = true
 		m.activeWindowID = 0
+	} else if source.Window != nil {
+		// Single window selected - add to selection
+		m.fullscreenSelected = false
+		m.selectedWindows = make(map[uint32]bool)
+		m.selectedWindows[source.Window.ID] = true
+		m.isFullscreen = false
+		m.activeWindowID = source.Window.ID
 	}
 
-	// Initialize server synchronously (needed for peerManager, and sets shareURL for display)
-	// This is fast for local mode, may block briefly for remote WebSocket connection
-	if err := m.initServer(); err != nil {
-		m.lastError = err.Error()
-		return m, nil
-	}
-
-	// Now set starting state (after server is ready so URL shows)
-	m.starting = true
-
-	// Capture config values for the async command
-	isFullscreen := source.IsFullscreen
-	fps := m.getSelectedFPS()
-	bitrate := QualityPresets[m.selectedQuality].Bitrate
-	codecType := m.getSelectedCodecType()
-	peerManager := m.peerManager // Capture pointer for async use
-
-	// Get full window info for stats display
-	var windowInfo *WindowInfo
-	if !isFullscreen && source.Window != nil {
-		windowInfo = source.Window
-	}
-
-	// Return immediately with a command that does the heavy work async
-	return m, startCaptureAsync(peerManager, isFullscreen, windowInfo, fps, bitrate, codecType)
+	// Use unified multi-window path
+	return m.startMultiWindowSharing()
 }
 
 // startMultiWindowSharing starts sharing selected windows or fullscreen display
@@ -1535,40 +1492,6 @@ func startMultiCaptureAsync(pm *PeerManager, windows []WindowInfo, fullscreen bo
 		return captureStartedMsg{
 			streamer:    ms,
 			peerManager: pm,
-		}
-	}
-}
-
-// startCaptureAsync returns a command that starts capture in a goroutine
-// Uses unified Streamer with a single window (N=1)
-func startCaptureAsync(peerManager *PeerManager, isFullscreen bool, windowInfo *WindowInfo, fps, bitrate int, codecType CodecType) tea.Cmd {
-	return func() tea.Msg {
-		// Small delay to let ScreenCaptureKit settle after any previous stop
-		time.Sleep(100 * time.Millisecond)
-
-		// Fullscreen not supported in unified mode - use window selection
-		if isFullscreen || windowInfo == nil {
-			return captureErrorMsg{err: "Full screen capture not supported. Please select individual windows instead."}
-		}
-
-		// Create streamer with single stream (no adaptive bitrate, no quality mode for legacy single-window)
-		ms := NewStreamer(peerManager, fps, bitrate, bitrate/2, false, false)
-
-		// Single window capture - pass full WindowInfo for stats display
-		_, err := ms.AddWindow(*windowInfo)
-		if err != nil {
-			return captureErrorMsg{err: fmt.Sprintf("Failed to add window: %v", err)}
-		}
-
-		// Start streaming
-		if err := ms.Start(); err != nil {
-			ms.Stop()
-			return captureErrorMsg{err: fmt.Sprintf("Failed to start streamer: %v", err)}
-		}
-
-		return captureStartedMsg{
-			streamer:    ms,
-			peerManager: peerManager,
 		}
 	}
 }

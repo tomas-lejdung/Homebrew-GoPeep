@@ -1,10 +1,60 @@
-2026/01/08 01:21:21 === GoPeep started at 2026-01-08T01:21:21+01:00 ===
-2026/01/08 01:21:27 Focus detection loop started with 1 pipelines:
-2026/01/08 01:21:27   - Track video0: windowID=317592, name=Scratch
-2026/01/08 01:21:27 Topmost captured window changed to: 317592 (was 0)
-2026/01/08 01:21:27 Focus set to track=video0, windowID=317592, name=Scratch
-2026/01/08 01:21:27 Calling NotifyFocusChange for track: video0
-2026/01/08 01:21:27 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 01:21:27 Remote focus change callback triggered for track: video0
-2026/01/08 01:21:27 Sent focus-change message to signal server
-2026/01/08 01:21:28 Focus detection loop stopped
+2026/01/08 01:40:28 === GoPeep started at 2026-01-08T01:40:28+01:00 ===
+2026/01/08 01:40:32 Signal server starting on :8080
+2026/01/08 01:40:33 Focus detection loop started with 1 pipelines:
+2026/01/08 01:40:33   - Track video0: windowID=318244, name=OpenCode
+2026/01/08 01:40:33 Topmost captured window changed to: 318244 (was 0)
+2026/01/08 01:40:33 Focus set to track=video0, windowID=318244, name=OpenCode
+2026/01/08 01:40:33 Calling NotifyFocusChange for track: video0
+2026/01/08 01:40:33 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 01:40:33 Focus change callback triggered for track: video0
+2026/01/08 01:40:34 Viewer joined room GOLD-DEER-67 (total viewers: 1)
+2026/01/08 01:40:34 Peer viewer-1 connection state: connecting
+2026/01/08 01:40:35 Peer viewer-1 connection state: connected
+2026/01/08 01:40:43 Track video0 FPS changed from 30 to 60
+2026/01/08 01:40:43 Streamer FPS updated to 60
+2026/01/08 01:40:43 Pipeline ticker updated to 60 FPS
+2026/01/08 01:40:48 Track video0 FPS changed from 60 to 15
+2026/01/08 01:40:48 Streamer FPS updated to 15
+2026/01/08 01:40:48 Pipeline ticker updated to 15 FPS
+2026/01/08 01:40:51 TUI: Adding window dynamically: 317592 (Scratch)
+2026/01/08 01:40:52 AddWindowDynamic: Adding track video1 to all peers
+2026/01/08 01:40:52 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/08 01:40:52 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/08 01:40:52 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/08 01:40:52 AddWindowDynamic: Notifying about new stream video1
+2026/01/08 01:40:52 Broadcasting stream-added: video1
+2026/01/08 01:40:52 AddWindowDynamic: Triggering renegotiation for track video1
+2026/01/08 01:40:52 Added window dynamically: video1 (windowID=317592)
+2026/01/08 01:40:52 Renegotiating with 1 peers
+2026/01/08 01:40:52 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 01:40:52 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 01:40:52 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 01:40:52 Renegotiation: sending offer to peer viewer-1 (SDP length: 9326)
+2026/01/08 01:40:52 Renegotiation: sending offer to peer viewer-1
+2026/01/08 01:40:52 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 01:40:52 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 01:40:56 Topmost captured window changed to: 317592 (was 318244)
+2026/01/08 01:40:56 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/08 01:40:56 Calling NotifyFocusChange for track: video1
+2026/01/08 01:40:56 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 01:40:56 Focus change callback triggered for track: video1
+2026/01/08 01:40:59 Track video0 FPS changed from 15 to 60
+2026/01/08 01:40:59 Pipeline ticker updated to 60 FPS
+2026/01/08 01:41:00 Track video1 FPS changed from 15 to 60
+2026/01/08 01:41:00 Streamer FPS updated to 60
+2026/01/08 01:41:00 Pipeline ticker updated to 60 FPS
+2026/01/08 01:41:08 Track video0 bitrate set to 25000 kbps
+2026/01/08 01:41:08 Track video1 bitrate set to 50000 kbps
+2026/01/08 01:41:08 Streamer bitrate updated: focus=50000 kbps, bg=25000 kbps
+2026/01/08 01:41:13 Focus detection loop stopped
+2026/01/08 01:41:13 Peer viewer-1 connection state: closed
+2026/01/08 01:41:13 Signal server starting on :8080
+2026/01/08 01:41:16 Focus detection loop started with 2 pipelines:
+2026/01/08 01:41:16   - Track video0: windowID=318244, name=OpenCode
+2026/01/08 01:41:16   - Track video1: windowID=317592, name=Scratch
+2026/01/08 01:41:16 Topmost captured window changed to: 317592 (was 0)
+2026/01/08 01:41:16 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/08 01:41:16 Calling NotifyFocusChange for track: video1
+2026/01/08 01:41:16 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 01:41:16 Focus change callback triggered for track: video1
+2026/01/08 01:41:22 Focus detection loop stopped
