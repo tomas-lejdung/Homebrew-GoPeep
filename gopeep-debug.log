@@ -1,162 +1,72 @@
-2026/01/08 16:07:39 === GoPeep started at 2026-01-08T16:07:39+01:00 ===
-2026/01/08 16:07:45 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
-2026/01/08 16:07:45 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/08 16:07:45 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/08 16:07:45 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/08 16:07:45 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/08 16:07:45 InitializeTrackSlots: All 4 track slots ready
-2026/01/08 16:07:45 Signal server starting on :8080
-2026/01/08 16:07:45 ActivateSlot: Activated video0 for window 325008 (Messages - Alex Henningsson)
-2026/01/08 16:07:46 ActivateSlot: Activated video1 for window 318244 (OpenCode - OpenCode)
-2026/01/08 16:07:46 ActivateSlot: Activated video2 for window 317592 (Heynote - Scratch)
-2026/01/08 16:07:46 Viewer joined room GREEN-DEER-15 (total viewers: 1)
-2026/01/08 16:07:46 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/08 16:07:47 Peer viewer-1 connection state: connecting
-2026/01/08 16:07:47 Broadcasting sharer-started to room GREEN-DEER-15
-2026/01/08 16:07:47 Focus detection loop started with 3 pipelines:
-2026/01/08 16:07:47   - Track video0: windowID=325008, name=Alex Henningsson
-2026/01/08 16:07:47   - Track video1: windowID=318244, name=OpenCode
-2026/01/08 16:07:47   - Track video2: windowID=317592, name=Scratch
-2026/01/08 16:07:47 Renegotiating with 1 peers
-2026/01/08 16:07:47 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/08 16:07:47 Renegotiation: peer viewer-1 connection state: connecting
-2026/01/08 16:07:47 Renegotiation: peer viewer-1 not connected, skipping
-2026/01/08 16:07:47 Viewer joined room GREEN-DEER-15 (total viewers: 1)
-2026/01/08 16:07:47 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/08 16:07:47 Renegotiation: received answer from peer viewer-2, setting remote description
-2026/01/08 16:07:47 Renegotiation: complete for peer viewer-2, signaling state: stable, connection state: new
-2026/01/08 16:07:47 Peer viewer-2 connection state: connecting
-2026/01/08 16:07:47 sendLoop: Writing frame 1 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:07:47 sendLoop: Writing frame 1 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:07:47 sendLoop: Writing frame 1 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:07:47 Topmost captured window changed to: 318244 (was 0)
-2026/01/08 16:07:47 Focus set to track=video1, windowID=318244, name=OpenCode
-2026/01/08 16:07:47 Calling NotifyFocusChange for track: video1
-2026/01/08 16:07:47 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 16:07:47 Focus change callback triggered for track: video1
-2026/01/08 16:07:47 Size change callback triggered for track video0: 1281x862
-2026/01/08 16:07:48 Peer viewer-1 connection state: failed
-2026/01/08 16:07:48 Peer viewer-1 connection state: closed
-2026/01/08 16:07:51 sendLoop: Writing frame 101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:07:51 sendLoop: Writing frame 101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:07:51 sendLoop: Writing frame 101 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:07:53 Viewer joined room GREEN-DEER-15 (total viewers: 1)
-2026/01/08 16:07:53 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/08 16:07:53 Peer viewer-3 connection state: connecting
-2026/01/08 16:07:54 Peer viewer-3 connection state: connected
-2026/01/08 16:07:54 sendLoop: Writing frame 201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:07:54 sendLoop: Writing frame 201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:07:54 sendLoop: Writing frame 201 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:07:58 sendLoop: Writing frame 301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:07:58 sendLoop: Writing frame 301 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:07:58 sendLoop: Writing frame 301 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:07:58 Peer viewer-2 connection state: disconnected
-2026/01/08 16:07:58 Peer viewer-2 connection state: closed
-2026/01/08 16:08:01 sendLoop: Writing frame 401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:01 sendLoop: Writing frame 401 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:01 sendLoop: Writing frame 401 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:04 sendLoop: Writing frame 501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:05 sendLoop: Writing frame 501 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:05 sendLoop: Writing frame 501 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:08 sendLoop: Writing frame 601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:08 sendLoop: Writing frame 601 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:08 sendLoop: Writing frame 601 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:11 sendLoop: Writing frame 701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:11 sendLoop: Writing frame 701 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:12 sendLoop: Writing frame 701 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:15 sendLoop: Writing frame 801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:15 sendLoop: Writing frame 801 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:15 sendLoop: Writing frame 801 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:18 sendLoop: Writing frame 901 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:18 sendLoop: Writing frame 901 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:18 sendLoop: Writing frame 901 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:22 sendLoop: Writing frame 1001 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:22 sendLoop: Writing frame 1001 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:22 sendLoop: Writing frame 1001 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:25 sendLoop: Writing frame 1101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:25 sendLoop: Writing frame 1101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:25 sendLoop: Writing frame 1101 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:29 sendLoop: Writing frame 1201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:29 sendLoop: Writing frame 1201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:29 sendLoop: Writing frame 1201 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:33 sendLoop: Writing frame 1301 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:33 sendLoop: Writing frame 1301 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:33 sendLoop: Writing frame 1301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:36 sendLoop: Writing frame 1401 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:36 sendLoop: Writing frame 1401 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:36 sendLoop: Writing frame 1401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:39 Viewer joined room GREEN-DEER-15 (total viewers: 2)
-2026/01/08 16:08:39 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/08 16:08:39 Peer viewer-4 connection state: connecting
-2026/01/08 16:08:40 sendLoop: Writing frame 1501 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:40 sendLoop: Writing frame 1501 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:40 sendLoop: Writing frame 1501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:40 Peer viewer-4 connection state: connected
-2026/01/08 16:08:43 sendLoop: Writing frame 1601 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:43 sendLoop: Writing frame 1601 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:43 sendLoop: Writing frame 1601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:47 sendLoop: Writing frame 1701 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:47 sendLoop: Writing frame 1701 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:47 sendLoop: Writing frame 1701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:50 sendLoop: Writing frame 1801 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:50 sendLoop: Writing frame 1801 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:50 sendLoop: Writing frame 1801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:54 sendLoop: Writing frame 1901 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:54 sendLoop: Writing frame 1901 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:54 sendLoop: Writing frame 1901 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:08:57 sendLoop: Writing frame 2001 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:08:57 sendLoop: Writing frame 2001 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:08:58 sendLoop: Writing frame 2001 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:01 sendLoop: Writing frame 2101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:01 sendLoop: Writing frame 2101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:01 sendLoop: Writing frame 2101 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:04 sendLoop: Writing frame 2201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:05 sendLoop: Writing frame 2201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:05 sendLoop: Writing frame 2201 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:08 sendLoop: Writing frame 2301 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:08 sendLoop: Writing frame 2301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:08 sendLoop: Writing frame 2301 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:12 sendLoop: Writing frame 2401 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:12 sendLoop: Writing frame 2401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:12 sendLoop: Writing frame 2401 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:16 sendLoop: Writing frame 2501 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:16 sendLoop: Writing frame 2501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:16 sendLoop: Writing frame 2501 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:19 sendLoop: Writing frame 2601 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:19 sendLoop: Writing frame 2601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:20 sendLoop: Writing frame 2601 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:23 sendLoop: Writing frame 2701 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:23 sendLoop: Writing frame 2701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:23 sendLoop: Writing frame 2701 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:26 Peer viewer-4 connection state: disconnected
-2026/01/08 16:09:26 Peer viewer-4 connection state: closed
-2026/01/08 16:09:26 sendLoop: Writing frame 2801 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:26 sendLoop: Writing frame 2801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:27 sendLoop: Writing frame 2801 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:30 sendLoop: Writing frame 2901 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:30 sendLoop: Writing frame 2901 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:30 sendLoop: Writing frame 2901 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:33 sendLoop: Writing frame 3001 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:33 sendLoop: Writing frame 3001 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:34 sendLoop: Writing frame 3001 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:36 Topmost captured window changed to: 317592 (was 318244)
-2026/01/08 16:09:36 Focus set to track=video2, windowID=317592, name=Scratch
-2026/01/08 16:09:36 Calling NotifyFocusChange for track: video2
-2026/01/08 16:09:36 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/08 16:09:36 Focus change callback triggered for track: video2
-2026/01/08 16:09:37 sendLoop: Writing frame 3101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:37 Topmost captured window changed to: 318244 (was 317592)
-2026/01/08 16:09:37 Focus set to track=video1, windowID=318244, name=OpenCode
-2026/01/08 16:09:37 Calling NotifyFocusChange for track: video1
-2026/01/08 16:09:37 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 16:09:37 Focus change callback triggered for track: video1
-2026/01/08 16:09:37 sendLoop: Writing frame 3101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:37 sendLoop: Writing frame 3101 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:40 sendLoop: Writing frame 3201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
-2026/01/08 16:09:40 sendLoop: Writing frame 3201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
-2026/01/08 16:09:41 sendLoop: Writing frame 3201 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 16:09:41 Focus detection loop stopped
-2026/01/08 16:09:41 Broadcasting stream-removed: video0
-2026/01/08 16:09:41 Broadcasting stream-removed: video1
-2026/01/08 16:09:41 Broadcasting stream-removed: video2
-2026/01/08 16:09:41 Peer viewer-3 connection state: closed
+2026/01/08 16:26:27 === GoPeep started at 2026-01-08T16:26:27+01:00 ===
+2026/01/08 16:26:34 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/08 16:26:34 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 16:26:34 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 16:26:34 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 16:26:34 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 16:26:34 InitializeTrackSlots: All 4 track slots ready
+2026/01/08 16:26:34 Signal server starting on :8080
+2026/01/08 16:26:34 ActivateSlot: Activated video0 for window 325183 (Finder - gopeep)
+2026/01/08 16:26:34 ActivateSlot: Activated video1 for window 325008 (Messages - Alex Henningsson)
+2026/01/08 16:26:35 ActivateSlot: Activated video2 for window 318244 (OpenCode - OpenCode)
+2026/01/08 16:26:36 Broadcasting sharer-started to room PLAIN-DEER-56
+2026/01/08 16:26:36 Focus detection loop started with 3 pipelines:
+2026/01/08 16:26:36   - Track video0: windowID=325183, name=gopeep
+2026/01/08 16:26:36   - Track video1: windowID=325008, name=Alex Henningsson
+2026/01/08 16:26:36   - Track video2: windowID=318244, name=OpenCode
+2026/01/08 16:26:36 Renegotiating with 0 peers
+2026/01/08 16:26:36 Topmost captured window changed to: 318244 (was 0)
+2026/01/08 16:26:36 Focus set to track=video2, windowID=318244, name=OpenCode
+2026/01/08 16:26:36 Calling NotifyFocusChange for track: video2
+2026/01/08 16:26:36 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/08 16:26:36 Focus change callback triggered for track: video2
+2026/01/08 16:26:36 sendLoop: Writing frame 1 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:26:36 sendLoop: Writing frame 1 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:26:36 sendLoop: Writing frame 1 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:26:36 Size change callback triggered for track video0: 1051x637
+2026/01/08 16:26:43 sendLoop: Writing frame 101 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:26:43 sendLoop: Writing frame 101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:26:43 sendLoop: Writing frame 101 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:26:53 sendLoop: Writing frame 201 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:26:53 sendLoop: Writing frame 201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:26:53 sendLoop: Writing frame 201 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:26:58 Viewer joined room PLAIN-DEER-56 (total viewers: 1)
+2026/01/08 16:26:58 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 16:26:58 Peer viewer-1 connection state: connecting
+2026/01/08 16:26:59 Peer viewer-1 connection state: connected
+2026/01/08 16:27:02 sendLoop: Writing frame 301 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:27:03 sendLoop: Writing frame 301 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:27:03 sendLoop: Writing frame 301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:27:13 sendLoop: Writing frame 401 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:27:13 sendLoop: Writing frame 401 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:27:13 sendLoop: Writing frame 401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:27:22 sendLoop: Writing frame 501 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:27:22 sendLoop: Writing frame 501 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:27:22 sendLoop: Writing frame 501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:27:26 sendLoop: Writing frame 601 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:27:26 sendLoop: Writing frame 601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:27:26 sendLoop: Writing frame 601 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:27:27 Topmost captured window changed to: 325183 (was 318244)
+2026/01/08 16:27:27 Focus set to track=video0, windowID=325183, name=gopeep
+2026/01/08 16:27:27 Calling NotifyFocusChange for track: video0
+2026/01/08 16:27:27 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 16:27:27 Focus change callback triggered for track: video0
+2026/01/08 16:27:28 Topmost captured window changed to: 325008 (was 325183)
+2026/01/08 16:27:28 Focus set to track=video1, windowID=325008, name=Alex Henningsson
+2026/01/08 16:27:28 Calling NotifyFocusChange for track: video1
+2026/01/08 16:27:28 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 16:27:28 Focus change callback triggered for track: video1
+2026/01/08 16:27:30 sendLoop: Writing frame 701 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:27:30 sendLoop: Writing frame 701 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:27:30 sendLoop: Writing frame 701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:27:34 sendLoop: Writing frame 801 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:27:34 sendLoop: Writing frame 801 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:27:34 sendLoop: Writing frame 801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:27:39 sendLoop: Writing frame 901 to track video2 (windowID=318244, streamID=gopeep-stream-2)
+2026/01/08 16:27:39 sendLoop: Writing frame 901 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 16:27:39 sendLoop: Writing frame 901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/08 16:27:40 Focus detection loop stopped
+2026/01/08 16:27:40 Broadcasting stream-removed: video0
+2026/01/08 16:27:40 Broadcasting stream-removed: video1
+2026/01/08 16:27:40 Broadcasting stream-removed: video2
+2026/01/08 16:27:40 Peer viewer-1 connection state: closed

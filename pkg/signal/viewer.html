@@ -651,6 +651,19 @@
       display: flex;
     }
     
+    .follow-toggle {
+      display: none;
+      align-items: center;
+      gap: 6px;
+      padding: 0 8px;
+      font-size: 11px;
+      color: var(--text-dim);
+    }
+    
+    .follow-toggle.visible {
+      display: flex;
+    }
+    
     .toggle-switch {
       position: relative;
       width: 36px;
@@ -772,7 +785,17 @@
       
       #control-bar {
         padding: 6px 10px;
-        gap: 2px;
+        gap: 4px;
+        flex-wrap: wrap;
+        justify-content: center;
+        max-width: calc(100vw - 24px);
+        left: 12px;
+        right: 12px;
+        transform: translateY(100px);
+      }
+      
+      #control-bar.visible {
+        transform: translateY(0);
       }
       
       .control-btn {
@@ -790,8 +813,10 @@
         font-size: 10px;
       }
       
-      .proportional-toggle {
+      .proportional-toggle,
+      .follow-toggle {
         font-size: 10px;
+        padding: 0 6px;
       }
       
       .toggle-switch {
@@ -806,6 +831,11 @@
       
       .toggle-switch.active::after {
         transform: translateX(14px);
+      }
+      
+      .control-divider {
+        height: 24px;
+        margin: 0 4px;
       }
       
       .minimap {
@@ -824,6 +854,21 @@
         
         #video-grid.grid-3 .grid-cell:first-child {
           grid-row: span 1;
+        }
+        
+        /* Hide toggle labels on very small screens */
+        .proportional-toggle span,
+        .follow-toggle span {
+          display: none;
+        }
+        
+        .proportional-toggle,
+        .follow-toggle {
+          padding: 0 4px;
+        }
+        
+        .scale-btn {
+          padding: 6px 8px;
         }
       }
     }
@@ -1635,6 +1680,11 @@
       <span>Auto-size</span>
       <div class="toggle-switch active" id="proportional-switch" title="Toggle proportional sizing (E)"></div>
     </div>
+    <!-- Follow toggle (visible in multi-stream mode) -->
+    <div class="follow-toggle" id="follow-toggle">
+      <span>Follow</span>
+      <div class="toggle-switch active" id="follow-switch" title="Auto-follow sharer's focused window"></div>
+    </div>
     <div class="control-divider" id="layout-divider" style="display: none;"></div>
     <div class="scale-selector">
       <button class="scale-btn active" data-scale="fit">Fit</button>
@@ -1726,6 +1776,8 @@
     const layoutSelector = document.getElementById('layout-selector');
     const proportionalToggle = document.getElementById('proportional-toggle');
     const proportionalSwitch = document.getElementById('proportional-switch');
+    const followToggle = document.getElementById('follow-toggle');
+    const followSwitch = document.getElementById('follow-switch');
     const layoutDivider = document.getElementById('layout-divider');
     const panZoomContainer = document.getElementById('pan-zoom-container');
     const panZoomContent = document.getElementById('pan-zoom-content');
@@ -1760,6 +1812,7 @@
     // Layout state
     let currentLayout = 'focus'; // 'focus', 'grid', or 'row'
     let proportionalSizing = true; // true = auto-size based on resolution, false = equal size
+    let followMode = true; // true = auto-follow sharer's focused window
     let gridCells = {}; // index -> { cell, video, label }
     let rowCells = {}; // index -> { cell, video, label } for row mode
     let selectedGridIndex = null; // Currently selected stream in grid/row mode
@@ -2052,9 +2105,18 @@
         sharerFocusedIndex = parseInt(match[1], 10);
         console.log('Set sharerFocusedIndex to:', sharerFocusedIndex);
         
-        // Auto-switch main video to sharer's focused window
-        if (sharerFocusedIndex !== null && streams[sharerFocusedIndex]) {
-          switchToStream(sharerFocusedIndex);
+        // Only auto-follow if follow mode is enabled
+        if (followMode && sharerFocusedIndex !== null && streams[sharerFocusedIndex]) {
+          if (currentLayout === 'row') {
+            // In ROW mode, scroll the focused window into view
+            const cell = rowCells[sharerFocusedIndex]?.cell;
+            if (cell) {
+              cell.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+          } else {
+            // In focus/grid mode, switch to the focused stream
+            switchToStream(sharerFocusedIndex);
+          }
         }
       }
       
@@ -3043,6 +3105,12 @@
       } catch (e) {}
     }
     
+    function toggleFollowMode() {
+      followMode = !followMode;
+      followSwitch.classList.toggle('active', followMode);
+      console.log('Follow mode:', followMode ? 'ON' : 'OFF');
+    }
+    
     function calculateProportionalSizes() {
       const activeStreams = streamOrder.map(idx => {
         const s = streams[idx];
@@ -3231,6 +3299,9 @@
       layoutSelector.classList.toggle('visible', showSelector);
       layoutDivider.style.display = (showSelector && currentLayout === 'grid') ? '' : 'none';
       proportionalToggle.classList.toggle('visible', showSelector && currentLayout === 'grid');
+      
+      // Show follow toggle when there are multiple streams
+      followToggle.classList.toggle('visible', showSelector);
       
       // If we only have 1 stream, force focus layout
       if (streamOrder.length <= 1 && (currentLayout === 'grid' || currentLayout === 'row')) {
@@ -3658,6 +3729,9 @@
     
     // Proportional toggle
     proportionalSwitch.addEventListener('click', toggleProportionalSizing);
+    
+    // Follow mode toggle
+    followSwitch.addEventListener('click', toggleFollowMode);
     
     // ==========================================
     // Keyboard Shortcuts (updated)
