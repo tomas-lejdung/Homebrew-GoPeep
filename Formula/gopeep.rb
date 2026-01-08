@@ -2,12 +2,13 @@ class Gopeep < Formula
   desc "P2P screen sharing for pair programming using WebRTC"
   homepage "https://github.com/tomas-lejdung/Homebrew-GoPeep"
   url "https://github.com/tomas-lejdung/Homebrew-GoPeep.git", branch: "main"
-  version "1.1.0"
+  version "1.2.0"
   license "MIT"
 
   depends_on "go" => :build
   depends_on "pkg-config" => :build
   depends_on "libvpx"
+  depends_on "x264"
   depends_on :macos
 
   def install
