@@ -1,155 +1,293 @@
-2026/01/08 09:50:41 === GoPeep started at 2026-01-08T09:50:41+01:00 ===
-2026/01/08 09:50:43 Signal server starting on :8080
-2026/01/08 09:50:45 Focus detection loop started with 2 pipelines:
-2026/01/08 09:50:45   - Track video0: windowID=318244, name=OpenCode
-2026/01/08 09:50:45   - Track video1: windowID=317592, name=Scratch
-2026/01/08 09:50:45 Topmost captured window changed to: 317592 (was 0)
-2026/01/08 09:50:45 Focus set to track=video1, windowID=317592, name=Scratch
-2026/01/08 09:50:45 Calling NotifyFocusChange for track: video1
-2026/01/08 09:50:45 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 09:50:45 Focus change callback triggered for track: video1
-2026/01/08 09:50:45 Viewer joined room FAIR-SHARK-31 (total viewers: 1)
-2026/01/08 09:50:45 Peer viewer-1 connection state: connecting
-2026/01/08 09:50:46 Peer viewer-1 connection state: connected
-2026/01/08 09:50:51 SetCodec: Changing codec from vp8 to vp9
-2026/01/08 09:50:51 Removed track video1 from peer viewer-1
-2026/01/08 09:50:51 Removed track video0 from peer viewer-1
-2026/01/08 09:50:51 AddTrackToAllPeers: Adding track video0 to 1 peer connections
-2026/01/08 09:50:51 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
-2026/01/08 09:50:51 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
-2026/01/08 09:50:51 AddTrackToAllPeers: Adding track video1 to 1 peer connections
-2026/01/08 09:50:51 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
-2026/01/08 09:50:51 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
-2026/01/08 09:50:51 SetCodec: Triggering renegotiation for 2 pipelines
-2026/01/08 09:50:51 SetCodec: Successfully changed codec to vp9 with 2 pipelines
-2026/01/08 09:50:51 Renegotiating with 1 peers
-2026/01/08 09:50:51 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/08 09:50:51 Renegotiation: peer viewer-1 connection state: connected
-2026/01/08 09:50:51 Renegotiation: ICE gathering complete for viewer-1
-2026/01/08 09:50:51 Renegotiation: sending offer to peer viewer-1 (SDP length: 16488)
-2026/01/08 09:50:51 Renegotiation: sending offer to peer viewer-1
-2026/01/08 09:50:51 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/08 09:50:51 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/08 09:50:58 Topmost captured window changed to: 318244 (was 317592)
-2026/01/08 09:50:58 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/08 09:50:58 Calling NotifyFocusChange for track: video0
-2026/01/08 09:50:58 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 09:50:58 Focus change callback triggered for track: video0
-2026/01/08 09:51:00 Topmost captured window changed to: 317592 (was 318244)
-2026/01/08 09:51:00 Focus set to track=video1, windowID=317592, name=Scratch
-2026/01/08 09:51:00 Calling NotifyFocusChange for track: video1
-2026/01/08 09:51:00 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 09:51:00 Focus change callback triggered for track: video1
-2026/01/08 09:51:04 SetCodec: Changing codec from vp9 to h264
-2026/01/08 09:51:04 Removed track video0 from peer viewer-1
-2026/01/08 09:51:04 Removed track video1 from peer viewer-1
-2026/01/08 09:51:04 AddTrackToAllPeers: Adding track video0 to 1 peer connections
-2026/01/08 09:51:04 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
-2026/01/08 09:51:04 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
-2026/01/08 09:51:04 AddTrackToAllPeers: Adding track video1 to 1 peer connections
-2026/01/08 09:51:04 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
-2026/01/08 09:51:04 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
-2026/01/08 09:51:04 SetCodec: Triggering renegotiation for 2 pipelines
-2026/01/08 09:51:04 SetCodec: Successfully changed codec to h264 with 2 pipelines
-2026/01/08 09:51:04 Renegotiating with 1 peers
-2026/01/08 09:51:04 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/08 09:51:04 Renegotiation: peer viewer-1 connection state: connected
-2026/01/08 09:51:04 Renegotiation: ICE gathering complete for viewer-1
-2026/01/08 09:51:04 Renegotiation: sending offer to peer viewer-1 (SDP length: 16488)
-2026/01/08 09:51:04 Renegotiation: sending offer to peer viewer-1
-2026/01/08 09:51:04 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/08 09:51:04 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/08 09:51:19 Track video0 bitrate set to 25000 kbps
-2026/01/08 09:51:19 Track video1 bitrate set to 50000 kbps
-2026/01/08 09:51:19 Streamer bitrate updated: focus=50000 kbps, bg=25000 kbps
-2026/01/08 09:51:25 Track video0 FPS changed from 30 to 60
-2026/01/08 09:51:25 Pipeline ticker updated to 60 FPS
-2026/01/08 09:51:25 Track video1 FPS changed from 30 to 60
-2026/01/08 09:51:25 Streamer FPS updated to 60
-2026/01/08 09:51:25 Pipeline ticker updated to 60 FPS
-2026/01/08 09:51:34 SetCodec: Changing codec from h264 to vp8
-2026/01/08 09:51:34 Removed track video0 from peer viewer-1
-2026/01/08 09:51:34 Removed track video1 from peer viewer-1
-2026/01/08 09:51:34 AddTrackToAllPeers: Adding track video0 to 1 peer connections
-2026/01/08 09:51:34 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
-2026/01/08 09:51:34 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
-2026/01/08 09:51:34 AddTrackToAllPeers: Adding track video1 to 1 peer connections
-2026/01/08 09:51:34 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
-2026/01/08 09:51:34 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
-2026/01/08 09:51:34 SetCodec: Triggering renegotiation for 2 pipelines
-2026/01/08 09:51:34 SetCodec: Successfully changed codec to vp8 with 2 pipelines
-2026/01/08 09:51:34 Renegotiating with 1 peers
-2026/01/08 09:51:34 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/08 09:51:34 Renegotiation: peer viewer-1 connection state: connected
-2026/01/08 09:51:34 Renegotiation: ICE gathering complete for viewer-1
-2026/01/08 09:51:34 Renegotiation: sending offer to peer viewer-1 (SDP length: 16484)
-2026/01/08 09:51:34 Renegotiation: sending offer to peer viewer-1
-2026/01/08 09:51:34 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/08 09:51:34 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/08 09:51:52 SetCodec: Changing codec from vp8 to vp9
-2026/01/08 09:51:52 Removed track video0 from peer viewer-1
-2026/01/08 09:51:52 Removed track video1 from peer viewer-1
-2026/01/08 09:51:52 AddTrackToAllPeers: Adding track video0 to 1 peer connections
-2026/01/08 09:51:52 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
-2026/01/08 09:51:52 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
-2026/01/08 09:51:52 AddTrackToAllPeers: Adding track video1 to 1 peer connections
-2026/01/08 09:51:52 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
-2026/01/08 09:51:52 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
-2026/01/08 09:51:52 SetCodec: Triggering renegotiation for 2 pipelines
-2026/01/08 09:51:52 SetCodec: Successfully changed codec to vp9 with 2 pipelines
-2026/01/08 09:51:52 Renegotiating with 1 peers
-2026/01/08 09:51:52 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/08 09:51:52 Renegotiation: peer viewer-1 connection state: connected
-2026/01/08 09:51:52 Renegotiation: ICE gathering complete for viewer-1
-2026/01/08 09:51:52 Renegotiation: sending offer to peer viewer-1 (SDP length: 16484)
-2026/01/08 09:51:52 Renegotiation: sending offer to peer viewer-1
-2026/01/08 09:51:52 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/08 09:51:52 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/08 09:51:56 Topmost captured window changed to: 318244 (was 317592)
-2026/01/08 09:51:56 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/08 09:51:56 Calling NotifyFocusChange for track: video0
-2026/01/08 09:51:56 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 09:51:56 Focus change callback triggered for track: video0
-2026/01/08 09:52:13 Topmost captured window changed to: 317592 (was 318244)
-2026/01/08 09:52:13 Focus set to track=video1, windowID=317592, name=Scratch
-2026/01/08 09:52:13 Calling NotifyFocusChange for track: video1
-2026/01/08 09:52:13 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 09:52:13 Focus change callback triggered for track: video1
-2026/01/08 09:52:19 Topmost captured window changed to: 318244 (was 317592)
-2026/01/08 09:52:19 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/08 09:52:19 Calling NotifyFocusChange for track: video0
-2026/01/08 09:52:19 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 09:52:19 Focus change callback triggered for track: video0
-2026/01/08 09:52:30 Topmost captured window changed to: 317592 (was 318244)
-2026/01/08 09:52:30 Focus set to track=video1, windowID=317592, name=Scratch
-2026/01/08 09:52:30 Calling NotifyFocusChange for track: video1
-2026/01/08 09:52:30 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 09:52:30 Focus change callback triggered for track: video1
-2026/01/08 09:52:34 TUI: Removing window dynamically: 317592
-2026/01/08 09:52:34 Removing window dynamically: video1 (windowID=317592)
-2026/01/08 09:52:34 Removed track video1 from peer viewer-1
-2026/01/08 09:52:34 Broadcasting stream-removed: video1
-2026/01/08 09:52:34 Renegotiating with 1 peers
-2026/01/08 09:52:34 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/08 09:52:34 Renegotiation: peer viewer-1 connection state: connected
-2026/01/08 09:52:34 Renegotiation: ICE gathering complete for viewer-1
-2026/01/08 09:52:34 Renegotiation: sending offer to peer viewer-1 (SDP length: 16298)
-2026/01/08 09:52:34 Renegotiation: sending offer to peer viewer-1
-2026/01/08 09:52:34 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/08 09:52:34 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/08 09:52:34 Topmost captured window changed to: 318244 (was 317592)
-2026/01/08 09:52:34 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/08 09:52:34 Calling NotifyFocusChange for track: video0
-2026/01/08 09:52:34 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 09:52:34 Focus change callback triggered for track: video0
-2026/01/08 09:52:35 Focus detection loop stopped
-2026/01/08 09:52:38 Peer viewer-1 connection state: closed
-2026/01/08 09:52:38 Signal server starting on :8080
-2026/01/08 09:52:39 Focus detection loop started with 1 pipelines:
-2026/01/08 09:52:39   - Track video0: windowID=317592, name=Scratch
-2026/01/08 09:52:40 Topmost captured window changed to: 317592 (was 0)
-2026/01/08 09:52:40 Focus set to track=video0, windowID=317592, name=Scratch
-2026/01/08 09:52:40 Calling NotifyFocusChange for track: video0
-2026/01/08 09:52:40 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 09:52:40 Focus change callback triggered for track: video0
-2026/01/08 09:52:43 Focus detection loop stopped
+2026/01/08 10:19:03 === GoPeep started at 2026-01-08T10:19:03+01:00 ===
+2026/01/08 10:19:05 Signal server starting on :8080
+2026/01/08 10:19:06 Focus detection loop started with 2 pipelines:
+2026/01/08 10:19:06   - Track video0: windowID=318244, name=OpenCode
+2026/01/08 10:19:06   - Track video1: windowID=317592, name=Scratch
+2026/01/08 10:19:06 Topmost captured window changed to: 318244 (was 0)
+2026/01/08 10:19:06 Focus set to track=video0, windowID=318244, name=OpenCode
+2026/01/08 10:19:06 Calling NotifyFocusChange for track: video0
+2026/01/08 10:19:06 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 10:19:06 Focus change callback triggered for track: video0
+2026/01/08 10:19:07 Viewer joined room PURE-MARSH-37 (total viewers: 1)
+2026/01/08 10:19:07 Peer viewer-1 connection state: connecting
+2026/01/08 10:19:08 Peer viewer-1 connection state: connected
+2026/01/08 10:19:11 TUI: Removing window dynamically: 317592
+2026/01/08 10:19:11 Removing window dynamically: video1 (windowID=317592)
+2026/01/08 10:19:11 Removed track video1 from peer viewer-1
+2026/01/08 10:19:11 Broadcasting stream-removed: video1
+2026/01/08 10:19:11 Renegotiating with 1 peers
+2026/01/08 10:19:11 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:11 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:11 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:11 Renegotiation: sending offer to peer viewer-1 (SDP length: 9140)
+2026/01/08 10:19:11 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:11 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:11 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:11 TUI: Removing window 318244 (no sources selected)
+2026/01/08 10:19:11 Removing window dynamically: video0 (windowID=318244)
+2026/01/08 10:19:11 Removed track video0 from peer viewer-1
+2026/01/08 10:19:11 Broadcasting stream-removed: video0
+2026/01/08 10:19:11 Renegotiating with 1 peers
+2026/01/08 10:19:11 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:11 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:11 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:11 Renegotiation: sending offer to peer viewer-1 (SDP length: 8954)
+2026/01/08 10:19:11 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:11 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:11 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:12 TUI: Adding window dynamically: 319186 (GoPeep - Screen Sharing)
+2026/01/08 10:19:13 AddWindowDynamic: Adding track video2 to all peers
+2026/01/08 10:19:13 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/08 10:19:13 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/08 10:19:13 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/08 10:19:13 AddWindowDynamic: Notifying about new stream video2
+2026/01/08 10:19:13 Broadcasting stream-added: video2
+2026/01/08 10:19:13 AddWindowDynamic: Triggering renegotiation for track video2
+2026/01/08 10:19:13 Added window dynamically: video2 (windowID=319186)
+2026/01/08 10:19:13 Renegotiating with 1 peers
+2026/01/08 10:19:13 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:13 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:13 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:13 Renegotiation: sending offer to peer viewer-1 (SDP length: 9140)
+2026/01/08 10:19:13 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:13 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:13 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:13 Topmost captured window changed to: 319186 (was 318244)
+2026/01/08 10:19:13 Focus set to track=video2, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 10:19:13 Calling NotifyFocusChange for track: video2
+2026/01/08 10:19:13 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/08 10:19:13 Focus change callback triggered for track: video2
+2026/01/08 10:19:14 TUI: Removing window 319186 (no sources selected)
+2026/01/08 10:19:14 Removing window dynamically: video2 (windowID=319186)
+2026/01/08 10:19:14 Removed track video2 from peer viewer-1
+2026/01/08 10:19:14 Broadcasting stream-removed: video2
+2026/01/08 10:19:14 Renegotiating with 1 peers
+2026/01/08 10:19:14 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:14 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:14 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:14 Renegotiation: sending offer to peer viewer-1 (SDP length: 8954)
+2026/01/08 10:19:14 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:14 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:14 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:18 TUI: Adding window dynamically: 312846 (Claude)
+2026/01/08 10:19:18 AddWindowDynamic: Adding track video3 to all peers
+2026/01/08 10:19:18 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/08 10:19:18 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/08 10:19:18 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/08 10:19:18 AddWindowDynamic: Notifying about new stream video3
+2026/01/08 10:19:18 Broadcasting stream-added: video3
+2026/01/08 10:19:18 AddWindowDynamic: Triggering renegotiation for track video3
+2026/01/08 10:19:18 Added window dynamically: video3 (windowID=312846)
+2026/01/08 10:19:18 Renegotiating with 1 peers
+2026/01/08 10:19:18 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:18 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:18 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:18 Renegotiation: sending offer to peer viewer-1 (SDP length: 9140)
+2026/01/08 10:19:18 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:18 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:18 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:19 Topmost captured window changed to: 312846 (was 319186)
+2026/01/08 10:19:19 Focus set to track=video3, windowID=312846, name=Claude
+2026/01/08 10:19:19 Calling NotifyFocusChange for track: video3
+2026/01/08 10:19:19 NotifyFocusChange: callback exists, calling with trackID: video3
+2026/01/08 10:19:19 Focus change callback triggered for track: video3
+2026/01/08 10:19:20 TUI: Adding window dynamically: 321311 (gopeep)
+2026/01/08 10:19:20 AddWindowDynamic: Adding track video4 to all peers
+2026/01/08 10:19:20 AddTrackToAllPeers: Adding track video4 to 1 peer connections
+2026/01/08 10:19:20 AddTrackToAllPeers: Adding track video4 to peer viewer-1 (state: connected)
+2026/01/08 10:19:20 AddTrackToAllPeers: Successfully added track video4 to peer viewer-1
+2026/01/08 10:19:20 AddWindowDynamic: Notifying about new stream video4
+2026/01/08 10:19:20 Broadcasting stream-added: video4
+2026/01/08 10:19:20 AddWindowDynamic: Triggering renegotiation for track video4
+2026/01/08 10:19:20 Added window dynamically: video4 (windowID=321311)
+2026/01/08 10:19:20 Renegotiating with 1 peers
+2026/01/08 10:19:20 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:20 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:20 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:20 Renegotiation: sending offer to peer viewer-1 (SDP length: 9326)
+2026/01/08 10:19:20 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:20 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:20 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:23 TUI: Removing window dynamically: 321311
+2026/01/08 10:19:23 Removing window dynamically: video4 (windowID=321311)
+2026/01/08 10:19:23 Removed track video4 from peer viewer-1
+2026/01/08 10:19:23 Broadcasting stream-removed: video4
+2026/01/08 10:19:23 Renegotiating with 1 peers
+2026/01/08 10:19:23 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:23 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:23 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:23 Renegotiation: sending offer to peer viewer-1 (SDP length: 9140)
+2026/01/08 10:19:23 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:23 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:23 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:26 TUI: Adding window dynamically: 211498 (Untitled)
+2026/01/08 10:19:27 AddWindowDynamic: Adding track video5 to all peers
+2026/01/08 10:19:27 AddTrackToAllPeers: Adding track video5 to 1 peer connections
+2026/01/08 10:19:27 AddTrackToAllPeers: Adding track video5 to peer viewer-1 (state: connected)
+2026/01/08 10:19:27 AddTrackToAllPeers: Successfully added track video5 to peer viewer-1
+2026/01/08 10:19:27 AddWindowDynamic: Notifying about new stream video5
+2026/01/08 10:19:27 Broadcasting stream-added: video5
+2026/01/08 10:19:27 AddWindowDynamic: Triggering renegotiation for track video5
+2026/01/08 10:19:27 Added window dynamically: video5 (windowID=211498)
+2026/01/08 10:19:27 Renegotiating with 1 peers
+2026/01/08 10:19:27 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:27 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:27 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:27 Renegotiation: sending offer to peer viewer-1 (SDP length: 9322)
+2026/01/08 10:19:27 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:27 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:27 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:29 Topmost captured window changed to: 211498 (was 312846)
+2026/01/08 10:19:29 Focus set to track=video5, windowID=211498, name=Untitled
+2026/01/08 10:19:29 Calling NotifyFocusChange for track: video5
+2026/01/08 10:19:29 NotifyFocusChange: callback exists, calling with trackID: video5
+2026/01/08 10:19:29 Focus change callback triggered for track: video5
+2026/01/08 10:19:37 TUI: Adding window dynamically: 318244 (OpenCode)
+2026/01/08 10:19:38 AddWindowDynamic: Adding track video6 to all peers
+2026/01/08 10:19:38 AddTrackToAllPeers: Adding track video6 to 1 peer connections
+2026/01/08 10:19:38 AddTrackToAllPeers: Adding track video6 to peer viewer-1 (state: connected)
+2026/01/08 10:19:38 AddTrackToAllPeers: Successfully added track video6 to peer viewer-1
+2026/01/08 10:19:38 AddWindowDynamic: Notifying about new stream video6
+2026/01/08 10:19:38 Broadcasting stream-added: video6
+2026/01/08 10:19:38 AddWindowDynamic: Triggering renegotiation for track video6
+2026/01/08 10:19:38 Added window dynamically: video6 (windowID=318244)
+2026/01/08 10:19:38 Renegotiating with 1 peers
+2026/01/08 10:19:38 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:38 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:38 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:38 Renegotiation: sending offer to peer viewer-1 (SDP length: 13089)
+2026/01/08 10:19:38 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:38 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:38 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:19:39 Topmost captured window changed to: 318244 (was 211498)
+2026/01/08 10:19:39 Focus set to track=video6, windowID=318244, name=OpenCode
+2026/01/08 10:19:39 Calling NotifyFocusChange for track: video6
+2026/01/08 10:19:39 NotifyFocusChange: callback exists, calling with trackID: video6
+2026/01/08 10:19:39 Focus change callback triggered for track: video6
+2026/01/08 10:19:47 Track video3 bitrate set to 25000 kbps
+2026/01/08 10:19:47 Track video5 bitrate set to 25000 kbps
+2026/01/08 10:19:47 Track video6 bitrate set to 50000 kbps
+2026/01/08 10:19:47 Streamer bitrate updated: focus=50000 kbps, bg=25000 kbps
+2026/01/08 10:19:50 Track video5 FPS changed from 30 to 60
+2026/01/08 10:19:50 Pipeline ticker updated to 60 FPS
+2026/01/08 10:19:50 Track video6 FPS changed from 30 to 60
+2026/01/08 10:19:50 Pipeline ticker updated to 60 FPS
+2026/01/08 10:19:51 Track video3 FPS changed from 30 to 60
+2026/01/08 10:19:51 Streamer FPS updated to 60
+2026/01/08 10:19:51 Pipeline ticker updated to 60 FPS
+2026/01/08 10:19:52 SetCodec: Changing codec from vp8 to vp9
+2026/01/08 10:19:52 Removed track video3 from peer viewer-1
+2026/01/08 10:19:52 Removed track video5 from peer viewer-1
+2026/01/08 10:19:52 Removed track video6 from peer viewer-1
+2026/01/08 10:19:52 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/08 10:19:52 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/08 10:19:52 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/08 10:19:52 AddTrackToAllPeers: Adding track video5 to 1 peer connections
+2026/01/08 10:19:52 AddTrackToAllPeers: Adding track video5 to peer viewer-1 (state: connected)
+2026/01/08 10:19:52 AddTrackToAllPeers: Successfully added track video5 to peer viewer-1
+2026/01/08 10:19:52 AddTrackToAllPeers: Adding track video6 to 1 peer connections
+2026/01/08 10:19:52 AddTrackToAllPeers: Adding track video6 to peer viewer-1 (state: connected)
+2026/01/08 10:19:52 AddTrackToAllPeers: Successfully added track video6 to peer viewer-1
+2026/01/08 10:19:52 SetCodec: Triggering renegotiation for 3 pipelines
+2026/01/08 10:19:52 SetCodec: Successfully changed codec to vp9 with 3 pipelines
+2026/01/08 10:19:52 Renegotiating with 1 peers
+2026/01/08 10:19:52 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:19:52 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:19:52 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:19:52 Renegotiation: sending offer to peer viewer-1 (SDP length: 23836)
+2026/01/08 10:19:52 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:19:52 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:19:52 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:20:05 Topmost captured window changed to: 211498 (was 318244)
+2026/01/08 10:20:05 Focus set to track=video5, windowID=211498, name=Untitled
+2026/01/08 10:20:05 Calling NotifyFocusChange for track: video5
+2026/01/08 10:20:05 NotifyFocusChange: callback exists, calling with trackID: video5
+2026/01/08 10:20:05 Focus change callback triggered for track: video5
+2026/01/08 10:20:06 Topmost captured window changed to: 318244 (was 211498)
+2026/01/08 10:20:06 Focus set to track=video6, windowID=318244, name=OpenCode
+2026/01/08 10:20:06 Calling NotifyFocusChange for track: video6
+2026/01/08 10:20:06 NotifyFocusChange: callback exists, calling with trackID: video6
+2026/01/08 10:20:06 Focus change callback triggered for track: video6
+2026/01/08 10:20:29 TUI: Removing window dynamically: 318244
+2026/01/08 10:20:29 Removing window dynamically: video6 (windowID=318244)
+2026/01/08 10:20:29 Removed track video6 from peer viewer-1
+2026/01/08 10:20:29 Broadcasting stream-removed: video6
+2026/01/08 10:20:29 Renegotiating with 1 peers
+2026/01/08 10:20:29 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:20:29 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:20:29 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:20:29 Renegotiation: sending offer to peer viewer-1 (SDP length: 23650)
+2026/01/08 10:20:29 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:20:29 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:20:29 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:20:30 Topmost captured window changed to: 211498 (was 318244)
+2026/01/08 10:20:30 Focus set to track=video5, windowID=211498, name=Untitled
+2026/01/08 10:20:30 Calling NotifyFocusChange for track: video5
+2026/01/08 10:20:30 NotifyFocusChange: callback exists, calling with trackID: video5
+2026/01/08 10:20:30 Focus change callback triggered for track: video5
+2026/01/08 10:20:30 TUI: Removing window dynamically: 312846
+2026/01/08 10:20:30 Removing window dynamically: video3 (windowID=312846)
+2026/01/08 10:20:30 Removed track video3 from peer viewer-1
+2026/01/08 10:20:30 Broadcasting stream-removed: video3
+2026/01/08 10:20:30 Renegotiating with 1 peers
+2026/01/08 10:20:30 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:20:30 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:20:30 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:20:30 Renegotiation: sending offer to peer viewer-1 (SDP length: 23464)
+2026/01/08 10:20:30 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:20:30 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:20:30 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:20:31 TUI: Removing window 211498 for fullscreen switch
+2026/01/08 10:20:31 Removing window dynamically: video5 (windowID=211498)
+2026/01/08 10:20:31 Removed track video5 from peer viewer-1
+2026/01/08 10:20:31 Broadcasting stream-removed: video5
+2026/01/08 10:20:31 TUI: Adding display capture
+2026/01/08 10:20:31 Renegotiating with 1 peers
+2026/01/08 10:20:31 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:20:31 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:20:31 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:20:31 Renegotiation: sending offer to peer viewer-1 (SDP length: 23278)
+2026/01/08 10:20:31 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:20:31 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:20:31 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:20:32 AddDisplayDynamic: Adding track video7 to all peers
+2026/01/08 10:20:32 AddTrackToAllPeers: Adding track video7 to 1 peer connections
+2026/01/08 10:20:32 AddTrackToAllPeers: Adding track video7 to peer viewer-1 (state: connected)
+2026/01/08 10:20:32 AddTrackToAllPeers: Successfully added track video7 to peer viewer-1
+2026/01/08 10:20:32 AddDisplayDynamic: Notifying about new stream video7
+2026/01/08 10:20:32 Broadcasting stream-added: video7
+2026/01/08 10:20:32 AddDisplayDynamic: Triggering renegotiation for track video7
+2026/01/08 10:20:32 Added display dynamically: video7
+2026/01/08 10:20:32 Renegotiating with 1 peers
+2026/01/08 10:20:32 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:20:32 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:20:32 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:20:32 Renegotiation: sending offer to peer viewer-1 (SDP length: 23444)
+2026/01/08 10:20:32 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:20:32 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:20:32 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:20:33 TUI: Removing display (no sources selected)
+2026/01/08 10:20:33 Removing window dynamically: video7 (windowID=0)
+2026/01/08 10:20:33 Removed track video7 from peer viewer-1
+2026/01/08 10:20:33 Broadcasting stream-removed: video7
+2026/01/08 10:20:33 Renegotiating with 1 peers
+2026/01/08 10:20:33 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 10:20:33 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 10:20:33 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 10:20:33 Renegotiation: sending offer to peer viewer-1 (SDP length: 23278)
+2026/01/08 10:20:33 Renegotiation: sending offer to peer viewer-1
+2026/01/08 10:20:33 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 10:20:33 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 10:20:36 Focus detection loop stopped
+2026/01/08 10:20:38 Peer viewer-1 connection state: closed
+2026/01/08 10:20:38 Signal server starting on :8080
+2026/01/08 10:20:39 Focus detection loop started with 1 pipelines:
+2026/01/08 10:20:39   - Track video0: windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 10:20:39 Topmost captured window changed to: 319186 (was 0)
+2026/01/08 10:20:39 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 10:20:39 Calling NotifyFocusChange for track: video0
+2026/01/08 10:20:39 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 10:20:39 Focus change callback triggered for track: video0
+2026/01/08 10:20:52 Viewer joined room PURE-MARSH-37 (total viewers: 1)
+2026/01/08 10:20:52 Failed to handle answer for viewer-2: SetRemoteDescription called with no ice-ufrag
+2026/01/08 10:20:58 Focus detection loop stopped

@@ -1196,10 +1196,24 @@ func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
 	currentWindows := m.streamer.GetStreamingWindowIDs()
 	hasDisplay := currentWindows[0] // windowID 0 = display capture
 
-	// Handle special case: nothing selected
+	// Handle special case: nothing selected - just remove all streams, keep connection alive
 	if !m.fullscreenSelected && len(m.selectedWindows) == 0 {
-		// Full cleanup via stopCapture
-		m.stopCapture(true)
+		// Remove display if active
+		if hasDisplay {
+			log.Printf("TUI: Removing display (no sources selected)")
+			if err := m.streamer.RemoveDisplayDynamic(); err != nil {
+				log.Printf("TUI: Failed to remove display: %v", err)
+			}
+		}
+		// Remove all windows
+		for windowID := range currentWindows {
+			if windowID != 0 {
+				log.Printf("TUI: Removing window %d (no sources selected)", windowID)
+				if err := m.streamer.RemoveWindowDynamic(windowID); err != nil {
+					log.Printf("TUI: Failed to remove window %d: %v", windowID, err)
+				}
+			}
+		}
 		return m, nil
 	}
 
