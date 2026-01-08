@@ -1102,12 +1102,14 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 	windows, err := ListWindows()
 	if err != nil {
 		m.lastError = fmt.Sprintf("Failed to list windows: %v", err)
+		StopFocusObserver()
 		m.autoShareEnabled = false
 		return m, nil
 	}
 
 	if len(windows) == 0 {
 		m.lastError = "No shareable windows found"
+		StopFocusObserver()
 		m.autoShareEnabled = false
 		return m, nil
 	}
@@ -1123,6 +1125,7 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 
 	if topmost == 0 {
 		m.lastError = "No topmost window found"
+		StopFocusObserver()
 		m.autoShareEnabled = false
 		return m, nil
 	}
@@ -1138,6 +1141,7 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 
 	if targetWindow == nil {
 		m.lastError = "Topmost window not in list"
+		StopFocusObserver()
 		m.autoShareEnabled = false
 		return m, nil
 	}
@@ -1165,6 +1169,7 @@ func (m model) startAutoShareCapture(window WindowInfo) (tea.Model, tea.Cmd) {
 	// Initialize server
 	if err := m.initMultiServer(); err != nil {
 		m.lastError = err.Error()
+		StopFocusObserver()
 		m.autoShareEnabled = false
 		return m, nil
 	}
