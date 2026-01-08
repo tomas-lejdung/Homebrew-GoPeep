@@ -1,97 +1,243 @@
-2026/01/08 23:09:15 === GoPeep started at 2026-01-08T23:09:15+01:00 ===
-2026/01/08 23:09:17 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
-2026/01/08 23:09:17 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/08 23:09:17 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/08 23:09:17 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/08 23:09:17 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/08 23:09:17 InitializeTrackSlots: All 4 track slots ready
-2026/01/08 23:09:17 Signal server starting on :8080
-2026/01/08 23:09:17 ActivateSlot: Activated video0 for window 318244 (OpenCode - OpenCode)
-2026/01/08 23:09:18 Broadcasting sharer-started to room HAPPY-HILL-29
-2026/01/08 23:09:18 Focus detection loop started with 1 pipelines:
-2026/01/08 23:09:18   - Track video0: windowID=318244, name=OpenCode
-2026/01/08 23:09:18 Renegotiating with 0 peers
-2026/01/08 23:09:18 sendLoop: Writing frame 1 to track video0 (windowID=318244, streamID=gopeep-stream-0)
-2026/01/08 23:09:18 Topmost captured window changed to: 318244 (was 0)
-2026/01/08 23:09:18 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/08 23:09:18 Calling NotifyFocusChange for track: video0
-2026/01/08 23:09:18 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 23:09:18 Focus change callback triggered for track: video0
-2026/01/08 23:09:18 Size change callback triggered for track video0: 1613x1019
-2026/01/08 23:09:21 sendLoop: Writing frame 101 to track video0 (windowID=318244, streamID=gopeep-stream-0)
-2026/01/08 23:09:23 TUI: Adding window dynamically: 312846 (Claude)
-2026/01/08 23:09:23 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/08 23:09:23 ActivateSlot: Activated video1 for window 312846 (Arc - Claude)
-2026/01/08 23:09:24 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
-2026/01/08 23:09:24 Broadcasting stream-activated: video1 (fast path)
-2026/01/08 23:09:24 Added window dynamically: video1 (windowID=312846, fastPath=true)
-2026/01/08 23:09:24 Topmost captured window changed to: 312846 (was 318244)
-2026/01/08 23:09:24 Focus set to track=video1, windowID=312846, name=Claude
-2026/01/08 23:09:24 Calling NotifyFocusChange for track: video1
-2026/01/08 23:09:24 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 23:09:24 Focus change callback triggered for track: video1
-2026/01/08 23:09:24 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/08 23:09:25 sendLoop: Writing frame 201 to track video0 (windowID=318244, streamID=gopeep-stream-0)
-2026/01/08 23:09:28 sendLoop: Writing frame 101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/08 23:09:29 sendLoop: Writing frame 301 to track video0 (windowID=318244, streamID=gopeep-stream-0)
-2026/01/08 23:09:30 TUI: Adding window dynamically: 317592 (Scratch)
-2026/01/08 23:09:30 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/08 23:09:30 ActivateSlot: Activated video2 for window 317592 (Heynote - Scratch)
-2026/01/08 23:09:30 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
-2026/01/08 23:09:30 Broadcasting stream-activated: video2 (fast path)
-2026/01/08 23:09:30 Added window dynamically: video2 (windowID=317592, fastPath=true)
-2026/01/08 23:09:31 Topmost captured window changed to: 317592 (was 312846)
-2026/01/08 23:09:31 Focus set to track=video2, windowID=317592, name=Scratch
-2026/01/08 23:09:31 Calling NotifyFocusChange for track: video2
-2026/01/08 23:09:31 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/08 23:09:31 Focus change callback triggered for track: video2
-2026/01/08 23:09:31 sendLoop: Writing frame 1 to track video2 (windowID=317592, streamID=gopeep-stream-2)
-2026/01/08 23:09:31 sendLoop: Writing frame 201 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/08 23:09:32 TUI: Removing window dynamically: 317592
-2026/01/08 23:09:32 Removing window dynamically: video2 (windowID=317592, fastPath=true)
-2026/01/08 23:09:32 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
-2026/01/08 23:09:32 DeactivateSlot: Deactivated video2
-2026/01/08 23:09:32 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
-2026/01/08 23:09:32 Broadcasting stream-deactivated: video2 (fast path)
-2026/01/08 23:09:32 Topmost captured window changed to: 312846 (was 317592)
-2026/01/08 23:09:32 Focus set to track=video1, windowID=312846, name=Claude
-2026/01/08 23:09:32 Calling NotifyFocusChange for track: video1
-2026/01/08 23:09:32 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 23:09:32 Focus change callback triggered for track: video1
-2026/01/08 23:09:32 sendLoop: Writing frame 401 to track video0 (windowID=318244, streamID=gopeep-stream-0)
-2026/01/08 23:09:35 sendLoop: Writing frame 301 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/08 23:09:36 sendLoop: Writing frame 501 to track video0 (windowID=318244, streamID=gopeep-stream-0)
-2026/01/08 23:09:38 TUI: Removing window dynamically: 312846
-2026/01/08 23:09:38 Removing window dynamically: video1 (windowID=312846, fastPath=true)
-2026/01/08 23:09:38 Topmost captured window changed to: 318244 (was 312846)
-2026/01/08 23:09:38 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/08 23:09:38 Calling NotifyFocusChange for track: video0
-2026/01/08 23:09:38 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 23:09:38 Focus change callback triggered for track: video0
-2026/01/08 23:09:38 DeactivateSlot: Deactivated video1
-2026/01/08 23:09:38 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
-2026/01/08 23:09:38 Broadcasting stream-deactivated: video1 (fast path)
-2026/01/08 23:09:40 sendLoop: Writing frame 601 to track video0 (windowID=318244, streamID=gopeep-stream-0)
-2026/01/08 23:09:40 TUI: Adding window dynamically: 312846 (Claude)
-2026/01/08 23:09:40 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/08 23:09:40 ActivateSlot: Activated video1 for window 312846 (Arc - Claude)
-2026/01/08 23:09:41 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
-2026/01/08 23:09:41 Broadcasting stream-activated: video1 (fast path)
-2026/01/08 23:09:41 Added window dynamically: video1 (windowID=312846, fastPath=true)
-2026/01/08 23:09:41 Topmost captured window changed to: 312846 (was 318244)
-2026/01/08 23:09:41 Focus set to track=video1, windowID=312846, name=Claude
-2026/01/08 23:09:41 Calling NotifyFocusChange for track: video1
-2026/01/08 23:09:41 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 23:09:41 Focus change callback triggered for track: video1
-2026/01/08 23:09:41 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/08 23:09:44 sendLoop: Writing frame 701 to track video0 (windowID=318244, streamID=gopeep-stream-0)
-2026/01/08 23:09:44 Topmost captured window changed to: 318244 (was 312846)
-2026/01/08 23:09:44 Focus set to track=video0, windowID=318244, name=OpenCode
-2026/01/08 23:09:44 Calling NotifyFocusChange for track: video0
-2026/01/08 23:09:44 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 23:09:44 Focus change callback triggered for track: video0
-2026/01/08 23:09:45 sendLoop: Writing frame 101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/08 23:09:47 Focus detection loop stopped
-2026/01/08 23:09:47 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
-2026/01/08 23:09:47 Broadcasting stream-removed: video1
-2026/01/08 23:09:47 Broadcasting stream-removed: video0
+2026/01/08 23:18:47 === GoPeep started at 2026-01-08T23:18:47+01:00 ===
+2026/01/08 23:19:02 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/08 23:19:02 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 23:19:02 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 23:19:02 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 23:19:02 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 23:19:02 InitializeTrackSlots: All 4 track slots ready
+2026/01/08 23:19:02 Signal server starting on :8080
+2026/01/08 23:19:02 ActivateSlot: Activated video0 for window 312846 (Arc - Claude)
+2026/01/08 23:19:03 Broadcasting sharer-started to room CRISP-FLAME-19
+2026/01/08 23:19:03 Renegotiating with 0 peers
+2026/01/08 23:19:03 Focus detection loop started with 1 pipelines:
+2026/01/08 23:19:03   - Track video0: windowID=312846, name=Claude
+2026/01/08 23:19:03 Topmost captured window changed to: 312846 (was 0)
+2026/01/08 23:19:03 Focus set to track=video0, windowID=312846, name=Claude
+2026/01/08 23:19:03 Calling NotifyFocusChange for track: video0
+2026/01/08 23:19:03 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 23:19:03 Focus change callback triggered for track: video0
+2026/01/08 23:19:03 sendLoop: Writing frame 1 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:03 Size change callback triggered for track video0: 2560x1409
+2026/01/08 23:19:04 Viewer joined room CRISP-FLAME-19 (total viewers: 1)
+2026/01/08 23:19:04 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 23:19:04 Peer viewer-1 connection state: connecting
+2026/01/08 23:19:05 Peer viewer-1 connection state: connected
+2026/01/08 23:19:07 sendLoop: Writing frame 101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:08 TUI: Adding window dynamically: 318244 (OpenCode)
+2026/01/08 23:19:08 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 23:19:08 ActivateSlot: Activated video1 for window 318244 (OpenCode - OpenCode)
+2026/01/08 23:19:08 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/08 23:19:08 Broadcasting stream-activated: video1 (fast path)
+2026/01/08 23:19:08 Added window dynamically: video1 (windowID=318244, fastPath=true)
+2026/01/08 23:19:08 sendLoop: Writing frame 1 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:08 Topmost captured window changed to: 318244 (was 312846)
+2026/01/08 23:19:08 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 23:19:08 Calling NotifyFocusChange for track: video1
+2026/01/08 23:19:08 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 23:19:08 Focus change callback triggered for track: video1
+2026/01/08 23:19:10 sendLoop: Writing frame 201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:12 TUI: Removing window dynamically: 318244
+2026/01/08 23:19:12 Removing window dynamically: video1 (windowID=318244, fastPath=true)
+2026/01/08 23:19:12 Topmost captured window changed to: 312846 (was 318244)
+2026/01/08 23:19:12 Focus set to track=video0, windowID=312846, name=Claude
+2026/01/08 23:19:12 Calling NotifyFocusChange for track: video0
+2026/01/08 23:19:12 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 23:19:12 Focus change callback triggered for track: video0
+2026/01/08 23:19:12 DeactivateSlot: Deactivated video1
+2026/01/08 23:19:12 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/08 23:19:12 Broadcasting stream-deactivated: video1 (fast path)
+2026/01/08 23:19:14 sendLoop: Writing frame 301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:16 TUI: Removing window 312846 (no sources selected)
+2026/01/08 23:19:16 Removing window dynamically: video0 (windowID=312846, fastPath=true)
+2026/01/08 23:19:16 DeactivateSlot: Deactivated video0
+2026/01/08 23:19:16 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/08 23:19:16 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/08 23:19:22 TUI: Adding window dynamically: 312846 (Claude)
+2026/01/08 23:19:22 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 23:19:22 ActivateSlot: Activated video0 for window 312846 (Arc - Claude)
+2026/01/08 23:19:23 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/08 23:19:23 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 23:19:23 Added window dynamically: video0 (windowID=312846, fastPath=true)
+2026/01/08 23:19:23 sendLoop: Writing frame 1 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:23 Size change callback triggered for track video0: 2560x1409
+2026/01/08 23:19:26 sendLoop: Writing frame 101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:30 sendLoop: Writing frame 201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:31 TUI: Adding window dynamically: 318244 (OpenCode)
+2026/01/08 23:19:31 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 23:19:31 ActivateSlot: Activated video1 for window 318244 (OpenCode - OpenCode)
+2026/01/08 23:19:31 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/08 23:19:31 Broadcasting stream-activated: video1 (fast path)
+2026/01/08 23:19:31 Added window dynamically: video1 (windowID=318244, fastPath=true)
+2026/01/08 23:19:32 Topmost captured window changed to: 318244 (was 312846)
+2026/01/08 23:19:32 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 23:19:32 Calling NotifyFocusChange for track: video1
+2026/01/08 23:19:32 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 23:19:32 Focus change callback triggered for track: video1
+2026/01/08 23:19:32 sendLoop: Writing frame 1 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:32 Topmost captured window changed to: 312846 (was 318244)
+2026/01/08 23:19:32 Focus set to track=video0, windowID=312846, name=Claude
+2026/01/08 23:19:32 Calling NotifyFocusChange for track: video0
+2026/01/08 23:19:32 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 23:19:32 Focus change callback triggered for track: video0
+2026/01/08 23:19:33 sendLoop: Writing frame 301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:35 sendLoop: Writing frame 101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:36 TUI: Adding window dynamically: 317592 (Scratch)
+2026/01/08 23:19:36 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 23:19:36 ActivateSlot: Activated video2 for window 317592 (Heynote - Scratch)
+2026/01/08 23:19:37 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/08 23:19:37 Broadcasting stream-activated: video2 (fast path)
+2026/01/08 23:19:37 Added window dynamically: video2 (windowID=317592, fastPath=true)
+2026/01/08 23:19:37 Topmost captured window changed to: 317592 (was 312846)
+2026/01/08 23:19:37 Focus set to track=video2, windowID=317592, name=Scratch
+2026/01/08 23:19:37 Calling NotifyFocusChange for track: video2
+2026/01/08 23:19:37 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/08 23:19:37 Focus change callback triggered for track: video2
+2026/01/08 23:19:37 sendLoop: Writing frame 1 to track video2 (windowID=317592, streamID=gopeep-stream-2)
+2026/01/08 23:19:37 sendLoop: Writing frame 401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:37 Size change callback triggered for track video2: 1280x921
+2026/01/08 23:19:38 sendLoop: Writing frame 201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:40 sendLoop: Writing frame 101 to track video2 (windowID=317592, streamID=gopeep-stream-2)
+2026/01/08 23:19:40 sendLoop: Writing frame 501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:42 sendLoop: Writing frame 301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:43 Topmost captured window changed to: 312846 (was 317592)
+2026/01/08 23:19:43 Focus set to track=video0, windowID=312846, name=Claude
+2026/01/08 23:19:43 Calling NotifyFocusChange for track: video0
+2026/01/08 23:19:43 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 23:19:43 Focus change callback triggered for track: video0
+2026/01/08 23:19:44 sendLoop: Writing frame 201 to track video2 (windowID=317592, streamID=gopeep-stream-2)
+2026/01/08 23:19:44 sendLoop: Writing frame 601 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 23:19:45 TUI: Removing window dynamically: 312846
+2026/01/08 23:19:45 Removing window dynamically: video0 (windowID=312846, fastPath=true)
+2026/01/08 23:19:45 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/08 23:19:45 Topmost captured window changed to: 317592 (was 312846)
+2026/01/08 23:19:45 Focus set to track=video2, windowID=317592, name=Scratch
+2026/01/08 23:19:45 Calling NotifyFocusChange for track: video2
+2026/01/08 23:19:45 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/08 23:19:45 Focus change callback triggered for track: video2
+2026/01/08 23:19:45 DeactivateSlot: Deactivated video0
+2026/01/08 23:19:45 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/08 23:19:45 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/08 23:19:45 sendLoop: Writing frame 401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:47 TUI: Removing window dynamically: 317592
+2026/01/08 23:19:47 Removing window dynamically: video2 (windowID=317592, fastPath=true)
+2026/01/08 23:19:47 Topmost captured window changed to: 318244 (was 317592)
+2026/01/08 23:19:47 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 23:19:47 Calling NotifyFocusChange for track: video1
+2026/01/08 23:19:47 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 23:19:47 Focus change callback triggered for track: video1
+2026/01/08 23:19:47 DeactivateSlot: Deactivated video2
+2026/01/08 23:19:47 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/08 23:19:47 Broadcasting stream-deactivated: video2 (fast path)
+2026/01/08 23:19:49 sendLoop: Writing frame 501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:50 TUI: Adding window dynamically: 211498 (Untitled)
+2026/01/08 23:19:50 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 23:19:50 ActivateSlot: Activated video0 for window 211498 (Toggl Track - Untitled)
+2026/01/08 23:19:51 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/08 23:19:51 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 23:19:51 Added window dynamically: video0 (windowID=211498, fastPath=true)
+2026/01/08 23:19:51 Topmost captured window changed to: 211498 (was 318244)
+2026/01/08 23:19:51 Focus set to track=video0, windowID=211498, name=Untitled
+2026/01/08 23:19:51 Calling NotifyFocusChange for track: video0
+2026/01/08 23:19:51 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 23:19:51 Focus change callback triggered for track: video0
+2026/01/08 23:19:51 sendLoop: Writing frame 1 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/08 23:19:51 Size change callback triggered for track video0: 437x630
+2026/01/08 23:19:52 TUI: Removing window dynamically: 211498
+2026/01/08 23:19:52 Removing window dynamically: video0 (windowID=211498, fastPath=true)
+2026/01/08 23:19:52 sendLoop: Writing frame 601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:52 Topmost captured window changed to: 318244 (was 211498)
+2026/01/08 23:19:52 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 23:19:52 Calling NotifyFocusChange for track: video1
+2026/01/08 23:19:52 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 23:19:52 Focus change callback triggered for track: video1
+2026/01/08 23:19:53 DeactivateSlot: Deactivated video0
+2026/01/08 23:19:53 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/08 23:19:53 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/08 23:19:56 sendLoop: Writing frame 701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:19:57 Auto-share: Enabling mode, starting focus observer
+2026/01/08 23:19:57 Auto-share: Already sharing, keeping existing 1 windows
+2026/01/08 23:19:57 Auto-share: Adding window 332249 (GoPeep - Screen Sharing)
+2026/01/08 23:19:57 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 23:19:57 ActivateSlot: Activated video0 for window 332249 (Ghostty - GoPeep - Screen Sharing)
+2026/01/08 23:19:58 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/08 23:19:58 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 23:19:58 Added window dynamically: video0 (windowID=332249, fastPath=true)
+2026/01/08 23:19:58 Auto-share: Successfully added GoPeep - Screen Sharing
+2026/01/08 23:19:58 sendLoop: Writing frame 1 to track video0 (windowID=332249, streamID=gopeep-stream-0)
+2026/01/08 23:19:58 Topmost captured window changed to: 332249 (was 318244)
+2026/01/08 23:19:58 Focus set to track=video0, windowID=332249, name=GoPeep - Screen Sharing
+2026/01/08 23:19:58 Calling NotifyFocusChange for track: video0
+2026/01/08 23:19:58 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 23:19:58 Focus change callback triggered for track: video0
+2026/01/08 23:19:59 Auto-share: Adding window 312846 (Claude)
+2026/01/08 23:19:59 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 23:19:59 ActivateSlot: Activated video2 for window 312846 (Arc - Claude)
+2026/01/08 23:19:59 sendLoop: Writing frame 801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:20:00 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/08 23:20:00 Broadcasting stream-activated: video2 (fast path)
+2026/01/08 23:20:00 Added window dynamically: video2 (windowID=312846, fastPath=true)
+2026/01/08 23:20:00 Auto-share: Successfully added Claude
+2026/01/08 23:20:00 Topmost captured window changed to: 312846 (was 332249)
+2026/01/08 23:20:00 Focus set to track=video2, windowID=312846, name=Claude
+2026/01/08 23:20:00 Calling NotifyFocusChange for track: video2
+2026/01/08 23:20:00 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/08 23:20:00 Focus change callback triggered for track: video2
+2026/01/08 23:20:00 sendLoop: Writing frame 1 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/08 23:20:02 sendLoop: Writing frame 101 to track video0 (windowID=332249, streamID=gopeep-stream-0)
+2026/01/08 23:20:03 Auto-share: Adding window 317592 (Scratch)
+2026/01/08 23:20:03 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 23:20:03 ActivateSlot: Activated video3 for window 317592 (Heynote - Scratch)
+2026/01/08 23:20:03 sendLoop: Writing frame 901 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:20:03 sendLoop: Writing frame 101 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/08 23:20:04 AddWindowDynamic: Notifying stream activated video3 (NO renegotiation)
+2026/01/08 23:20:04 Broadcasting stream-activated: video3 (fast path)
+2026/01/08 23:20:04 Added window dynamically: video3 (windowID=317592, fastPath=true)
+2026/01/08 23:20:04 Auto-share: Successfully added Scratch
+2026/01/08 23:20:04 Topmost captured window changed to: 317592 (was 312846)
+2026/01/08 23:20:04 Focus set to track=video3, windowID=317592, name=Scratch
+2026/01/08 23:20:04 Calling NotifyFocusChange for track: video3
+2026/01/08 23:20:04 NotifyFocusChange: callback exists, calling with trackID: video3
+2026/01/08 23:20:04 Focus change callback triggered for track: video3
+2026/01/08 23:20:04 sendLoop: Writing frame 1 to track video3 (windowID=317592, streamID=gopeep-stream-3)
+2026/01/08 23:20:04 Topmost captured window changed to: 312846 (was 317592)
+2026/01/08 23:20:04 Focus set to track=video2, windowID=312846, name=Claude
+2026/01/08 23:20:04 Calling NotifyFocusChange for track: video2
+2026/01/08 23:20:04 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/08 23:20:04 Focus change callback triggered for track: video2
+2026/01/08 23:20:05 Topmost captured window changed to: 332249 (was 312846)
+2026/01/08 23:20:05 Focus set to track=video0, windowID=332249, name=GoPeep - Screen Sharing
+2026/01/08 23:20:05 Calling NotifyFocusChange for track: video0
+2026/01/08 23:20:05 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 23:20:05 Focus change callback triggered for track: video0
+2026/01/08 23:20:05 sendLoop: Writing frame 201 to track video0 (windowID=332249, streamID=gopeep-stream-0)
+2026/01/08 23:20:06 sendLoop: Writing frame 1001 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:20:07 sendLoop: Writing frame 201 to track video2 (windowID=312846, streamID=gopeep-stream-2)
+2026/01/08 23:20:07 Auto-share: Disabling mode, switching to manual management
+2026/01/08 23:20:07 sendLoop: Writing frame 101 to track video3 (windowID=317592, streamID=gopeep-stream-3)
+2026/01/08 23:20:08 Topmost captured window changed to: 312846 (was 332249)
+2026/01/08 23:20:08 Focus set to track=video2, windowID=312846, name=Claude
+2026/01/08 23:20:08 Calling NotifyFocusChange for track: video2
+2026/01/08 23:20:08 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/08 23:20:08 Focus change callback triggered for track: video2
+2026/01/08 23:20:09 sendLoop: Writing frame 301 to track video0 (windowID=332249, streamID=gopeep-stream-0)
+2026/01/08 23:20:10 sendLoop: Writing frame 1101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:20:10 TUI: Removing window dynamically: 312846
+2026/01/08 23:20:10 Removing window dynamically: video2 (windowID=312846, fastPath=true)
+2026/01/08 23:20:10 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/08 23:20:10 Topmost captured window changed to: 332249 (was 312846)
+2026/01/08 23:20:10 Focus set to track=video0, windowID=332249, name=GoPeep - Screen Sharing
+2026/01/08 23:20:10 Calling NotifyFocusChange for track: video0
+2026/01/08 23:20:10 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 23:20:10 Focus change callback triggered for track: video0
+2026/01/08 23:20:10 DeactivateSlot: Deactivated video2
+2026/01/08 23:20:10 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/08 23:20:10 Broadcasting stream-deactivated: video2 (fast path)
+2026/01/08 23:20:11 sendLoop: Writing frame 201 to track video3 (windowID=317592, streamID=gopeep-stream-3)
+2026/01/08 23:20:12 sendLoop: Writing frame 401 to track video0 (windowID=332249, streamID=gopeep-stream-0)
+2026/01/08 23:20:13 sendLoop: Writing frame 1201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 23:20:14 sendLoop: Writing frame 301 to track video3 (windowID=317592, streamID=gopeep-stream-3)
+2026/01/08 23:20:15 Focus detection loop stopped
+2026/01/08 23:20:15 Broadcasting stream-removed: video0
+2026/01/08 23:20:15 Broadcasting stream-removed: video1
+2026/01/08 23:20:15 Broadcasting stream-removed: video3
+2026/01/08 23:20:15 Peer viewer-1 connection state: closed

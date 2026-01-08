@@ -30,6 +30,8 @@ static NSView *g_indicator = nil;
 static uint32_t g_currentWindowID = 0;
 static BOOL g_overlayEnabled = YES;
 static BOOL g_initialized = NO;
+static BOOL g_isHovered = NO;
+static volatile BOOL g_shouldStop = NO;
 
 // Event tap for click detection
 static CFMachPortRef g_eventTap = NULL;
@@ -43,7 +45,10 @@ static const CGFloat kCornerRadius = 8.0;
 static const CGFloat kMargin = 16.0;
 static const CGFloat kIndicatorSize = 8.0;
 
-static NSColor* overlayBackgroundColor(void) {
+static NSColor* overlayBackgroundColor(BOOL hovered) {
+    if (hovered) {
+        return [NSColor colorWithRed:0.24 green:0.24 blue:0.24 alpha:0.95];
+    }
     return [NSColor colorWithRed:0.16 green:0.16 blue:0.16 alpha:0.85];
 }
 
@@ -133,8 +138,11 @@ static BOOL getFocusedWindowInfo(uint32_t *outWindowID, CGRect *outBounds) {
     return found;
 }
 
-static void updateButtonAppearance(int state) {
+static void updateButtonAppearance(int state, BOOL hovered) {
     if (!g_buttonView) return;
+
+    // Update background for hover state
+    g_buttonView.layer.backgroundColor = overlayBackgroundColor(hovered).CGColor;
 
     if (g_label) {
         g_label.stringValue = overlayLabelTextForState(state);
@@ -147,7 +155,19 @@ static void updateButtonAppearance(int state) {
     }
 }
 
-// Main update function - called from Go during tick
+// Check if mouse is over the overlay
+static BOOL isMouseOverOverlay(void) {
+    if (!g_overlayWindow || !g_overlayWindow.isVisible) return NO;
+
+    CGPoint mousePos = CGEventGetLocation(CGEventCreate(NULL));
+    NSScreen *mainScreen = [NSScreen mainScreen];
+    CGFloat screenHeight = mainScreen.frame.size.height;
+    NSPoint cocoaPoint = NSMakePoint(mousePos.x, screenHeight - mousePos.y);
+
+    return NSPointInRect(cocoaPoint, g_overlayWindow.frame);
+}
+
+// Main update function - called from timer
 static void doOverlayUpdate(void) {
     if (!g_overlayWindow || !g_initialized) {
         return;
@@ -181,8 +201,12 @@ static void doOverlayUpdate(void) {
 
     g_currentWindowID = windowID;
 
+    // Check hover state
+    BOOL nowHovered = isMouseOverOverlay();
+
     int state = goGetWindowState(windowID);
-    updateButtonAppearance(state);
+    updateButtonAppearance(state, nowHovered);
+    g_isHovered = nowHovered;
 
     // Position at bottom-left of focused window
     // Convert from CG coords (origin top-left) to Cocoa coords (origin bottom-left)
@@ -200,6 +224,8 @@ static void doOverlayUpdate(void) {
         [g_overlayWindow orderFrontRegardless];
     }
 }
+
+
 
 // Event tap callback for mouse clicks
 static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
@@ -219,6 +245,8 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
 
         if (NSPointInRect(cocoaPoint, frame)) {
             goOverlayButtonClicked(g_currentWindowID);
+            // Return NULL to consume the event (don't pass through to windows behind)
+            return NULL;
         }
     } else if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
         if (g_eventTap) {
@@ -229,21 +257,29 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
     return event;
 }
 
-// Thread function to run event tap
+// Thread function to run event tap (for click detection only)
 static void* eventTapThread(void* arg) {
     @autoreleasepool {
         g_tapRunLoop = CFRunLoopGetCurrent();
 
+        // Add event tap source
         if (g_eventTapSource) {
             CFRunLoopAddSource(g_tapRunLoop, g_eventTapSource, kCFRunLoopCommonModes);
         }
 
-        // Run forever until stopped
-        CFRunLoopRun();
+        // Run until stopped
+        while (!g_shouldStop) {
+            @autoreleasepool {
+                CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false);
+            }
+        }
 
+        // Cleanup
         if (g_eventTapSource) {
             CFRunLoopRemoveSource(g_tapRunLoop, g_eventTapSource, kCFRunLoopCommonModes);
         }
+
+        g_tapRunLoop = NULL;
     }
     return NULL;
 }
@@ -267,7 +303,7 @@ static void createOverlay(void) {
         g_overlayWindow.backgroundColor = [NSColor clearColor];
         g_overlayWindow.opaque = NO;
         g_overlayWindow.hasShadow = YES;
-        g_overlayWindow.ignoresMouseEvents = YES;
+        g_overlayWindow.ignoresMouseEvents = YES; // We use event tap for clicks
         g_overlayWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
                                              NSWindowCollectionBehaviorStationary |
                                              NSWindowCollectionBehaviorFullScreenAuxiliary |
@@ -278,7 +314,7 @@ static void createOverlay(void) {
         g_buttonView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, kButtonWidth, kButtonHeight)];
         g_buttonView.wantsLayer = YES;
         g_buttonView.layer.cornerRadius = kCornerRadius;
-        g_buttonView.layer.backgroundColor = overlayBackgroundColor().CGColor;
+        g_buttonView.layer.backgroundColor = overlayBackgroundColor(NO).CGColor;
         g_overlayWindow.contentView = g_buttonView;
 
         // Create indicator
@@ -304,35 +340,59 @@ static void createOverlay(void) {
         [g_buttonView addSubview:g_label];
 
         // Create event tap for click detection
+        // Try with Default option first (can consume events), fall back to ListenOnly
         CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown);
         g_eventTap = CGEventTapCreate(
             kCGSessionEventTap,
             kCGHeadInsertEventTap,
-            kCGEventTapOptionListenOnly,
+            kCGEventTapOptionDefault,  // Can modify/consume events
             eventMask,
             mouseEventCallback,
             NULL
         );
 
+        // Fallback to listen-only if default fails (less permissions required)
+        if (!g_eventTap) {
+            g_eventTap = CGEventTapCreate(
+                kCGSessionEventTap,
+                kCGHeadInsertEventTap,
+                kCGEventTapOptionListenOnly,
+                eventMask,
+                mouseEventCallback,
+                NULL
+            );
+        }
+
         if (g_eventTap) {
             g_eventTapSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, g_eventTap, 0);
-            CGEventTapEnable(g_eventTap, true);
+            if (g_eventTapSource) {
+                CGEventTapEnable(g_eventTap, true);
 
-            // Start event tap thread
-            pthread_t tapThread;
-            pthread_create(&tapThread, NULL, eventTapThread, NULL);
-            pthread_detach(tapThread);
+                // Start event tap thread with timer
+                g_shouldStop = NO;
+                pthread_t tapThread;
+                pthread_create(&tapThread, NULL, eventTapThread, NULL);
+                pthread_detach(tapThread);
+            } else {
+                CFRelease(g_eventTap);
+                g_eventTap = NULL;
+            }
         }
 
         g_initialized = YES;
 
-        // Initial display with run loop pump
+        // Initial display
         [g_overlayWindow display];
         [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.05]];
     }
 }
 
 static void destroyOverlay(void) {
+    g_shouldStop = YES;
+
+    // Give thread time to stop
+    usleep(200000); // 200ms
+
     // Stop event tap thread
     if (g_tapRunLoop) {
         CFRunLoopStop(g_tapRunLoop);
@@ -364,7 +424,7 @@ static void setOverlayEnabled(BOOL enabled) {
     g_overlayEnabled = enabled;
 }
 
-// Called from Go to update and pump the run loop
+// Called from Go to update overlay and pump run loop
 static void updateAndPump(void) {
     @autoreleasepool {
         doOverlayUpdate();

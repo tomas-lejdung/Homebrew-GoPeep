@@ -314,6 +314,7 @@ func (m model) Init() tea.Cmd {
 	return tea.Batch(
 		refreshWindows,
 		tea.SetWindowTitle("GoPeep - Screen Sharing"),
+		overlayTickCmd(), // Start fast overlay updates
 	)
 }
 
@@ -335,6 +336,15 @@ func fastTickCmd() tea.Cmd {
 	// Slow backup tick (500ms) - most focus detection happens via NSWorkspace notifications
 	return tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
 		return fastTickMsg(t)
+	})
+}
+
+// overlayTickMsg is used for fast overlay updates
+type overlayTickMsg time.Time
+
+func overlayTickCmd() tea.Cmd {
+	return tea.Tick(50*time.Millisecond, func(t time.Time) tea.Msg {
+		return overlayTickMsg(t)
 	})
 }
 
@@ -447,15 +457,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Overlay button was clicked - toggle window selection
 		return m.handleOverlayToggle(msg.windowID)
 
-	case tickMsg:
-		// Periodic refresh
-		var cmds []tea.Cmd
-		cmds = append(cmds, tickCmd())
-
-		// Update overlay (this also pumps the run loop briefly)
+	case overlayTickMsg:
+		// Fast overlay updates (50ms)
 		if m.overlay != nil && !m.autoShareEnabled {
 			m.overlay.Refresh()
 		}
+		return m, overlayTickCmd()
+
+	case tickMsg:
+		// Periodic refresh (1 second)
+		var cmds []tea.Cmd
+		cmds = append(cmds, tickCmd())
 
 		// Refresh windows list
 		cmds = append(cmds, refreshWindows)
