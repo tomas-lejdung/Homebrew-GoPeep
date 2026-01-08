@@ -4,11 +4,12 @@ package overlay
 
 /*
 #cgo CFLAGS: -x objective-c -fmodules -fobjc-arc
-#cgo LDFLAGS: -framework Cocoa -framework CoreGraphics -framework ApplicationServices
+#cgo LDFLAGS: -framework Cocoa -framework CoreGraphics -framework ApplicationServices -framework QuartzCore
 
 #import <Cocoa/Cocoa.h>
 #import <CoreGraphics/CoreGraphics.h>
 #import <ApplicationServices/ApplicationServices.h>
+#import <QuartzCore/QuartzCore.h>
 #include <stdio.h>
 #include <pthread.h>
 
@@ -43,6 +44,9 @@ static CGFloat g_animStartX = 0;
 static CGFloat g_animEndX = 0;
 static CFAbsoluteTime g_animStartTime = 0;
 static const CFTimeInterval kAnimDuration = 0.25;  // 250ms animation
+
+// State change tracking for pulse effect
+static int g_lastState = -1;  // -1 = uninitialized
 
 // Event tap for click detection
 static CFMachPortRef g_eventTap = NULL;
@@ -158,6 +162,31 @@ static CGFloat easeInOutQuad(CGFloat t) {
     return t < 0.5 ? 2.0 * t * t : 1.0 - pow(-2.0 * t + 2.0, 2.0) / 2.0;
 }
 
+// Pulse animation for state changes - gives visual feedback
+// Pulses the indicator dot to draw attention to the state change
+static void pulseOverlay(void) {
+    if (!g_indicator || !g_indicator.layer) return;
+
+    // Ensure anchor point is centered so scale grows from center
+    CGRect bounds = g_indicator.layer.bounds;
+    g_indicator.layer.anchorPoint = CGPointMake(0.5, 0.5);
+    g_indicator.layer.position = CGPointMake(
+        g_indicator.frame.origin.x + bounds.size.width / 2.0,
+        g_indicator.frame.origin.y + bounds.size.height / 2.0
+    );
+
+    // Scale the indicator dot - it's small (8x8) so clipping is minimal
+    CAKeyframeAnimation *pulse = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+    pulse.values = @[@1.0, @1.6, @1.0];
+    pulse.keyTimes = @[@0.0, @0.35, @1.0];
+    pulse.duration = 0.35;
+    pulse.timingFunctions = @[
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut],
+        [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn]
+    ];
+    [g_indicator.layer addAnimation:pulse forKey:@"pulse"];
+}
+
 // Start animation to opposite corner (called from click handler)
 static void startCornerAnimation(BOOL toRight) {
     if (!g_overlayWindow || !g_initialized) return;
@@ -256,6 +285,13 @@ static void doFrame(void) {
 
     // Update appearance
     int state = goGetWindowState(windowID);
+
+    // Pulse animation on state change (but not on first frame)
+    if (g_lastState != -1 && state != g_lastState) {
+        pulseOverlay();
+    }
+    g_lastState = state;
+
     updateButtonAppearance(state, nowHovered, arrowHovered);
     g_isHovered = nowHovered;
     g_isArrowHovered = arrowHovered;
