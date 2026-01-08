@@ -1,173 +1,93 @@
 # Phase 2: Code Deduplication
 
-## Overview
-Extract repeated patterns into helper functions to reduce code duplication and improve maintainability.
+## Status: COMPLETED
 
 **Risk Level:** Medium
-**Estimated Lines Saved:** ~200-300
+**Lines Saved:** ~200 lines
 
 ---
 
-## Tasks
+## Summary
 
-### 1. tui.go - URL Normalization Helper
+Extracted repeated patterns into helper functions and removed duplicate code.
 
-#### 1.1 Create `normalizeSignalURL()` helper
-- **Status:** [ ] Pending
-- **Duplicated in:**
-  - `attemptReconnect()` (line ~1261)
-  - `initRemoteSignaling()` (line ~1316)
-  - `initMultiRemoteSignaling()` (line ~1677)
+### Changes Made:
 
-```go
-// normalizeSignalURL converts HTTP URLs to WebSocket URLs
-func normalizeSignalURL(url string) string {
-    if strings.HasPrefix(url, "http://") {
-        return "ws://" + strings.TrimPrefix(url, "http://")
-    } else if strings.HasPrefix(url, "https://") {
-        return "wss://" + strings.TrimPrefix(url, "https://")
-    } else if !strings.HasPrefix(url, "ws://") && !strings.HasPrefix(url, "wss://") {
-        return "wss://" + url
-    }
-    return url
-}
-```
+| File | Change | Lines Saved |
+|------|--------|-------------|
+| tui.go | Created `normalizeSignalURL()` helper | ~15 lines |
+| tui.go | Removed dead `initServer()` function | ~60 lines |
+| tui.go | Removed duplicate `initMultiRemoteSignaling()` | ~50 lines |
+| multistream.go | Created `newPipeline()` factory | ~60 lines |
+| multistream.go | Created `createAndConfigureEncoder()` helper | ~30 lines |
+| capture_multi_darwin.go | Created `captureErrorToGoError()` helper | ~20 lines |
 
 ---
 
-### 2. tui.go - Merge Duplicate Server Init Functions
+## Completed Tasks
 
-#### 2.1 Merge `initServer()` and `initMultiServer()`
-- **Status:** [ ] Pending
-- **Why:** These functions are nearly identical
-- **Differences:** None significant - both use NewPeerManager
-- **Action:** Remove `initMultiServer()`, use `initServer()` everywhere
+### 1. tui.go - URL Normalization
+- [x] Created `normalizeSignalURL()` helper function
+- [x] Replaced 3 duplicate URL normalization blocks
 
-#### 2.2 Merge `initRemoteSignaling()` and `initMultiRemoteSignaling()`
-- **Status:** [ ] Pending
-- **Why:** 100% duplicated code
-- **Action:** Remove `initMultiRemoteSignaling()`, use `initRemoteSignaling()` everywhere
-
----
+### 2. tui.go - Server Initialization Consolidation
+- [x] Removed dead `initServer()` function (was never called)
+- [x] `initMultiServer()` now uses `initRemoteSignaling()`
+- [x] Removed duplicate `initMultiRemoteSignaling()` function
 
 ### 3. multistream.go - Pipeline Factory
+- [x] Created `newPipeline()` factory method on Streamer
+- [x] Replaced 4 pipeline creation blocks in:
+  - `AddWindow()`
+  - `AddWindowDynamic()`
+  - `AddDisplay()`
+  - `AddDisplayDynamic()`
 
-#### 3.1 Create `newPipeline()` factory method
-- **Status:** [ ] Pending
-- **Duplicated in:**
-  - `AddWindow()` (line ~1355)
-  - `AddWindowDynamic()` (line ~2014)
-  - `AddDisplay()` (line ~2232)
-  - `AddDisplayDynamic()` (line ~2340)
-  - `SetCodec()` slots path (line ~1794)
-  - `SetCodec()` legacy path (line ~1863)
+### 4. multistream.go - Encoder Factory
+- [x] Created `createAndConfigureEncoder()` helper method
+- [x] Replaced encoder creation + quality mode setup in same 4 locations
 
+### 5. capture_multi_darwin.go - Error Mapping
+- [x] Created `captureErrorToGoError()` helper function
+- [x] Replaced error switch statements in:
+  - `StartWindowCapture()`
+  - `StartDisplayCapture()`
+
+### 6. Skipped Tasks
+- [-] `cleanupTrackOnError()` - Skipped because the pattern uses closures that capture state at a specific point; extracting would change semantics
+
+---
+
+## New Helper Functions
+
+### tui.go
 ```go
-func (ms *Streamer) newPipeline(trackInfo *StreamTrackInfo, capture *CaptureInstance, encoder VideoEncoder, bitrate int) *StreamPipeline {
-    return &StreamPipeline{
-        trackInfo:      trackInfo,
-        capture:        capture,
-        encoder:        encoder,
-        fps:            ms.fps,
-        bitrate:        bitrate,
-        focusBitrate:   ms.focusBitrate,
-        bgBitrate:      ms.bgBitrate,
-        adaptiveBR:     ms.adaptiveBitrate,
-        qualityMode:    ms.qualityMode,
-        stopChan:       make(chan struct{}),
-        fpsChanged:     make(chan int, 1),
-        capturedFrames: make(chan capturedFrame, 2),
-        encodedFrames:  make(chan encodedFrame, 2),
-    }
-}
+// normalizeSignalURL converts HTTP URLs to WebSocket URLs
+func normalizeSignalURL(url string) string
+```
+
+### multistream.go
+```go
+// newPipeline creates a new StreamPipeline with standard configuration
+func (ms *Streamer) newPipeline(trackInfo *StreamTrackInfo, capture *CaptureInstance, encoder VideoEncoder, bitrate int) *StreamPipeline
+
+// createAndConfigureEncoder creates an encoder with current codec and quality settings
+func (ms *Streamer) createAndConfigureEncoder(bitrate int) (VideoEncoder, error)
+```
+
+### capture_multi_darwin.go
+```go
+// captureErrorToGoError converts C capture error codes to Go errors
+func captureErrorToGoError(code C.int, windowID uint32) error
 ```
 
 ---
 
-### 4. multistream.go - Encoder Factory Helper
+## Verification
 
-#### 4.1 Create `createAndConfigureEncoder()` helper
-- **Status:** [ ] Pending
-- **Duplicated in:** 6 locations (same as pipeline creation)
+- [x] Build succeeds: `go build -o gopeep .`
+- [ ] Manual testing required by user
 
-```go
-func (ms *Streamer) createAndConfigureEncoder(bitrate int) (VideoEncoder, error) {
-    factory := NewEncoderFactory()
-    encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
-    if err != nil {
-        return nil, err
-    }
-    if ms.qualityMode {
-        encoder.SetQualityMode(true, bitrate)
-    }
-    return encoder, nil
-}
-```
+## Next Steps
 
----
-
-### 5. multistream.go - Track Cleanup Helper
-
-#### 5.1 Create `cleanupTrackOnError()` method
-- **Status:** [ ] Pending
-- **Duplicated in:**
-  - `AddWindow()` (line ~1319)
-  - `AddDisplay()` (line ~2198)
-  - `AddDisplayDynamic()` (line ~2307)
-
-```go
-func (ms *Streamer) cleanupTrackOnError(trackID string) {
-    if ms.peerManager.AreSlotsReady() {
-        ms.peerManager.DeactivateSlot(trackID)
-    } else {
-        ms.peerManager.RemoveTrack(trackID)
-    }
-}
-```
-
----
-
-### 6. capture_multi_darwin.go - Error Mapping Helper
-
-#### 6.1 Create `captureErrorToGoError()` helper
-- **Status:** [ ] Pending
-- **Duplicated in:**
-  - `StartWindowCapture()` (line ~912)
-  - `StartDisplayCapture()` (line ~955)
-
-```go
-func captureErrorToGoError(code int, windowID uint32) error {
-    switch code {
-    case -1:
-        return fmt.Errorf("no free capture slots available")
-    case -2:
-        if windowID == 0 {
-            return fmt.Errorf("display not found")
-        }
-        return fmt.Errorf("window not found: %d", windowID)
-    case -3:
-        return fmt.Errorf("failed to add stream output")
-    case -4:
-        return fmt.Errorf("failed to start capture")
-    case -5:
-        return fmt.Errorf("slot is still active")
-    default:
-        return fmt.Errorf("capture error: %d", code)
-    }
-}
-```
-
----
-
-## Verification Steps
-
-After each helper is created:
-1. Run `go build -o gopeep .` - must succeed
-2. Test all capture modes work correctly
-3. Test remote signaling reconnection works
-
----
-
-## Rollback Plan
-
-Each helper function change is isolated and can be reverted independently.
+After user testing confirms everything works, Phase 3 (Architecture Improvements) is optional and higher risk.

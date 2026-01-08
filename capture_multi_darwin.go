@@ -790,6 +790,25 @@ func NewMultiCapture() *MultiCapture {
 	}
 }
 
+// captureErrorToGoError converts C capture error codes to Go errors
+func captureErrorToGoError(code C.int, windowID uint32) error {
+	switch code {
+	case -1:
+		return fmt.Errorf("no free capture slots available")
+	case -2:
+		if windowID == 0 {
+			return fmt.Errorf("display not found")
+		}
+		return fmt.Errorf("window not found: %d", windowID)
+	case -3:
+		return fmt.Errorf("failed to add stream output")
+	case -4:
+		return fmt.Errorf("failed to start capture")
+	default:
+		return fmt.Errorf("capture error: %d", code)
+	}
+}
+
 // StartWindowCapture starts capturing a window, returns the capture instance
 func (mc *MultiCapture) StartWindowCapture(windowID uint32, width, height, fps int) (*CaptureInstance, error) {
 	mc.mu.Lock()
@@ -808,18 +827,7 @@ func (mc *MultiCapture) StartWindowCapture(windowID uint32, width, height, fps i
 
 	slot := C.mc_start_window_capture(C.uint32_t(windowID), C.int(width), C.int(height), C.int(fps))
 	if slot < 0 {
-		switch slot {
-		case -1:
-			return nil, fmt.Errorf("no free capture slots available")
-		case -2:
-			return nil, fmt.Errorf("window not found: %d", windowID)
-		case -3:
-			return nil, fmt.Errorf("failed to add stream output")
-		case -4:
-			return nil, fmt.Errorf("failed to start capture")
-		default:
-			return nil, fmt.Errorf("capture error: %d", slot)
-		}
+		return nil, captureErrorToGoError(slot, windowID)
 	}
 
 	inst := &CaptureInstance{
@@ -851,18 +859,7 @@ func (mc *MultiCapture) StartDisplayCapture(width, height, fps int) (*CaptureIns
 
 	slot := C.mc_start_display_capture(C.int(width), C.int(height), C.int(fps))
 	if slot < 0 {
-		switch slot {
-		case -1:
-			return nil, fmt.Errorf("no free capture slots available")
-		case -2:
-			return nil, fmt.Errorf("display not found")
-		case -3:
-			return nil, fmt.Errorf("failed to add stream output")
-		case -4:
-			return nil, fmt.Errorf("failed to start capture")
-		default:
-			return nil, fmt.Errorf("capture error: %d", slot)
-		}
+		return nil, captureErrorToGoError(slot, 0)
 	}
 
 	inst := &CaptureInstance{

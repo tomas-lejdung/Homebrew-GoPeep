@@ -55,6 +55,18 @@ func copyToClipboard(text string) error {
 	return cmd.Wait()
 }
 
+// normalizeSignalURL converts HTTP URLs to WebSocket URLs
+func normalizeSignalURL(url string) string {
+	if strings.HasPrefix(url, "http://") {
+		return "ws://" + strings.TrimPrefix(url, "http://")
+	} else if strings.HasPrefix(url, "https://") {
+		return "wss://" + strings.TrimPrefix(url, "https://")
+	} else if !strings.HasPrefix(url, "ws://") && !strings.HasPrefix(url, "wss://") {
+		return "wss://" + url
+	}
+	return url
+}
+
 // Column indices
 const (
 	columnSources = 0
@@ -1186,68 +1198,6 @@ func (m model) startAutoShareCapture(window WindowInfo) (tea.Model, tea.Cmd) {
 	return m, tea.Batch(captureCmd, fastTickCmd())
 }
 
-// initServer initializes the server and room (only once)
-func (m *model) initServer() error {
-	if m.serverStarted {
-		return nil
-	}
-
-	// Generate room code only if not already set (preserve on codec restart)
-	if m.roomCode == "" {
-		m.roomCode = sig.GenerateRoomCode()
-	}
-
-	// Create peer manager with ICE config and selected codec
-	iceConfig := ICEConfig{
-		TURNServer: m.config.TURNServer,
-		TURNUser:   m.config.TURNUser,
-		TURNPass:   m.config.TURNPass,
-		ForceRelay: m.config.ForceRelay,
-	}
-	codecType := m.getSelectedCodecType()
-	var err error
-	m.peerManager, err = NewPeerManager(iceConfig, codecType)
-	if err != nil {
-		return fmt.Errorf("failed to create peer manager: %v", err)
-	}
-
-	// Initialize pre-allocated track slots for instant window sharing
-	if err := m.peerManager.InitializeTrackSlots(); err != nil {
-		return fmt.Errorf("failed to initialize track slots: %v", err)
-	}
-
-	// Try remote signal server first (unless local mode is forced)
-	if !m.config.LocalMode && m.config.SignalURL != "" {
-		if err := m.initRemoteSignaling(); err == nil {
-			m.serverStarted = true
-			return nil
-		}
-		// Fall through to local mode
-	}
-
-	// Local mode: start local signal server
-	m.isRemote = false
-	m.server = sig.NewServer()
-	addr := fmt.Sprintf(":%d", m.config.Port)
-
-	go func() {
-		m.server.StartServer(addr)
-	}()
-
-	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
-
-	// Get local IP
-	localIP := getLocalIP()
-	m.shareURL = fmt.Sprintf("http://%s:%d/%s", localIP, m.config.Port, m.roomCode)
-
-	// Set up signaling (connects server to peer manager)
-	setupPeerSignaling(m.server, m.peerManager, m.roomCode, m.password)
-
-	m.serverStarted = true
-	return nil
-}
-
 // attemptReconnect tries to reconnect to the remote signal server
 func (m model) attemptReconnect(attempt int, delay time.Duration) tea.Cmd {
 	return func() tea.Msg {
@@ -1255,16 +1205,7 @@ func (m model) attemptReconnect(attempt int, delay time.Duration) tea.Cmd {
 		time.Sleep(delay)
 
 		// Try to reconnect
-		signalURL := m.config.SignalURL
-
-		// Normalize URL scheme
-		if strings.HasPrefix(signalURL, "http://") {
-			signalURL = "ws://" + strings.TrimPrefix(signalURL, "http://")
-		} else if strings.HasPrefix(signalURL, "https://") {
-			signalURL = "wss://" + strings.TrimPrefix(signalURL, "https://")
-		} else if !strings.HasPrefix(signalURL, "ws://") && !strings.HasPrefix(signalURL, "wss://") {
-			signalURL = "wss://" + signalURL
-		}
+		signalURL := normalizeSignalURL(m.config.SignalURL)
 
 		// Build WebSocket URL
 		wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + m.roomCode
@@ -1313,16 +1254,7 @@ func (m model) attemptReconnect(attempt int, delay time.Duration) tea.Cmd {
 
 // initRemoteSignaling connects to the remote signal server
 func (m *model) initRemoteSignaling() error {
-	signalURL := m.config.SignalURL
-
-	// Normalize URL scheme
-	if strings.HasPrefix(signalURL, "http://") {
-		signalURL = "ws://" + strings.TrimPrefix(signalURL, "http://")
-	} else if strings.HasPrefix(signalURL, "https://") {
-		signalURL = "wss://" + strings.TrimPrefix(signalURL, "https://")
-	} else if !strings.HasPrefix(signalURL, "ws://") && !strings.HasPrefix(signalURL, "wss://") {
-		signalURL = "wss://" + signalURL
-	}
+	signalURL := normalizeSignalURL(m.config.SignalURL)
 
 	// Build WebSocket URL
 	wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + m.roomCode
@@ -1645,7 +1577,7 @@ func (m *model) initMultiServer() error {
 
 	// Try remote signal server first
 	if !m.config.LocalMode && m.config.SignalURL != "" {
-		if err := m.initMultiRemoteSignaling(); err == nil {
+		if err := m.initRemoteSignaling(); err == nil {
 			m.serverStarted = true
 			return nil
 		}
@@ -1669,64 +1601,6 @@ func (m *model) initMultiServer() error {
 	setupPeerSignaling(m.server, m.peerManager, m.roomCode, m.password)
 
 	m.serverStarted = true
-	return nil
-}
-
-// initMultiRemoteSignaling connects to remote signal server for multi-window
-func (m *model) initMultiRemoteSignaling() error {
-	signalURL := m.config.SignalURL
-
-	if strings.HasPrefix(signalURL, "http://") {
-		signalURL = "ws://" + strings.TrimPrefix(signalURL, "http://")
-	} else if strings.HasPrefix(signalURL, "https://") {
-		signalURL = "wss://" + strings.TrimPrefix(signalURL, "https://")
-	} else if !strings.HasPrefix(signalURL, "ws://") && !strings.HasPrefix(signalURL, "wss://") {
-		signalURL = "wss://" + signalURL
-	}
-
-	wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + m.roomCode
-
-	viewerURL := strings.Replace(signalURL, "wss://", "https://", 1)
-	viewerURL = strings.Replace(viewerURL, "ws://", "http://", 1)
-	m.shareURL = strings.TrimSuffix(viewerURL, "/") + "/" + m.roomCode
-
-	dialer := websocket.Dialer{
-		HandshakeTimeout: 5 * time.Second,
-	}
-	conn, _, err := dialer.Dial(wsURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to connect to signal server: %v", err)
-	}
-
-	joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password}
-	if err := conn.WriteJSON(joinMsg); err != nil {
-		conn.Close()
-		return fmt.Errorf("failed to send join message: %v", err)
-	}
-
-	var joinResp sig.SignalMessage
-	if err := conn.ReadJSON(&joinResp); err != nil {
-		conn.Close()
-		return fmt.Errorf("failed to read join response: %v", err)
-	}
-	if joinResp.Type == "error" {
-		conn.Close()
-		return fmt.Errorf("failed to join room: %s", joinResp.Error)
-	}
-
-	m.wsConn = conn
-	m.isRemote = true
-
-	if m.wsDisconnected == nil {
-		m.wsDisconnected = new(bool)
-	}
-	*m.wsDisconnected = false
-
-	disconnectFlag := m.wsDisconnected
-	setupRemotePeerSignaling(conn, m.peerManager, func() {
-		*disconnectFlag = true
-	})
-
 	return nil
 }
 
