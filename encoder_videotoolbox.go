@@ -20,6 +20,8 @@ typedef struct {
     int bitrate;
     int frame_count;
     int initialized;
+    int quality_mode;    // 0 = performance (bitrate), 1 = quality (quality-based)
+    float quality_value; // Quality value when in quality mode (0.0-1.0, higher = better)
 
     // Output buffer
     uint8_t* output_buffer;
@@ -171,7 +173,7 @@ void vtb_output_callback(void* outputCallbackRefCon,
     pthread_mutex_unlock(&ctx->output_mutex);
 }
 
-VideoToolboxContext* create_videotoolbox_encoder(int width, int height, int fps, int bitrate) {
+VideoToolboxContext* create_videotoolbox_encoder_with_mode(int width, int height, int fps, int bitrate, int quality_mode, float quality_value) {
     VideoToolboxContext* ctx = (VideoToolboxContext*)calloc(1, sizeof(VideoToolboxContext));
     if (!ctx) return NULL;
 
@@ -180,6 +182,8 @@ VideoToolboxContext* create_videotoolbox_encoder(int width, int height, int fps,
     ctx->fps = fps;
     ctx->bitrate = bitrate;
     ctx->frame_count = 0;
+    ctx->quality_mode = quality_mode;
+    ctx->quality_value = quality_value;
     ctx->output_capacity = width * height;  // Initial estimate
     ctx->output_buffer = (uint8_t*)malloc(ctx->output_capacity);
     pthread_mutex_init(&ctx->output_mutex, NULL);
@@ -242,24 +246,39 @@ VideoToolboxContext* create_videotoolbox_encoder(int width, int height, int fps,
     VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_ProfileLevel, kVTProfileLevel_H264_Baseline_AutoLevel);
     VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_AllowFrameReordering, kCFBooleanFalse);
 
-    // Bitrate
-    int avgBitrate = bitrate * 1000;  // Convert kbps to bps
-    CFNumberRef bitrateNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &avgBitrate);
-    VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_AverageBitRate, bitrateNum);
-    CFRelease(bitrateNum);
+    if (quality_mode) {
+        // Quality mode: Use quality-based encoding with bitrate as soft ceiling
+        CFNumberRef qualityNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberFloatType, &quality_value);
+        VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_Quality, qualityNum);
+        CFRelease(qualityNum);
 
-    // Data rate limits
-    int bytesPerSecond = avgBitrate / 8;
-    int limitDuration = 1;
-    CFNumberRef bytesNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &bytesPerSecond);
-    CFNumberRef durationNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &limitDuration);
-    CFMutableArrayRef dataRateLimits = CFArrayCreateMutable(kCFAllocatorDefault, 2, &kCFTypeArrayCallBacks);
-    CFArrayAppendValue(dataRateLimits, bytesNum);
-    CFArrayAppendValue(dataRateLimits, durationNum);
-    VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_DataRateLimits, dataRateLimits);
-    CFRelease(bytesNum);
-    CFRelease(durationNum);
-    CFRelease(dataRateLimits);
+        // Still set average bitrate as a soft target/ceiling
+        int avgBitrate = bitrate * 1000;  // Convert kbps to bps
+        CFNumberRef bitrateNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &avgBitrate);
+        VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_AverageBitRate, bitrateNum);
+        CFRelease(bitrateNum);
+
+        // No strict data rate limits in quality mode - let encoder use what it needs
+    } else {
+        // Performance mode: Use strict bitrate control
+        int avgBitrate = bitrate * 1000;  // Convert kbps to bps
+        CFNumberRef bitrateNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &avgBitrate);
+        VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_AverageBitRate, bitrateNum);
+        CFRelease(bitrateNum);
+
+        // Data rate limits for strict bandwidth control
+        int bytesPerSecond = avgBitrate / 8;
+        int limitDuration = 1;
+        CFNumberRef bytesNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &bytesPerSecond);
+        CFNumberRef durationNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &limitDuration);
+        CFMutableArrayRef dataRateLimits = CFArrayCreateMutable(kCFAllocatorDefault, 2, &kCFTypeArrayCallBacks);
+        CFArrayAppendValue(dataRateLimits, bytesNum);
+        CFArrayAppendValue(dataRateLimits, durationNum);
+        VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_DataRateLimits, dataRateLimits);
+        CFRelease(bytesNum);
+        CFRelease(durationNum);
+        CFRelease(dataRateLimits);
+    }
 
     // Keyframe interval
     int keyframeInterval = fps * 2;  // Every 2 seconds
@@ -286,6 +305,11 @@ VideoToolboxContext* create_videotoolbox_encoder(int width, int height, int fps,
 
     ctx->initialized = 1;
     return ctx;
+}
+
+// Legacy function - creates encoder in performance mode
+VideoToolboxContext* create_videotoolbox_encoder(int width, int height, int fps, int bitrate) {
+    return create_videotoolbox_encoder_with_mode(width, height, fps, bitrate, 0, 0.0);
 }
 
 void destroy_videotoolbox_encoder(VideoToolboxContext* ctx) {
@@ -475,6 +499,9 @@ type VideoToolboxEncoder struct {
 	mu                  sync.Mutex
 	initialized         bool
 	hardwareAccelerated bool
+	needsRecreate       bool    // Flag to recreate encoder on next frame (for bitrate/mode changes)
+	qualityMode         bool    // false = performance (bitrate), true = quality (quality-based)
+	qualityValue        float32 // Quality value for quality mode (0.0-1.0, higher = better)
 }
 
 func init() {
@@ -521,7 +548,15 @@ func (e *VideoToolboxEncoder) initWithDimensions(width, height int) error {
 	e.width = width
 	e.height = height
 
-	ctx := C.create_videotoolbox_encoder(C.int(width), C.int(height), C.int(e.fps), C.int(e.bitrate))
+	qualityMode := 0
+	if e.qualityMode {
+		qualityMode = 1
+	}
+
+	ctx := C.create_videotoolbox_encoder_with_mode(
+		C.int(width), C.int(height), C.int(e.fps), C.int(e.bitrate),
+		C.int(qualityMode), C.float(e.qualityValue),
+	)
 	if ctx == nil {
 		return fmt.Errorf("failed to create VideoToolbox encoder")
 	}
@@ -596,15 +631,18 @@ func (e *VideoToolboxEncoder) EncodeBGRAFrame(frame *BGRAFrame) ([]byte, error) 
 		}
 	}
 
-	// Check if dimensions match
-	if width != e.width || height != e.height {
-		// Reinitialize with new dimensions
+	// Check if dimensions changed or bitrate needs update
+	if width != e.width || height != e.height || e.needsRecreate {
+		// Reinitialize with new dimensions/bitrate
 		if e.ctx != nil {
 			C.destroy_videotoolbox_encoder(e.ctx)
 		}
 		if err := e.initWithDimensions(width, height); err != nil {
 			return nil, err
 		}
+		e.needsRecreate = false
+		// Reset frame count to force keyframe on next frame after dimension change
+		e.frameCount = 0
 	}
 
 	// Force keyframe on first frame
@@ -648,4 +686,40 @@ func (e *VideoToolboxEncoder) GetCodecType() CodecType {
 // IsHardwareAccelerated returns true if using hardware encoding
 func (e *VideoToolboxEncoder) IsHardwareAccelerated() bool {
 	return e.hardwareAccelerated
+}
+
+// SetBitrate changes the target bitrate (kbps)
+// The encoder will be recreated on the next frame encode
+func (e *VideoToolboxEncoder) SetBitrate(bitrate int) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	if e.bitrate == bitrate {
+		return nil
+	}
+
+	e.bitrate = bitrate
+	e.needsRecreate = true
+	return nil
+}
+
+// SetQualityMode switches between quality and performance modes
+// Quality mode (enabled=true): Uses quality-based encoding for consistent visual quality
+// Performance mode (enabled=false): Uses bitrate-based encoding for bandwidth efficiency
+// The encoder will be recreated on the next frame encode
+func (e *VideoToolboxEncoder) SetQualityMode(enabled bool, bitrate int) error {
+	e.mu.Lock()
+	defer e.mu.Unlock()
+
+	// Get quality value from quality params
+	_, _, vtQuality := QualityModeParams(bitrate)
+
+	if e.qualityMode == enabled && e.qualityValue == vtQuality {
+		return nil
+	}
+
+	e.qualityMode = enabled
+	e.qualityValue = vtQuality
+	e.needsRecreate = true
+	return nil
 }

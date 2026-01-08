@@ -79,6 +79,15 @@ type VideoEncoder interface {
 
 	// IsHardwareAccelerated returns true if using hardware encoding
 	IsHardwareAccelerated() bool
+
+	// SetBitrate changes the target bitrate (kbps) at runtime
+	// The encoder may need to recreate internal state on next encode
+	SetBitrate(bitrate int) error
+
+	// SetQualityMode enables quality-priority encoding (true) vs performance/bandwidth-efficient (false)
+	// Quality mode uses CQ/CRF rate control to maintain consistent visual quality
+	// Performance mode uses CBR for bandwidth efficiency
+	SetQualityMode(enabled bool, bitrate int) error
 }
 
 // EncoderFactory creates encoders based on codec type

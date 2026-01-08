@@ -34,3 +34,7 @@ go.work.sum
 
 # Dependency directories
 # vendor/
+
+# Debug logs
+debug.log
+gopeep-debug.log
