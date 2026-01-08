@@ -248,6 +248,11 @@ int mc_start_window_capture(uint32_t window_id, int target_width, int target_hei
         [inst->stream addStreamOutput:delegate type:SCStreamOutputTypeScreen sampleHandlerQueue:inst->queue error:&addError];
         if (addError != nil) {
             NSLog(@"Failed to add stream output for instance %d: %@", slot, addError);
+            // Cleanup allocated resources
+            inst->stream = nil;
+            inst->config = nil;
+            inst->output_delegate = nil;
+            inst->queue = nil;
             return -3;
         }
 
@@ -269,6 +274,11 @@ int mc_start_window_capture(uint32_t window_id, int target_width, int target_hei
             return slot;
         }
 
+        // Cleanup on start failure
+        inst->stream = nil;
+        inst->config = nil;
+        inst->output_delegate = nil;
+        inst->queue = nil;
         return startResult;
     }
 }
@@ -331,6 +341,11 @@ int mc_start_display_capture(int target_width, int target_height, int fps) {
         [inst->stream addStreamOutput:delegate type:SCStreamOutputTypeScreen sampleHandlerQueue:inst->queue error:&addError];
         if (addError != nil) {
             NSLog(@"Failed to add stream output for display capture instance %d: %@", slot, addError);
+            // Cleanup allocated resources
+            inst->stream = nil;
+            inst->config = nil;
+            inst->output_delegate = nil;
+            inst->queue = nil;
             return -3;
         }
 
@@ -352,6 +367,11 @@ int mc_start_display_capture(int target_width, int target_height, int fps) {
             return slot;
         }
 
+        // Cleanup on start failure
+        inst->stream = nil;
+        inst->config = nil;
+        inst->output_delegate = nil;
+        inst->queue = nil;
         return startResult;
     }
 }
@@ -751,6 +771,7 @@ import "C"
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 )
@@ -758,10 +779,15 @@ import (
 // Release returns the frame buffer to the capture pool.
 // Must be called when done with zero-copy frames from GetLatestFrameBGRA.
 // Safe to call multiple times or on Go-owned frames (no-op).
+// Thread-safe: uses atomic swap to prevent double-release race conditions.
 func (f *BGRAFrame) Release() {
-	if f.cData != nil && f.slot >= 0 {
-		C.mc_release_frame_buffer(C.int(f.slot), (*C.uint8_t)(f.cData))
-		f.cData = nil
+	if f.slot < 0 {
+		return
+	}
+	// Atomic swap to prevent double-release if called concurrently
+	ptr := atomic.SwapPointer((*unsafe.Pointer)(unsafe.Pointer(&f.cData)), nil)
+	if ptr != nil {
+		C.mc_release_frame_buffer(C.int(f.slot), (*C.uint8_t)(ptr))
 		f.Data = nil
 		f.slot = -1
 	}

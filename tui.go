@@ -467,8 +467,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Check if our window was closed (if streaming a window)
 		if m.sharing && !m.isFullscreen && m.activeWindowID != 0 {
-			// If window is no longer in the sources list and capture is not active, stop
-			if m.selectedSource == -1 && !IsCaptureActive() {
+			// If window is no longer in the sources list, stop capture
+			if m.selectedSource == -1 {
 				m.stopCapture(false)
 				m.lastError = "Window was closed"
 			}
@@ -1671,8 +1671,6 @@ func (m *model) stopCapture(preserveState bool) {
 		m.streamer.Stop()
 		m.streamer = nil
 	}
-
-	StopCapture()
 
 	m.sharing = false
 	m.streamStats = nil

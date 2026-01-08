@@ -532,16 +532,6 @@ func ListWindows() ([]WindowInfo, error) {
 	return windows, nil
 }
 
-// StopCapture stops the current capture (legacy single-capture system)
-func StopCapture() {
-	C.stop_capture()
-}
-
-// IsCaptureActive returns true if capture is running
-func IsCaptureActive() bool {
-	return C.is_capture_active() != 0
-}
-
 // BGRAFrame holds raw BGRA frame data without conversion
 type BGRAFrame struct {
 	Data   []byte
