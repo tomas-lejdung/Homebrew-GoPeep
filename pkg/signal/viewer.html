@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>GoPeep - Viewing</title>
   <style>
     * {
@@ -74,9 +74,13 @@
     #container {
       width: 100vw;
       height: 100vh;
+      height: 100dvh; /* Dynamic viewport height - accounts for mobile browser chrome */
       display: flex;
       flex-direction: column;
       background: var(--bg-primary);
+      /* Safe area padding for notched devices */
+      padding-left: env(safe-area-inset-left);
+      padding-right: env(safe-area-inset-right);
     }
     
     /* Main video area */
@@ -139,10 +143,11 @@
     /* Thumbnails bar */
     #thumbnails-bar {
       display: none;
-      height: 110px;
+      min-height: 110px;
       background: linear-gradient(to top, var(--bg-secondary) 0%, rgba(24, 24, 27, 0.95) 100%);
       border-top: 1px solid var(--border-subtle);
       padding: 12px 24px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
       gap: 12px;
       align-items: center;
       overflow-x: auto;
@@ -363,6 +368,232 @@
       opacity: 1;
     }
     
+    /* Row Layout Mode */
+    #video-row {
+      display: none;
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      overflow-x: auto;
+      overflow-y: auto;
+      background: var(--bg-primary);
+      -webkit-overflow-scrolling: touch;
+      cursor: grab;
+      position: relative;
+    }
+    
+    #video-row.dragging {
+      cursor: grabbing;
+      user-select: none;
+    }
+    
+    #video-row.visible {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px;
+      padding-top: 60px; /* Space for header */
+      padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); /* Space for minimap */
+      padding-left: calc(8px + env(safe-area-inset-left, 0px));
+      padding-right: calc(8px + env(safe-area-inset-right, 0px));
+    }
+    
+    #video-row::-webkit-scrollbar {
+      height: 6px;
+    }
+    
+    #video-row::-webkit-scrollbar-track {
+      background: var(--bg-secondary);
+      border-radius: 3px;
+    }
+    
+    #video-row::-webkit-scrollbar-thumb {
+      background: var(--bg-tertiary);
+      border-radius: 3px;
+    }
+    
+    #video-row::-webkit-scrollbar-thumb:hover {
+      background: var(--text-dim);
+    }
+    
+    .row-cell {
+      position: relative;
+      flex-shrink: 0;
+      background: var(--bg-secondary);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+      cursor: pointer;
+      transition: all var(--transition-fast);
+      border: 2px solid transparent;
+      scroll-snap-align: center;
+    }
+    
+    .row-cell:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    
+    .row-cell.selected {
+      border-color: var(--accent);
+      box-shadow: 0 0 20px rgba(59, 130, 246, 0.2);
+    }
+    
+    .row-cell.sharer-focused {
+      border-color: var(--success);
+    }
+    
+    .row-cell.sharer-focused::before {
+      content: '';
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 10px;
+      height: 10px;
+      background: var(--success);
+      border-radius: 50%;
+      z-index: 10;
+      box-shadow: 0 0 8px rgba(34, 197, 94, 0.6);
+      animation: pulse-glow 2s ease-in-out infinite;
+    }
+    
+    .row-cell video {
+      display: block;
+      background: transparent;
+      /* Native size - no object-fit scaling */
+    }
+    
+    .row-cell-label {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 8px 12px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.85) 0%, rgba(0, 0, 0, 0.4) 70%, transparent 100%);
+      font-size: 12px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      /* Always visible in row mode for orientation */
+      opacity: 1;
+    }
+    
+    .row-cell.sharer-focused .row-cell-label {
+      color: var(--success);
+    }
+    
+    .row-cell.selected .row-cell-label {
+      color: var(--text-primary);
+    }
+    
+    /* Row scroll indicator */
+    .row-scroll-hint {
+      position: absolute;
+      bottom: 50%;
+      transform: translateY(50%);
+      width: 40px;
+      height: 60px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(to right, var(--bg-primary) 0%, transparent 100%);
+      color: var(--text-dim);
+      pointer-events: none;
+      opacity: 0;
+      transition: opacity var(--transition-normal);
+      z-index: 20;
+    }
+    
+    .row-scroll-hint.right {
+      right: 0;
+      background: linear-gradient(to left, var(--bg-primary) 0%, transparent 100%);
+    }
+    
+    .row-scroll-hint.left {
+      left: 0;
+    }
+    
+    #video-row.can-scroll-right .row-scroll-hint.right,
+    #video-row.can-scroll-left .row-scroll-hint.left {
+      opacity: 0.7;
+    }
+    
+    /* Row minimap */
+    .row-minimap {
+      position: fixed;
+      bottom: calc(90px + env(safe-area-inset-bottom, 0px));
+      left: 50%;
+      transform: translateX(-50%);
+      height: 48px;
+      max-width: 80vw;
+      background: var(--bg-overlay);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border);
+      padding: 6px;
+      display: none;
+      align-items: center;
+      gap: 4px;
+      z-index: 100;
+      box-shadow: var(--shadow-lg);
+      overflow-x: auto;
+      cursor: pointer;
+    }
+    
+    .row-minimap.visible {
+      display: flex;
+    }
+    
+    .row-minimap::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .row-minimap-item {
+      flex-shrink: 0;
+      height: 36px;
+      background: var(--bg-secondary);
+      border-radius: 4px;
+      overflow: hidden;
+      border: 2px solid transparent;
+      transition: all var(--transition-fast);
+      cursor: pointer;
+      position: relative;
+    }
+    
+    .row-minimap-item:hover {
+      border-color: rgba(59, 130, 246, 0.4);
+    }
+    
+    .row-minimap-item.in-view {
+      border-color: var(--accent);
+    }
+    
+    .row-minimap-item.sharer-focused::after {
+      content: '';
+      position: absolute;
+      top: 2px;
+      right: 2px;
+      width: 6px;
+      height: 6px;
+      background: var(--success);
+      border-radius: 50%;
+    }
+    
+    .row-minimap-item canvas {
+      height: 100%;
+      width: auto;
+      display: block;
+    }
+    
+    .row-minimap-viewport {
+      position: absolute;
+      top: 0;
+      height: 100%;
+      background: rgba(59, 130, 246, 0.1);
+      border-left: 2px solid var(--accent);
+      border-right: 2px solid var(--accent);
+      pointer-events: none;
+      display: none;
+    }
+    
     /* Layout selector */
     .layout-selector {
       display: none;
@@ -481,8 +712,8 @@
     /* Minimap */
     .minimap {
       position: absolute;
-      bottom: 16px;
-      right: 16px;
+      bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+      right: calc(16px + env(safe-area-inset-right, 0px));
       width: 120px;
       background: var(--bg-overlay);
       backdrop-filter: blur(12px);
@@ -765,7 +996,7 @@
     /* Control bar */
     #control-bar {
       position: fixed;
-      bottom: 28px;
+      bottom: calc(28px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%) translateY(100px);
       padding: 8px 12px;
@@ -790,7 +1021,7 @@
     
     /* Adjust control bar position when thumbnails visible */
     body.multi-stream #control-bar {
-      bottom: 134px;
+      bottom: calc(134px + env(safe-area-inset-bottom, 0px));
     }
     
     .control-btn {
@@ -995,7 +1226,7 @@
     /* Keyboard shortcuts help */
     #shortcuts-help {
       position: fixed;
-      bottom: 90px;
+      bottom: calc(90px + env(safe-area-inset-bottom, 0px));
       left: 50%;
       transform: translateX(-50%) translateY(20px);
       padding: 14px 24px;
@@ -1019,7 +1250,7 @@
     }
     
     body.multi-stream #shortcuts-help {
-      bottom: 200px;
+      bottom: calc(200px + env(safe-area-inset-bottom, 0px));
     }
     
     .shortcut {
@@ -1352,6 +1583,12 @@
     <!-- Grid view (Grid mode) -->
     <div id="video-grid"></div>
     
+    <!-- Row view (Row mode) -->
+    <div id="video-row"></div>
+    
+    <!-- Row minimap navigation -->
+    <div class="row-minimap" id="row-minimap"></div>
+    
     <!-- Thumbnails bar for multi-stream (Focus mode only) -->
     <div id="thumbnails-bar"></div>
   </div>
@@ -1372,17 +1609,24 @@
     <div class="control-divider"></div>
     <!-- Layout selector (visible when multiple streams) -->
     <div class="layout-selector" id="layout-selector">
-      <button class="layout-btn active" data-layout="focus" title="Focus View (G)">
+      <button class="layout-btn active" data-layout="focus" title="Focus View">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="18" height="18" rx="2"></rect>
         </svg>
       </button>
-      <button class="layout-btn" data-layout="grid" title="Grid View (G)">
+      <button class="layout-btn" data-layout="grid" title="Grid View">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
           <rect x="3" y="3" width="8" height="8" rx="1"></rect>
           <rect x="13" y="3" width="8" height="8" rx="1"></rect>
           <rect x="3" y="13" width="8" height="8" rx="1"></rect>
           <rect x="13" y="13" width="8" height="8" rx="1"></rect>
+        </svg>
+      </button>
+      <button class="layout-btn" data-layout="row" title="Row View">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="6" width="6" height="12" rx="1"></rect>
+          <rect x="9" y="6" width="6" height="12" rx="1"></rect>
+          <rect x="16" y="6" width="6" height="12" rx="1"></rect>
         </svg>
       </button>
     </div>
@@ -1488,6 +1732,8 @@
     const minimap = document.getElementById('minimap');
     const minimapCanvas = document.getElementById('minimap-canvas');
     const minimapViewport = document.getElementById('minimap-viewport');
+    const videoRow = document.getElementById('video-row');
+    const rowMinimap = document.getElementById('row-minimap');
     
     // State
     const roomCode = window.location.pathname.substring(1);
@@ -1512,10 +1758,11 @@
     let sharerFocusedIndex = null; // What the sharer has focused (index from OS)
     
     // Layout state
-    let currentLayout = 'focus'; // 'focus' or 'grid'
+    let currentLayout = 'focus'; // 'focus', 'grid', or 'row'
     let proportionalSizing = true; // true = auto-size based on resolution, false = equal size
     let gridCells = {}; // index -> { cell, video, label }
-    let selectedGridIndex = null; // Currently selected stream in grid mode
+    let rowCells = {}; // index -> { cell, video, label } for row mode
+    let selectedGridIndex = null; // Currently selected stream in grid/row mode
     
     // Pan/zoom state
     let panZoomState = {
@@ -1622,6 +1869,12 @@
       if (currentLayout === 'grid') {
         // In grid mode, update the grid
         updateGridLayout();
+        return;
+      }
+      
+      if (currentLayout === 'row') {
+        // In row mode, update the row
+        updateRowLayout();
         return;
       }
       
@@ -2708,10 +2961,17 @@
       proportionalToggle.classList.toggle('visible', layout === 'grid' && streamOrder.length > 1);
       layoutDivider.style.display = (layout === 'grid' && streamOrder.length > 1) ? '' : 'none';
       
+      // Hide all layout containers first
+      mainVideoContainer.style.display = 'none';
+      videoGrid.classList.remove('visible');
+      videoRow.classList.remove('visible');
+      rowMinimap.classList.remove('visible');
+      thumbnailsBar.classList.remove('visible');
+      document.body.classList.remove('multi-stream');
+      
       if (layout === 'focus') {
         // Switch to focus mode
         mainVideoContainer.style.display = '';
-        videoGrid.classList.remove('visible');
         thumbnailsBar.classList.toggle('visible', streamOrder.length > 1);
         document.body.classList.toggle('multi-stream', streamOrder.length > 1);
         
@@ -2721,19 +2981,31 @@
           mainVideo.play().catch(e => console.log('Play error:', e));
         }
         
+        // Clean up grid and row cells
+        videoGrid.innerHTML = '';
+        gridCells = {};
+        cleanupRowCells();
+        
+      } else if (layout === 'grid') {
+        // Switch to grid mode
+        videoGrid.classList.add('visible');
+        
+        // Clean up row cells
+        cleanupRowCells();
+        
+        // Build the grid
+        updateGridLayout();
+        
+      } else if (layout === 'row') {
+        // Switch to row mode
+        videoRow.classList.add('visible');
+        
         // Clean up grid cells
         videoGrid.innerHTML = '';
         gridCells = {};
         
-      } else if (layout === 'grid') {
-        // Switch to grid mode
-        mainVideoContainer.style.display = 'none';
-        thumbnailsBar.classList.remove('visible');
-        document.body.classList.remove('multi-stream');
-        videoGrid.classList.add('visible');
-        
-        // Build the grid
-        updateGridLayout();
+        // Build the row
+        updateRowLayout();
       }
       
       // Save preference
@@ -2743,7 +3015,18 @@
     }
     
     function toggleLayout() {
-      setLayout(currentLayout === 'focus' ? 'grid' : 'focus');
+      // Cycle through: focus -> grid -> row -> focus
+      const layouts = ['focus', 'grid', 'row'];
+      const currentIdx = layouts.indexOf(currentLayout);
+      const nextIdx = (currentIdx + 1) % layouts.length;
+      setLayout(layouts[nextIdx]);
+    }
+    
+    function cleanupRowCells() {
+      videoRow.innerHTML = '';
+      rowMinimap.innerHTML = '';
+      rowMinimap.classList.remove('visible');
+      rowCells = {};
     }
     
     function toggleProportionalSizing() {
@@ -2931,9 +3214,14 @@
     function selectGridCell(index) {
       selectedGridIndex = index;
       
-      // Update cell classes
+      // Update cell classes in grid
       for (const idx in gridCells) {
         gridCells[idx].cell.classList.toggle('selected', parseInt(idx) === index);
+      }
+      
+      // Update cell classes in row
+      for (const idx in rowCells) {
+        rowCells[idx].cell.classList.toggle('selected', parseInt(idx) === index);
       }
     }
     
@@ -2945,10 +3233,266 @@
       proportionalToggle.classList.toggle('visible', showSelector && currentLayout === 'grid');
       
       // If we only have 1 stream, force focus layout
-      if (streamOrder.length <= 1 && currentLayout === 'grid') {
+      if (streamOrder.length <= 1 && (currentLayout === 'grid' || currentLayout === 'row')) {
         setLayout('focus');
       }
     }
+    
+    // ==========================================
+    // Row Layout
+    // ==========================================
+    
+    function updateRowLayout() {
+      const count = streamOrder.length;
+      
+      if (count === 0) {
+        cleanupRowCells();
+        return;
+      }
+      
+      const sortedOrder = [...streamOrder].sort((a, b) => a - b);
+      
+      // Remove cells for streams that no longer exist
+      for (const idx in rowCells) {
+        if (!sortedOrder.includes(parseInt(idx))) {
+          rowCells[idx].cell.remove();
+          if (rowCells[idx].minimapItem) {
+            rowCells[idx].minimapItem.remove();
+          }
+          delete rowCells[idx];
+        }
+      }
+      
+      // Create or update cells
+      for (const idx of sortedOrder) {
+        const data = streams[idx];
+        if (!data || !data.stream) continue;
+        
+        let cell = rowCells[idx];
+        
+        if (!cell) {
+          // Create new row cell
+          const cellEl = document.createElement('div');
+          cellEl.className = 'row-cell';
+          cellEl.dataset.streamIndex = idx;
+          
+          const video = document.createElement('video');
+          video.autoplay = true;
+          video.playsinline = true;
+          video.muted = true;
+          
+          const label = document.createElement('div');
+          label.className = 'row-cell-label';
+          
+          cellEl.appendChild(video);
+          cellEl.appendChild(label);
+          
+          // Double click to focus
+          cellEl.addEventListener('dblclick', (e) => {
+            e.preventDefault();
+            viewerFocusedIndex = idx;
+            setLayout('focus');
+          });
+          
+          // Create minimap item
+          const minimapItem = document.createElement('div');
+          minimapItem.className = 'row-minimap-item';
+          minimapItem.dataset.streamIndex = idx;
+          const minimapCanvas = document.createElement('canvas');
+          minimapItem.appendChild(minimapCanvas);
+          
+          // Click on minimap item to scroll to that stream
+          minimapItem.addEventListener('click', () => {
+            const cellElement = rowCells[idx]?.cell;
+            if (cellElement) {
+              cellElement.scrollIntoView({ behavior: 'smooth', inline: 'center', block: 'nearest' });
+            }
+          });
+          
+          cell = { cell: cellEl, video, label, minimapItem, minimapCanvas };
+          rowCells[idx] = cell;
+        }
+        
+        // Update video source
+        if (cell.video.srcObject !== data.stream) {
+          cell.video.srcObject = data.stream;
+          cell.video.play().catch(e => console.log('Row video play error:', e));
+        }
+        
+        // TRUE NATIVE SIZE - no scaling whatsoever for 100% sharpness
+        const info = data.info;
+        if (info?.width && info?.height) {
+          cell.video.style.width = info.width + 'px';
+          cell.video.style.height = info.height + 'px';
+        } else {
+          // Use video's native dimensions if no info
+          cell.video.style.width = 'auto';
+          cell.video.style.height = 'auto';
+        }
+        
+        // Update label
+        cell.label.textContent = info?.windowName || info?.appName || `Stream ${idx + 1}`;
+        
+        // Update classes
+        cell.cell.classList.toggle('selected', idx === selectedGridIndex);
+        cell.cell.classList.toggle('sharer-focused', idx === sharerFocusedIndex);
+        cell.minimapItem.classList.toggle('sharer-focused', idx === sharerFocusedIndex);
+        
+        // Ensure cell is in the DOM
+        if (!cell.cell.parentNode) {
+          videoRow.appendChild(cell.cell);
+        }
+        
+        // Ensure minimap item is in the DOM
+        if (!cell.minimapItem.parentNode) {
+          rowMinimap.appendChild(cell.minimapItem);
+        }
+      }
+      
+      // Reorder cells
+      for (const idx of sortedOrder) {
+        if (rowCells[idx]) {
+          videoRow.appendChild(rowCells[idx].cell);
+          rowMinimap.appendChild(rowCells[idx].minimapItem);
+        }
+      }
+      
+      // Show minimap if we have content
+      rowMinimap.classList.toggle('visible', count > 0);
+      
+      // Update minimap thumbnails
+      updateRowMinimap();
+    }
+    
+    // Row minimap update
+    let rowMinimapInterval = null;
+    
+    function updateRowMinimap() {
+      const sortedOrder = [...streamOrder].sort((a, b) => a - b);
+      
+      for (const idx of sortedOrder) {
+        const cell = rowCells[idx];
+        if (!cell || !cell.video || !cell.minimapCanvas) continue;
+        
+        const video = cell.video;
+        const canvas = cell.minimapCanvas;
+        
+        // Only draw if video has dimensions
+        if (video.videoWidth && video.videoHeight) {
+          const aspectRatio = video.videoWidth / video.videoHeight;
+          const height = 36;
+          const width = height * aspectRatio;
+          
+          canvas.width = width;
+          canvas.height = height;
+          canvas.style.width = width + 'px';
+          canvas.style.height = height + 'px';
+          
+          const ctx = canvas.getContext('2d');
+          ctx.drawImage(video, 0, 0, width, height);
+        }
+        
+        // Update in-view state
+        const cellRect = cell.cell.getBoundingClientRect();
+        const containerRect = videoRow.getBoundingClientRect();
+        const isInView = cellRect.left < containerRect.right && cellRect.right > containerRect.left;
+        cell.minimapItem.classList.toggle('in-view', isInView);
+      }
+    }
+    
+    function startRowMinimapUpdates() {
+      if (rowMinimapInterval) return;
+      rowMinimapInterval = setInterval(() => {
+        if (currentLayout === 'row' && rowMinimap.classList.contains('visible')) {
+          updateRowMinimap();
+        }
+      }, 200);
+    }
+    
+    function stopRowMinimapUpdates() {
+      if (rowMinimapInterval) {
+        clearInterval(rowMinimapInterval);
+        rowMinimapInterval = null;
+      }
+    }
+    
+    // Row drag-to-scroll
+    let rowDragState = {
+      isDragging: false,
+      startX: 0,
+      startY: 0,
+      scrollLeft: 0,
+      scrollTop: 0
+    };
+    
+    videoRow.addEventListener('mousedown', (e) => {
+      // Don't start drag if clicking on a video cell's interactive area
+      if (e.target.closest('.row-cell-label')) return;
+      
+      rowDragState.isDragging = true;
+      rowDragState.startX = e.pageX - videoRow.offsetLeft;
+      rowDragState.startY = e.pageY - videoRow.offsetTop;
+      rowDragState.scrollLeft = videoRow.scrollLeft;
+      rowDragState.scrollTop = videoRow.scrollTop;
+      videoRow.classList.add('dragging');
+    });
+    
+    document.addEventListener('mousemove', (e) => {
+      if (!rowDragState.isDragging) return;
+      e.preventDefault();
+      
+      const x = e.pageX - videoRow.offsetLeft;
+      const y = e.pageY - videoRow.offsetTop;
+      const walkX = (x - rowDragState.startX) * 1.5;
+      const walkY = (y - rowDragState.startY) * 1.5;
+      
+      videoRow.scrollLeft = rowDragState.scrollLeft - walkX;
+      videoRow.scrollTop = rowDragState.scrollTop - walkY;
+    });
+    
+    document.addEventListener('mouseup', () => {
+      rowDragState.isDragging = false;
+      videoRow.classList.remove('dragging');
+    });
+    
+    // Touch support for row drag
+    videoRow.addEventListener('touchstart', (e) => {
+      if (e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      
+      rowDragState.isDragging = true;
+      rowDragState.startX = touch.pageX - videoRow.offsetLeft;
+      rowDragState.startY = touch.pageY - videoRow.offsetTop;
+      rowDragState.scrollLeft = videoRow.scrollLeft;
+      rowDragState.scrollTop = videoRow.scrollTop;
+    }, { passive: true });
+    
+    videoRow.addEventListener('touchmove', (e) => {
+      if (!rowDragState.isDragging || e.touches.length !== 1) return;
+      const touch = e.touches[0];
+      
+      const x = touch.pageX - videoRow.offsetLeft;
+      const y = touch.pageY - videoRow.offsetTop;
+      const walkX = x - rowDragState.startX;
+      const walkY = y - rowDragState.startY;
+      
+      videoRow.scrollLeft = rowDragState.scrollLeft - walkX;
+      videoRow.scrollTop = rowDragState.scrollTop - walkY;
+    }, { passive: true });
+    
+    videoRow.addEventListener('touchend', () => {
+      rowDragState.isDragging = false;
+    });
+    
+    // Update layout on resize
+    window.addEventListener('resize', () => {
+      if (currentLayout === 'row') {
+        updateRowLayout();
+      }
+    });
+    
+    // Start row minimap updates
+    startRowMinimapUpdates();
     
     // ==========================================
     // Pan/Zoom for Native View
@@ -3232,8 +3776,8 @@
     // Load saved preferences
     try {
       const savedLayout = localStorage.getItem('gopeep-layout');
-      if (savedLayout === 'grid') {
-        currentLayout = 'grid';
+      if (savedLayout === 'grid' || savedLayout === 'row') {
+        currentLayout = savedLayout;
       }
       const savedProportional = localStorage.getItem('gopeep-proportional');
       if (savedProportional === '0') {
