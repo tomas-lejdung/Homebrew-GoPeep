@@ -631,7 +631,7 @@ func (o *Overlay) runLoop() {
 
 	const targetFrameTime = time.Second / 60 // ~16.67ms
 
-	for o.running {
+	for o.running.Load() {
 		frameStart := time.Now()
 
 		// Update overlay (C call)
@@ -657,7 +657,7 @@ func (o *Overlay) platformStart() error {
 	globalMu.Unlock()
 
 	// Start the game loop in a separate goroutine
-	o.running = true
+	o.running.Store(true)
 	o.ready = make(chan struct{})
 	o.stopped = make(chan struct{})
 	go o.runLoop()
@@ -670,12 +670,12 @@ func (o *Overlay) platformStart() error {
 
 // platformStop cleans up the macOS overlay and stops the game loop.
 func (o *Overlay) platformStop() {
-	if !o.running {
+	if !o.running.Load() {
 		return
 	}
 
 	// Signal loop to stop
-	o.running = false
+	o.running.Store(false)
 
 	// Wait for loop to exit (it will destroy the overlay)
 	<-o.stopped

@@ -3,6 +3,8 @@
 // It communicates with the main application only through the Controller interface.
 package overlay
 
+import "sync/atomic"
+
 // WindowState represents the selection/sharing state of a window
 type WindowState int
 
@@ -65,7 +67,7 @@ type Overlay struct {
 	events     chan Event
 
 	// Game loop state
-	running bool
+	running atomic.Bool   // thread-safe flag for loop control
 	ready   chan struct{} // signals overlay is created and ready
 	stopped chan struct{} // signals game loop has exited
 }
