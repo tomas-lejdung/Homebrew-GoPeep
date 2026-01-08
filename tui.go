@@ -913,6 +913,11 @@ func (m *model) initServer() error {
 		return fmt.Errorf("failed to create peer manager: %v", err)
 	}
 
+	// Initialize pre-allocated track slots for instant window sharing
+	if err := m.peerManager.InitializeTrackSlots(); err != nil {
+		return fmt.Errorf("failed to initialize track slots: %v", err)
+	}
+
 	// Try remote signal server first (unless local mode is forced)
 	if !m.config.LocalMode && m.config.SignalURL != "" {
 		if err := m.initRemoteSignaling(); err == nil {
@@ -1333,6 +1338,11 @@ func (m *model) initMultiServer() error {
 	m.peerManager, err = NewPeerManager(iceConfig, codecType)
 	if err != nil {
 		return fmt.Errorf("failed to create multi peer manager: %v", err)
+	}
+
+	// Initialize pre-allocated track slots for instant window sharing
+	if err := m.peerManager.InitializeTrackSlots(); err != nil {
+		return fmt.Errorf("failed to initialize track slots: %v", err)
 	}
 
 	// Try remote signal server first

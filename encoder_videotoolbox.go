@@ -11,6 +11,7 @@ package main
 #include <Accelerate/Accelerate.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 #include <pthread.h>
 
 typedef struct {
@@ -227,8 +228,9 @@ void vtb_output_callback(void* outputCallbackRefCon,
 
     pthread_mutex_lock(&ctx->output_mutex);
 
-    // Get write buffer index
-    int buf_idx = ctx->write_buffer_idx;
+    // Get buffer index from sourceFrameRefCon (passed when frame was submitted)
+    // This avoids race condition with write_buffer_idx being changed before callback runs
+    int buf_idx = (int)(intptr_t)sourceFrameRefCon;
 
     // Calculate required size
     size_t requiredSize = totalLength;
@@ -643,13 +645,14 @@ const uint8_t* encode_videotoolbox_frame(VideoToolboxContext* ctx, const uint8_t
     pthread_mutex_unlock(&ctx->output_mutex);
 
     // Encode frame (async - callback will be invoked when done)
+    // Pass current_write_idx as sourceFrameRefCon so callback knows which buffer to use
     OSStatus status = VTCompressionSessionEncodeFrame(
         ctx->session,
         pixelBuffer,
         pts,
         kCMTimeInvalid,
         frameProps,
-        NULL,
+        (void*)(intptr_t)current_write_idx,  // Buffer index for callback
         NULL
     );
 
@@ -741,6 +744,7 @@ import "C"
 import (
 	"fmt"
 	"image"
+	"log"
 	"sync"
 	"time"
 	"unsafe"
@@ -892,15 +896,25 @@ func (e *VideoToolboxEncoder) EncodeBGRAFrame(frame *BGRAFrame) ([]byte, error) 
 	// Check if dimensions changed or bitrate needs update
 	if width != e.width || height != e.height || e.needsRecreate {
 		// Reinitialize with new dimensions/bitrate
+		reason := "unknown"
+		if width != e.width || height != e.height {
+			reason = fmt.Sprintf("dimensions changed (%dx%d -> %dx%d)", e.width, e.height, width, height)
+		} else if e.needsRecreate {
+			reason = fmt.Sprintf("settings changed (qualityMode=%v, qualityValue=%.2f)", e.qualityMode, e.qualityValue)
+		}
+		log.Printf("VideoToolbox: Recreating encoder - %s", reason)
+
 		if e.ctx != nil {
 			C.destroy_videotoolbox_encoder(e.ctx)
 		}
 		if err := e.initWithDimensions(width, height); err != nil {
+			log.Printf("VideoToolbox: Failed to recreate encoder: %v", err)
 			return nil, err
 		}
 		e.needsRecreate = false
 		// Reset frame count to force keyframe on next frame after dimension change
 		e.frameCount = 0
+		log.Printf("VideoToolbox: Encoder recreated successfully (qualityMode=%v)", e.qualityMode)
 	}
 
 	// Force keyframe on first frame
@@ -919,7 +933,16 @@ func (e *VideoToolboxEncoder) EncodeBGRAFrame(frame *BGRAFrame) ([]byte, error) 
 	)
 
 	if dataPtr == nil || outSize == 0 {
+		// Log occasional encode failures (every 30th failure to avoid spam)
+		if e.frameCount == 0 {
+			log.Printf("VideoToolbox: First frame encode failed (forceKeyframe=%d)", forceKeyframe)
+		}
 		return nil, fmt.Errorf("encoding failed")
+	}
+
+	// Log first successful frame after recreation
+	if e.frameCount == 0 {
+		log.Printf("VideoToolbox: First frame encoded successfully, size=%d bytes, keyframe=%d", int(outSize), forceKeyframe)
 	}
 
 	e.frameCount++

@@ -1,130 +1,443 @@
-2026/01/08 13:05:44 === GoPeep started at 2026-01-08T13:05:44+01:00 ===
-2026/01/08 13:05:49 Signal server starting on :8080
-2026/01/08 13:05:51 Broadcasting sharer-started to room SHARP-WHALE-10
-2026/01/08 13:05:51 Focus detection loop started with 2 pipelines:
-2026/01/08 13:05:51 Renegotiating with 0 peers
-2026/01/08 13:05:51   - Track video0: windowID=324207, name=ZERO_COPY_CAPTURE.md
-2026/01/08 13:05:51   - Track video1: windowID=318244, name=OpenCode
-2026/01/08 13:05:51 Track video0 bitrate set to 20000 kbps
-2026/01/08 13:05:51 Track video1 bitrate set to 10000 kbps
-2026/01/08 13:05:51 Streamer bitrate updated: focus=20000 kbps, bg=10000 kbps
-2026/01/08 13:05:51 Topmost captured window changed to: 318244 (was 0)
-2026/01/08 13:05:51 Focus set to track=video1, windowID=318244, name=OpenCode
-2026/01/08 13:05:51 Calling NotifyFocusChange for track: video1
-2026/01/08 13:05:51 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 13:05:51 Focus change callback triggered for track: video1
-2026/01/08 13:05:51 Size change callback triggered for track video0: 1651x1298
-2026/01/08 13:05:53 Track video0 FPS changed from 30 to 60
-2026/01/08 13:05:53 Pipeline ticker updated to 60 FPS
-2026/01/08 13:05:53 Track video1 FPS changed from 30 to 60
-2026/01/08 13:05:53 Streamer FPS updated to 60
-2026/01/08 13:05:53 Pipeline ticker updated to 60 FPS
-2026/01/08 13:05:54 SetCodec: Changing codec from vp8 to vp9
-2026/01/08 13:05:54 AddTrackToAllPeers: Adding track video0 to 0 peer connections
-2026/01/08 13:05:54 AddTrackToAllPeers: No peer connections to add track to
-2026/01/08 13:05:54 AddTrackToAllPeers: Adding track video1 to 0 peer connections
-2026/01/08 13:05:54 AddTrackToAllPeers: No peer connections to add track to
-2026/01/08 13:05:54 SetCodec: Triggering renegotiation for 2 pipelines
-2026/01/08 13:05:54 SetCodec: Successfully changed codec to vp9 with 2 pipelines
-2026/01/08 13:05:54 Renegotiating with 0 peers
-2026/01/08 13:05:55 Size change callback triggered for track video1: 1611x1019
-2026/01/08 13:05:56 Viewer joined room SHARP-WHALE-10 (total viewers: 1)
-2026/01/08 13:05:56 Peer viewer-1 connection state: connecting
-2026/01/08 13:05:57 Peer viewer-1 connection state: connected
-2026/01/08 13:06:03 Topmost captured window changed to: 324207 (was 318244)
-2026/01/08 13:06:03 Focus set to track=video0, windowID=324207, name=ZERO_COPY_CAPTURE.md
-2026/01/08 13:06:03 Calling NotifyFocusChange for track: video0
-2026/01/08 13:06:03 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 13:06:03 Focus change callback triggered for track: video0
-2026/01/08 13:06:20 Topmost captured window changed to: 318244 (was 324207)
-2026/01/08 13:06:20 Focus set to track=video1, windowID=318244, name=OpenCode
-2026/01/08 13:06:20 Calling NotifyFocusChange for track: video1
-2026/01/08 13:06:20 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 13:06:20 Focus change callback triggered for track: video1
-2026/01/08 13:06:26 Topmost captured window changed to: 324207 (was 318244)
-2026/01/08 13:06:26 Focus set to track=video0, windowID=324207, name=ZERO_COPY_CAPTURE.md
-2026/01/08 13:06:26 Calling NotifyFocusChange for track: video0
-2026/01/08 13:06:26 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 13:06:26 Focus change callback triggered for track: video0
-2026/01/08 13:06:37 Topmost captured window changed to: 318244 (was 324207)
-2026/01/08 13:06:37 Focus set to track=video1, windowID=318244, name=OpenCode
-2026/01/08 13:06:37 Calling NotifyFocusChange for track: video1
-2026/01/08 13:06:37 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 13:06:37 Focus change callback triggered for track: video1
-2026/01/08 13:06:42 SetCodec: Changing codec from vp9 to h264
-2026/01/08 13:06:42 Removed track video0 from peer viewer-1
-2026/01/08 13:06:42 Removed track video1 from peer viewer-1
-2026/01/08 13:06:42 AddTrackToAllPeers: Adding track video0 to 1 peer connections
-2026/01/08 13:06:42 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
-2026/01/08 13:06:42 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
-2026/01/08 13:06:42 AddTrackToAllPeers: Adding track video1 to 1 peer connections
-2026/01/08 13:06:42 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
-2026/01/08 13:06:42 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
-2026/01/08 13:06:42 SetCodec: Triggering renegotiation for 2 pipelines
-2026/01/08 13:06:42 SetCodec: Successfully changed codec to h264 with 2 pipelines
-2026/01/08 13:06:42 Renegotiating with 1 peers
-2026/01/08 13:06:42 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/08 13:06:42 Renegotiation: peer viewer-1 connection state: connected
-2026/01/08 13:06:42 Renegotiation: ICE gathering complete for viewer-1
-2026/01/08 13:06:42 Renegotiation: sending offer to peer viewer-1 (SDP length: 16488)
-2026/01/08 13:06:42 Renegotiation: sending offer to peer viewer-1
-2026/01/08 13:06:42 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/08 13:06:42 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/08 13:06:42 Size change callback triggered for track video1: 1611x1019
-2026/01/08 13:06:44 Topmost captured window changed to: 324207 (was 318244)
-2026/01/08 13:06:44 Focus set to track=video0, windowID=324207, name=ZERO_COPY_CAPTURE.md
-2026/01/08 13:06:44 Calling NotifyFocusChange for track: video0
-2026/01/08 13:06:44 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 13:06:44 Focus change callback triggered for track: video0
-2026/01/08 13:06:45 Topmost captured window changed to: 318244 (was 324207)
-2026/01/08 13:06:45 Focus set to track=video1, windowID=318244, name=OpenCode
-2026/01/08 13:06:45 Calling NotifyFocusChange for track: video1
-2026/01/08 13:06:45 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 13:06:45 Focus change callback triggered for track: video1
-2026/01/08 13:06:55 Topmost captured window changed to: 324207 (was 318244)
-2026/01/08 13:06:55 Focus set to track=video0, windowID=324207, name=ZERO_COPY_CAPTURE.md
-2026/01/08 13:06:55 Calling NotifyFocusChange for track: video0
-2026/01/08 13:06:55 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 13:06:55 Focus change callback triggered for track: video0
-2026/01/08 13:07:04 Track video1 bitrate set to 25000 kbps
-2026/01/08 13:07:04 Track video0 bitrate set to 50000 kbps
-2026/01/08 13:07:04 Streamer bitrate updated: focus=50000 kbps, bg=25000 kbps
-2026/01/08 13:07:11 Track video1 FPS changed from 60 to 30
-2026/01/08 13:07:11 Pipeline ticker updated to 30 FPS
-2026/01/08 13:07:11 Track video0 FPS changed from 60 to 30
-2026/01/08 13:07:11 Streamer FPS updated to 30
-2026/01/08 13:07:11 Pipeline ticker updated to 30 FPS
-2026/01/08 13:07:16 SetCodec: Changing codec from h264 to vp8
-2026/01/08 13:07:16 Removed track video0 from peer viewer-1
-2026/01/08 13:07:16 Removed track video1 from peer viewer-1
-2026/01/08 13:07:16 AddTrackToAllPeers: Adding track video1 to 1 peer connections
-2026/01/08 13:07:16 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
-2026/01/08 13:07:16 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
-2026/01/08 13:07:16 AddTrackToAllPeers: Adding track video0 to 1 peer connections
-2026/01/08 13:07:16 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
-2026/01/08 13:07:16 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
-2026/01/08 13:07:16 SetCodec: Triggering renegotiation for 2 pipelines
-2026/01/08 13:07:16 SetCodec: Successfully changed codec to vp8 with 2 pipelines
-2026/01/08 13:07:16 Renegotiating with 1 peers
-2026/01/08 13:07:16 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/08 13:07:16 Renegotiation: peer viewer-1 connection state: connected
-2026/01/08 13:07:16 Renegotiation: ICE gathering complete for viewer-1
-2026/01/08 13:07:16 Renegotiation: sending offer to peer viewer-1 (SDP length: 16488)
-2026/01/08 13:07:16 Renegotiation: sending offer to peer viewer-1
-2026/01/08 13:07:16 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/08 13:07:16 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/08 13:07:16 Size change callback triggered for track video0: 1651x1298
-2026/01/08 13:07:17 Track video1 FPS changed from 30 to 60
-2026/01/08 13:07:17 Pipeline ticker updated to 60 FPS
-2026/01/08 13:07:18 Track video0 FPS changed from 30 to 60
-2026/01/08 13:07:18 Streamer FPS updated to 60
-2026/01/08 13:07:18 Pipeline ticker updated to 60 FPS
-2026/01/08 13:07:26 Topmost captured window changed to: 318244 (was 324207)
-2026/01/08 13:07:26 Focus set to track=video1, windowID=318244, name=OpenCode
-2026/01/08 13:07:26 Calling NotifyFocusChange for track: video1
-2026/01/08 13:07:26 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 13:07:26 Focus change callback triggered for track: video1
-2026/01/08 13:07:29 Focus detection loop stopped
-2026/01/08 13:07:29 Broadcasting stream-removed: video1
-2026/01/08 13:07:29 Broadcasting stream-removed: video0
-2026/01/08 13:07:29 Peer viewer-1 connection state: closed
+2026/01/08 14:49:28 === GoPeep started at 2026-01-08T14:49:28+01:00 ===
+2026/01/08 14:49:31 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/08 14:49:31 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 14:49:31 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 14:49:31 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 14:49:31 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 14:49:31 InitializeTrackSlots: All 4 track slots ready
+2026/01/08 14:49:31 Signal server starting on :8080
+2026/01/08 14:49:32 ActivateSlot: Activated video0 for window 325810 (Arc - Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now)
+2026/01/08 14:49:32 Broadcasting sharer-started to room FAIR-WAVE-29
+2026/01/08 14:49:32 Focus detection loop started with 1 pipelines:
+2026/01/08 14:49:32   - Track video0: windowID=325810, name=Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now
+2026/01/08 14:49:32 Renegotiating with 0 peers
+2026/01/08 14:49:32 Topmost captured window changed to: 325810 (was 0)
+2026/01/08 14:49:32 Focus set to track=video0, windowID=325810, name=Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now
+2026/01/08 14:49:32 Calling NotifyFocusChange for track: video0
+2026/01/08 14:49:32 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 14:49:32 Focus change callback triggered for track: video0
+2026/01/08 14:49:32 sendLoop: Writing frame 1 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:49:33 Size change callback triggered for track video0: 2560x1409
+2026/01/08 14:49:34 Viewer joined room FAIR-WAVE-29 (total viewers: 1)
+2026/01/08 14:49:34 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 14:49:34 Peer viewer-1 connection state: connecting
+2026/01/08 14:49:35 Peer viewer-1 connection state: connected
+2026/01/08 14:49:36 sendLoop: Writing frame 101 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:49:39 sendLoop: Writing frame 201 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:49:43 sendLoop: Writing frame 301 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:49:46 SetCodec: Changing codec from vp8 to vp9
+2026/01/08 14:49:46 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/08 14:49:46 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/08 14:49:46 encodeLoop: Encode failed for track video0 (error #3): encoder not initialized
+2026/01/08 14:49:46 encodeLoop: Encode failed for track video0 (error #4): encoder not initialized
+2026/01/08 14:49:46 encodeLoop: Encode failed for track video0 (error #5): encoder not initialized
+2026/01/08 14:49:46 SetCodec: Using slots path - recreating slots with new codec
+2026/01/08 14:49:46 Removed track video0 from peer viewer-1
+2026/01/08 14:49:46 Removed track video1 from peer viewer-1
+2026/01/08 14:49:46 Removed track video2 from peer viewer-1
+2026/01/08 14:49:46 Removed track video3 from peer viewer-1
+2026/01/08 14:49:46 RecreateSlots: Recreating 4 track slots with new codec video/VP9
+2026/01/08 14:49:46 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 14:49:46 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 14:49:46 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 14:49:46 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 14:49:46 RecreateSlots: Restored active slot 0 for window 325810 (Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now)
+2026/01/08 14:49:46 RecreateSlots: Completed - 1 active slots restored
+2026/01/08 14:49:46 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/08 14:49:46 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
+2026/01/08 14:49:46 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
+2026/01/08 14:49:46 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/08 14:49:46 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/08 14:49:46 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/08 14:49:46 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/08 14:49:46 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/08 14:49:46 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/08 14:49:46 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/08 14:49:46 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/08 14:49:46 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/08 14:49:46 SetCodec: Created pipeline for slot video0 (window 325810)
+2026/01/08 14:49:46 SetCodec: Triggering renegotiation for 1 pipelines
+2026/01/08 14:49:46 SetCodec: Successfully changed codec to vp9 with 1 pipelines
+2026/01/08 14:49:46 Renegotiating with 1 peers
+2026/01/08 14:49:46 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 14:49:46 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 14:49:46 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 14:49:46 Renegotiation: sending offer to peer viewer-1 (SDP length: 31216)
+2026/01/08 14:49:46 Renegotiation: sending offer to peer viewer-1
+2026/01/08 14:49:46 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/08 14:49:46 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 14:49:46 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 14:49:46 sendLoop: Writing frame 1 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:49:46 Size change callback triggered for track video0: 2560x1409
+2026/01/08 14:49:49 sendLoop: Writing frame 101 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:49:49 SetCodec: Changing codec from vp9 to h264
+2026/01/08 14:49:49 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/08 14:49:49 SetCodec: Using slots path - recreating slots with new codec
+2026/01/08 14:49:49 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/08 14:49:49 Removed track video0 from peer viewer-1
+2026/01/08 14:49:49 Removed track video1 from peer viewer-1
+2026/01/08 14:49:49 Removed track video2 from peer viewer-1
+2026/01/08 14:49:49 Removed track video3 from peer viewer-1
+2026/01/08 14:49:49 RecreateSlots: Recreating 4 track slots with new codec video/H264
+2026/01/08 14:49:49 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 14:49:49 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 14:49:49 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 14:49:49 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 14:49:49 RecreateSlots: Restored active slot 0 for window 325810 (Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now)
+2026/01/08 14:49:49 RecreateSlots: Completed - 1 active slots restored
+2026/01/08 14:49:49 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/08 14:49:49 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
+2026/01/08 14:49:49 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
+2026/01/08 14:49:49 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/08 14:49:49 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/08 14:49:49 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/08 14:49:49 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/08 14:49:49 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/08 14:49:49 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/08 14:49:49 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/08 14:49:49 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/08 14:49:49 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/08 14:49:49 SetCodec: Created pipeline for slot video0 (window 325810)
+2026/01/08 14:49:49 SetCodec: Triggering renegotiation for 1 pipelines
+2026/01/08 14:49:49 SetCodec: Successfully changed codec to h264 with 1 pipelines
+2026/01/08 14:49:49 Renegotiating with 1 peers
+2026/01/08 14:49:49 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 14:49:49 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 14:49:49 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 14:49:49 Renegotiation: sending offer to peer viewer-1 (SDP length: 31212)
+2026/01/08 14:49:49 Renegotiation: sending offer to peer viewer-1
+2026/01/08 14:49:49 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/08 14:49:49 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 14:49:49 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 14:49:50 VideoToolbox: First frame encoded successfully, size=78392 bytes, keyframe=1
+2026/01/08 14:49:50 sendLoop: Writing frame 1 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:49:50 Size change callback triggered for track video0: 2560x1409
+2026/01/08 14:49:53 sendLoop: Writing frame 101 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:49:56 Track video0 bitrate set to 20000 kbps
+2026/01/08 14:49:56 Streamer bitrate updated: focus=20000 kbps, bg=10000 kbps
+2026/01/08 14:49:56 VideoToolbox: Recreating encoder - settings changed (qualityMode=false, qualityValue=0.00)
+2026/01/08 14:49:56 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 14:49:56 VideoToolbox: First frame encoded successfully, size=130428 bytes, keyframe=1
+2026/01/08 14:49:56 sendLoop: Writing frame 201 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:00 sendLoop: Writing frame 301 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:00 TUI: Adding window dynamically: 318244 (OpenCode)
+2026/01/08 14:50:00 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 14:50:00 ActivateSlot: Activated video1 for window 318244 (OpenCode - OpenCode)
+2026/01/08 14:50:01 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/08 14:50:01 Broadcasting stream-activated: video1 (fast path)
+2026/01/08 14:50:01 Added window dynamically: video1 (windowID=318244, fastPath=true)
+2026/01/08 14:50:01 VideoToolbox: First frame encoded successfully, size=68807 bytes, keyframe=1
+2026/01/08 14:50:01 sendLoop: Writing frame 1 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:03 Topmost captured window changed to: 318244 (was 325810)
+2026/01/08 14:50:03 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 14:50:03 Calling NotifyFocusChange for track: video1
+2026/01/08 14:50:03 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 14:50:03 Focus change callback triggered for track: video1
+2026/01/08 14:50:03 sendLoop: Writing frame 401 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:04 Topmost captured window changed to: 325810 (was 318244)
+2026/01/08 14:50:04 Focus set to track=video0, windowID=325810, name=Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now
+2026/01/08 14:50:04 Calling NotifyFocusChange for track: video0
+2026/01/08 14:50:04 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 14:50:04 Focus change callback triggered for track: video0
+2026/01/08 14:50:05 sendLoop: Writing frame 101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:07 sendLoop: Writing frame 501 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:07 SetCodec: Changing codec from h264 to vp9
+2026/01/08 14:50:07 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/08 14:50:07 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/08 14:50:07 SetCodec: Using slots path - recreating slots with new codec
+2026/01/08 14:50:07 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/08 14:50:07 Removed track video0 from peer viewer-1
+2026/01/08 14:50:07 Removed track video1 from peer viewer-1
+2026/01/08 14:50:07 Removed track video2 from peer viewer-1
+2026/01/08 14:50:07 Removed track video3 from peer viewer-1
+2026/01/08 14:50:07 RecreateSlots: Recreating 4 track slots with new codec video/VP9
+2026/01/08 14:50:07 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 14:50:07 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 14:50:07 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 14:50:07 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 14:50:07 RecreateSlots: Restored active slot 0 for window 325810 (Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now)
+2026/01/08 14:50:07 RecreateSlots: Restored active slot 1 for window 318244 (OpenCode)
+2026/01/08 14:50:07 RecreateSlots: Completed - 2 active slots restored
+2026/01/08 14:50:07 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/08 14:50:07 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
+2026/01/08 14:50:07 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
+2026/01/08 14:50:07 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/08 14:50:07 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/08 14:50:07 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/08 14:50:07 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/08 14:50:07 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/08 14:50:07 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/08 14:50:07 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/08 14:50:07 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/08 14:50:07 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/08 14:50:07 SetCodec: Created pipeline for slot video0 (window 325810)
+2026/01/08 14:50:07 SetCodec: Created pipeline for slot video1 (window 318244)
+2026/01/08 14:50:07 SetCodec: Triggering renegotiation for 2 pipelines
+2026/01/08 14:50:07 SetCodec: Successfully changed codec to vp9 with 2 pipelines
+2026/01/08 14:50:07 Renegotiating with 1 peers
+2026/01/08 14:50:07 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 14:50:07 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 14:50:07 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 14:50:07 Renegotiation: sending offer to peer viewer-1 (SDP length: 31208)
+2026/01/08 14:50:07 Renegotiation: sending offer to peer viewer-1
+2026/01/08 14:50:07 Renegotiation: sent streams-info with 2 tracks to peer viewer-1
+2026/01/08 14:50:07 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 14:50:07 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 14:50:07 sendLoop: Writing frame 1 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:07 sendLoop: Writing frame 1 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:07 Size change callback triggered for track video0: 2560x1409
+2026/01/08 14:50:08 Topmost captured window changed to: 318244 (was 325810)
+2026/01/08 14:50:08 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 14:50:08 Calling NotifyFocusChange for track: video1
+2026/01/08 14:50:08 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 14:50:08 Focus change callback triggered for track: video1
+2026/01/08 14:50:10 sendLoop: Writing frame 101 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:11 sendLoop: Writing frame 101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:12 Topmost captured window changed to: 325810 (was 318244)
+2026/01/08 14:50:12 Focus set to track=video0, windowID=325810, name=Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now
+2026/01/08 14:50:12 Calling NotifyFocusChange for track: video0
+2026/01/08 14:50:12 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 14:50:12 Focus change callback triggered for track: video0
+2026/01/08 14:50:14 sendLoop: Writing frame 201 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:14 sendLoop: Writing frame 201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:17 sendLoop: Writing frame 301 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:17 sendLoop: Writing frame 301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:21 sendLoop: Writing frame 401 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:21 sendLoop: Writing frame 401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:24 sendLoop: Writing frame 501 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:24 sendLoop: Writing frame 501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:28 sendLoop: Writing frame 601 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:28 sendLoop: Writing frame 601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:31 sendLoop: Writing frame 701 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:31 Viewer joined room FAIR-WAVE-29 (total viewers: 2)
+2026/01/08 14:50:31 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 14:50:31 Peer viewer-2 connection state: connecting
+2026/01/08 14:50:31 sendLoop: Writing frame 701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:32 Peer viewer-2 connection state: connected
+2026/01/08 14:50:35 sendLoop: Writing frame 801 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:35 sendLoop: Writing frame 801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:38 sendLoop: Writing frame 901 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:38 sendLoop: Writing frame 901 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:41 sendLoop: Writing frame 1001 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:42 sendLoop: Writing frame 1001 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:45 sendLoop: Writing frame 1101 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:45 sendLoop: Writing frame 1101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:48 sendLoop: Writing frame 1201 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:49 sendLoop: Writing frame 1201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:52 sendLoop: Writing frame 1301 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:52 sendLoop: Writing frame 1301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:55 sendLoop: Writing frame 1401 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:56 sendLoop: Writing frame 1401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:50:59 sendLoop: Writing frame 1501 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:50:59 sendLoop: Writing frame 1501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:02 sendLoop: Writing frame 1601 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:03 sendLoop: Writing frame 1601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:06 sendLoop: Writing frame 1701 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:06 sendLoop: Writing frame 1701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:09 sendLoop: Writing frame 1801 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:09 sendLoop: Writing frame 1801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:11 SetCodec: Changing codec from vp9 to h264
+2026/01/08 14:51:11 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/08 14:51:11 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/08 14:51:11 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/08 14:51:11 SetCodec: Using slots path - recreating slots with new codec
+2026/01/08 14:51:11 Removed track video0 from peer viewer-1
+2026/01/08 14:51:11 Removed track video0 from peer viewer-2
+2026/01/08 14:51:11 encodeLoop: Encode failed for track video1 (error #2): encoder not initialized
+2026/01/08 14:51:11 Removed track video1 from peer viewer-1
+2026/01/08 14:51:11 Removed track video1 from peer viewer-2
+2026/01/08 14:51:11 Removed track video2 from peer viewer-1
+2026/01/08 14:51:11 Removed track video2 from peer viewer-2
+2026/01/08 14:51:11 Removed track video3 from peer viewer-2
+2026/01/08 14:51:11 Removed track video3 from peer viewer-1
+2026/01/08 14:51:11 RecreateSlots: Recreating 4 track slots with new codec video/H264
+2026/01/08 14:51:11 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 14:51:11 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 14:51:11 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 14:51:11 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 14:51:11 RecreateSlots: Restored active slot 0 for window 325810 (Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now)
+2026/01/08 14:51:11 RecreateSlots: Restored active slot 1 for window 318244 (OpenCode)
+2026/01/08 14:51:11 RecreateSlots: Completed - 2 active slots restored
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video0 to 2 peer connections
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
+2026/01/08 14:51:11 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video0 to peer viewer-2 (state: connected)
+2026/01/08 14:51:11 AddTrackToAllPeers: Successfully added track video0 to peer viewer-2
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video1 to 2 peer connections
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/08 14:51:11 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video1 to peer viewer-2 (state: connected)
+2026/01/08 14:51:11 AddTrackToAllPeers: Successfully added track video1 to peer viewer-2
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video2 to 2 peer connections
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/08 14:51:11 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video2 to peer viewer-2 (state: connected)
+2026/01/08 14:51:11 AddTrackToAllPeers: Successfully added track video2 to peer viewer-2
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video3 to 2 peer connections
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/08 14:51:11 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/08 14:51:11 AddTrackToAllPeers: Adding track video3 to peer viewer-2 (state: connected)
+2026/01/08 14:51:11 AddTrackToAllPeers: Successfully added track video3 to peer viewer-2
+2026/01/08 14:51:11 SetCodec: Created pipeline for slot video0 (window 325810)
+2026/01/08 14:51:11 SetCodec: Created pipeline for slot video1 (window 318244)
+2026/01/08 14:51:11 SetCodec: Triggering renegotiation for 2 pipelines
+2026/01/08 14:51:11 SetCodec: Successfully changed codec to h264 with 2 pipelines
+2026/01/08 14:51:11 Renegotiating with 2 peers
+2026/01/08 14:51:11 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 14:51:11 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 14:51:11 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 14:51:11 Renegotiation: sending offer to peer viewer-1 (SDP length: 31212)
+2026/01/08 14:51:11 Renegotiation: sending offer to peer viewer-1
+2026/01/08 14:51:11 Renegotiation: sent streams-info with 2 tracks to peer viewer-1
+2026/01/08 14:51:11 Renegotiation: peer viewer-2 signaling state: stable
+2026/01/08 14:51:11 Renegotiation: peer viewer-2 connection state: connected
+2026/01/08 14:51:11 Renegotiation: ICE gathering complete for viewer-2
+2026/01/08 14:51:11 Renegotiation: sending offer to peer viewer-2 (SDP length: 17888)
+2026/01/08 14:51:11 Renegotiation: sending offer to peer viewer-2
+2026/01/08 14:51:11 Renegotiation: sent streams-info with 2 tracks to peer viewer-2
+2026/01/08 14:51:11 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 14:51:11 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 14:51:11 Renegotiation: received answer from peer viewer-2, setting remote description
+2026/01/08 14:51:11 Renegotiation: complete for peer viewer-2, signaling state: stable, connection state: connected
+2026/01/08 14:51:11 VideoToolbox: First frame encoded successfully, size=55508 bytes, keyframe=1
+2026/01/08 14:51:11 sendLoop: Writing frame 1 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:11 VideoToolbox: First frame encoded successfully, size=129433 bytes, keyframe=1
+2026/01/08 14:51:12 sendLoop: Writing frame 1 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:12 Size change callback triggered for track video0: 2560x1409
+2026/01/08 14:51:15 sendLoop: Writing frame 101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:15 sendLoop: Writing frame 101 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:15 Topmost captured window changed to: 318244 (was 325810)
+2026/01/08 14:51:15 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 14:51:15 Calling NotifyFocusChange for track: video1
+2026/01/08 14:51:15 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 14:51:15 Focus change callback triggered for track: video1
+2026/01/08 14:51:18 sendLoop: Writing frame 201 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:18 sendLoop: Writing frame 201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:22 sendLoop: Writing frame 301 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:22 sendLoop: Writing frame 301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:24 Peer viewer-2 connection state: disconnected
+2026/01/08 14:51:24 Peer viewer-2 connection state: closed
+2026/01/08 14:51:26 sendLoop: Writing frame 401 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:26 sendLoop: Writing frame 401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:26 Topmost captured window changed to: 325810 (was 318244)
+2026/01/08 14:51:26 Focus set to track=video0, windowID=325810, name=Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now
+2026/01/08 14:51:26 Calling NotifyFocusChange for track: video0
+2026/01/08 14:51:26 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 14:51:26 Focus change callback triggered for track: video0
+2026/01/08 14:51:27 Topmost captured window changed to: 318244 (was 325810)
+2026/01/08 14:51:27 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 14:51:27 Calling NotifyFocusChange for track: video1
+2026/01/08 14:51:27 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 14:51:27 Focus change callback triggered for track: video1
+2026/01/08 14:51:29 sendLoop: Writing frame 501 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:29 sendLoop: Writing frame 501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:31 Peer viewer-1 connection state: disconnected
+2026/01/08 14:51:31 Peer viewer-1 connection state: closed
+2026/01/08 14:51:32 sendLoop: Writing frame 601 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:33 sendLoop: Writing frame 601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:36 sendLoop: Writing frame 701 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:36 sendLoop: Writing frame 701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:38 Topmost captured window changed to: 325810 (was 318244)
+2026/01/08 14:51:38 Focus set to track=video0, windowID=325810, name=Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now
+2026/01/08 14:51:38 Calling NotifyFocusChange for track: video0
+2026/01/08 14:51:38 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 14:51:38 Focus change callback triggered for track: video0
+2026/01/08 14:51:38 Viewer joined room FAIR-WAVE-29 (total viewers: 1)
+2026/01/08 14:51:38 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 14:51:38 Peer viewer-3 connection state: connecting
+2026/01/08 14:51:39 Peer viewer-3 connection state: connected
+2026/01/08 14:51:40 sendLoop: Writing frame 801 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:40 sendLoop: Writing frame 801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:43 sendLoop: Writing frame 901 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:43 sendLoop: Writing frame 901 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:47 sendLoop: Writing frame 1001 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:47 Window resized: config 2560x1409 -> actual 2454x1409, updating stream
+2026/01/08 14:51:47 sendLoop: Writing frame 1001 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:47 VideoToolbox: Recreating encoder - dimensions changed (2560x1408 -> 2454x1408)
+2026/01/08 14:51:47 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 14:51:47 VideoToolbox: First frame encoded successfully, size=108719 bytes, keyframe=1
+2026/01/08 14:51:47 Size change callback triggered for track video0: 2454x1409
+2026/01/08 14:51:47 Window resized: config 2454x1409 -> actual 1625x1409, updating stream
+2026/01/08 14:51:48 VideoToolbox: Recreating encoder - dimensions changed (2454x1408 -> 1624x1408)
+2026/01/08 14:51:48 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 14:51:48 VideoToolbox: First frame encoded successfully, size=122240 bytes, keyframe=1
+2026/01/08 14:51:48 Size change callback triggered for track video0: 1625x1409
+2026/01/08 14:51:50 sendLoop: Writing frame 1101 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:50 sendLoop: Writing frame 1101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:51 Window resized: config 1625x1409 -> actual 2153x1409, updating stream
+2026/01/08 14:51:52 VideoToolbox: Recreating encoder - dimensions changed (1624x1408 -> 2152x1408)
+2026/01/08 14:51:52 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 14:51:52 VideoToolbox: First frame encoded successfully, size=122820 bytes, keyframe=1
+2026/01/08 14:51:52 Size change callback triggered for track video0: 2153x1409
+2026/01/08 14:51:53 sendLoop: Writing frame 1201 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:54 sendLoop: Writing frame 1201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:51:54 Track video1 quality mode set to quality
+2026/01/08 14:51:54 Track video0 quality mode set to quality
+2026/01/08 14:51:54 Streamer quality mode: quality
+2026/01/08 14:51:54 VideoToolbox: Recreating encoder - settings changed (qualityMode=true, qualityValue=0.90)
+2026/01/08 14:51:54 VideoToolbox: Encoder recreated successfully (qualityMode=true)
+2026/01/08 14:51:54 VideoToolbox: Recreating encoder - settings changed (qualityMode=true, qualityValue=0.98)
+2026/01/08 14:51:54 VideoToolbox: Encoder recreated successfully (qualityMode=true)
+2026/01/08 14:51:54 VideoToolbox: First frame encoded successfully, size=170902 bytes, keyframe=1
+2026/01/08 14:51:54 VideoToolbox: First frame encoded successfully, size=830211 bytes, keyframe=1
+2026/01/08 14:51:57 sendLoop: Writing frame 1301 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:51:57 sendLoop: Writing frame 1301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:00 sendLoop: Writing frame 1401 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:01 sendLoop: Writing frame 1401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:04 sendLoop: Writing frame 1501 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:04 sendLoop: Writing frame 1501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:07 Track video0 FPS changed from 30 to 60
+2026/01/08 14:52:08 Pipeline ticker updated to 60 FPS
+2026/01/08 14:52:08 VideoToolbox: Recreating encoder - settings changed (qualityMode=true, qualityValue=0.98)
+2026/01/08 14:52:08 VideoToolbox: Encoder recreated successfully (qualityMode=true)
+2026/01/08 14:52:08 VideoToolbox: First frame encoded successfully, size=810085 bytes, keyframe=1
+2026/01/08 14:52:08 sendLoop: Writing frame 1601 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:08 Track video1 FPS changed from 30 to 60
+2026/01/08 14:52:08 Streamer FPS updated to 60
+2026/01/08 14:52:08 Pipeline ticker updated to 60 FPS
+2026/01/08 14:52:08 VideoToolbox: Recreating encoder - settings changed (qualityMode=true, qualityValue=0.90)
+2026/01/08 14:52:08 VideoToolbox: Encoder recreated successfully (qualityMode=true)
+2026/01/08 14:52:08 VideoToolbox: First frame encoded successfully, size=170484 bytes, keyframe=1
+2026/01/08 14:52:08 sendLoop: Writing frame 1601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:10 sendLoop: Writing frame 1701 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:10 sendLoop: Writing frame 1701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:11 sendLoop: Writing frame 1801 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:12 sendLoop: Writing frame 1801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:13 sendLoop: Writing frame 1901 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:14 sendLoop: Writing frame 1901 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:15 sendLoop: Writing frame 2001 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:16 sendLoop: Writing frame 2001 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:16 Topmost captured window changed to: 318244 (was 325810)
+2026/01/08 14:52:16 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 14:52:16 Calling NotifyFocusChange for track: video1
+2026/01/08 14:52:16 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 14:52:16 Focus change callback triggered for track: video1
+2026/01/08 14:52:17 Topmost captured window changed to: 325810 (was 318244)
+2026/01/08 14:52:17 Focus set to track=video0, windowID=325810, name=Cream_Fucks's Room @ Chaturbate - Chat in a Live Adult Video Chat Room Now
+2026/01/08 14:52:17 Calling NotifyFocusChange for track: video0
+2026/01/08 14:52:17 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 14:52:17 Focus change callback triggered for track: video0
+2026/01/08 14:52:17 sendLoop: Writing frame 2101 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:18 sendLoop: Writing frame 2101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:19 sendLoop: Writing frame 2201 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:19 Track video0 quality mode set to performance
+2026/01/08 14:52:19 Track video1 quality mode set to performance
+2026/01/08 14:52:19 Streamer quality mode: performance
+2026/01/08 14:52:19 VideoToolbox: Recreating encoder - settings changed (qualityMode=false, qualityValue=0.90)
+2026/01/08 14:52:19 VideoToolbox: Recreating encoder - settings changed (qualityMode=false, qualityValue=0.98)
+2026/01/08 14:52:19 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 14:52:19 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 14:52:19 VideoToolbox: First frame encoded successfully, size=65576 bytes, keyframe=1
+2026/01/08 14:52:19 sendLoop: Writing frame 2201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:19 VideoToolbox: First frame encoded successfully, size=110551 bytes, keyframe=1
+2026/01/08 14:52:21 sendLoop: Writing frame 2301 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:21 sendLoop: Writing frame 2301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:23 sendLoop: Writing frame 2401 to track video0 (windowID=325810, streamID=gopeep-stream-0)
+2026/01/08 14:52:23 sendLoop: Writing frame 2401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 14:52:24 encodeLoop: Encode failed for track video0 (error #1): encoding failed
+2026/01/08 14:52:24 Focus detection loop stopped
+2026/01/08 14:52:24 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/08 14:52:24 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/08 14:52:24 Broadcasting stream-removed: video0
+2026/01/08 14:52:24 Broadcasting stream-removed: video1
+2026/01/08 14:52:24 Peer viewer-3 connection state: closed

@@ -1015,20 +1015,53 @@
       // Store the streams info array
       streamsInfo = infoArray || [];
       
+      console.log('Received streams-info:', streamsInfo.map(i => i.trackId));
+      
       // Map info to streams by index (video0 -> index 0, video1 -> index 1, etc.)
       for (const info of streamsInfo) {
         // Extract index from trackId (e.g., "video0" -> 0)
         const match = info.trackId.match(/video(\d+)/);
         if (match) {
           const idx = parseInt(match[1], 10);
+          
+          // Update stream info if track already arrived
           if (streams[idx]) {
             streams[idx].info = info;
+            
+            // Add to streamOrder if not already there (track arrived before info)
+            if (!streamOrder.includes(idx)) {
+              streamOrder.push(idx);
+              streamOrder.sort((a, b) => a - b);
+              console.log('Added stream', idx, 'to streamOrder after receiving info');
+            }
           }
+          
           if (info.isFocused) {
             sharerFocusedIndex = idx;
           }
         }
       }
+      
+      // If we have active streams but no video is showing, show the first one
+      if (streamOrder.length > 0 && (viewerFocusedIndex === null || !mainVideo.srcObject)) {
+        const firstActiveIdx = sharerFocusedIndex !== null && streamOrder.includes(sharerFocusedIndex) 
+          ? sharerFocusedIndex 
+          : streamOrder[0];
+        
+        if (streams[firstActiveIdx]) {
+          console.log('Showing first active stream:', firstActiveIdx);
+          viewerFocusedIndex = firstActiveIdx;
+          mainVideo.srcObject = streams[firstActiveIdx].stream;
+          
+          setStatus('Connected', 'connected');
+          waitingEl.classList.add('hidden');
+          streamStats.style.display = 'flex';
+          mainVideo.play().catch(e => console.log('Autoplay blocked:', e));
+          startStatsCollection();
+          showUI();
+        }
+      }
+      
       updateMultiStreamUI();
     }
     
@@ -1086,6 +1119,22 @@
       }
       
       console.log('Processing renegotiation offer, current signaling state:', pc.signalingState);
+      console.log('Current streams before renegotiation:', Object.keys(streams), 'streamOrder:', streamOrder);
+      
+      // Clear existing stream references - they will be repopulated via ontrack
+      // This is necessary for codec changes where tracks are replaced
+      const previousFocusIndex = viewerFocusedIndex;
+      console.log('Clearing stream references for renegotiation, previous focus:', previousFocusIndex);
+      
+      // Keep streamsInfo (logical stream metadata) but clear physical track references
+      for (const idx of Object.keys(streams)) {
+        streams[idx] = null;
+      }
+      streams = {};
+      streamOrder = [];
+      
+      // Clear video element - will be reset when new tracks arrive
+      mainVideo.srcObject = null;
       
       // If we're not in stable state, we need to handle this carefully
       // This can happen if we receive an offer while we have a pending local offer
@@ -1106,9 +1155,23 @@
       }
       
       try {
+        // Log SDP media sections to understand what's being offered
+        const mediaLines = sdp.split('\n').filter(l => l.startsWith('m=') || l.startsWith('a=mid:'));
+        console.log('Renegotiation offer media sections:', mediaLines);
+        
         console.log('Setting remote description for renegotiation');
         await pc.setRemoteDescription({ type: 'offer', sdp });
         console.log('Remote description set, creating answer');
+        
+        // Log transceivers after setting remote description
+        const transceivers = pc.getTransceivers();
+        console.log('Transceivers after setRemoteDescription:', transceivers.map(t => ({
+          mid: t.mid,
+          direction: t.direction,
+          currentDirection: t.currentDirection,
+          stopped: t.stopped
+        })));
+        
         const answer = await pc.createAnswer();
         console.log('Answer created, setting local description');
         await pc.setLocalDescription(answer);
@@ -1120,6 +1183,12 @@
           sdp: answer.sdp
         }));
         console.log('Renegotiation answer sent successfully');
+        
+        // Restore focus to previous index if valid (will be applied when ontrack fires)
+        if (previousFocusIndex !== null) {
+          console.log('Will restore focus to index', previousFocusIndex, 'when track arrives');
+          // viewerFocusedIndex is kept so ontrack knows which stream to display
+        }
       } catch (e) {
         console.error('Renegotiation failed:', e);
         console.error('PC state:', pc.signalingState, pc.connectionState);
@@ -1164,6 +1233,108 @@
       
       // If sharer focus was on removed stream, clear it
       if (sharerFocusedIndex === removedIndex) {
+        sharerFocusedIndex = null;
+      }
+      
+      updateMultiStreamUI();
+    }
+    
+    // Handle stream activated (fast path - no renegotiation needed)
+    // The track already exists in the peer connection, just start using it
+    function handleStreamActivated(info) {
+      if (!info || !info.trackId) return;
+      
+      console.log('Stream activated (fast path):', info.trackId);
+      
+      // Extract index from trackId (e.g., "video1" -> 1)
+      const match = info.trackId.match(/video(\d+)/);
+      if (!match) return;
+      
+      const idx = parseInt(match[1], 10);
+      
+      // Update or add to streamsInfo
+      const existingIdx = streamsInfo.findIndex(s => s.trackId === info.trackId);
+      if (existingIdx >= 0) {
+        streamsInfo[existingIdx] = info;
+      } else {
+        streamsInfo.push(info);
+      }
+      
+      // If we already have the stream (track arrived via ontrack), update its info
+      if (streams[idx]) {
+        streams[idx].info = info;
+        
+        // Add to streamOrder if not already there
+        if (!streamOrder.includes(idx)) {
+          streamOrder.push(idx);
+          streamOrder.sort((a, b) => a - b);
+        }
+        
+        // If this is the first active stream or sharer focused, make it the main video
+        if (viewerFocusedIndex === null || info.isFocused) {
+          switchToStream(idx);
+          
+          // Show connected status if this is the first stream
+          if (viewerFocusedIndex === idx) {
+            setStatus('Connected', 'connected');
+            waitingEl.classList.add('hidden');
+            streamStats.style.display = 'flex';
+            startStatsCollection();
+            showUI();
+          }
+        }
+        
+        if (info.isFocused) {
+          sharerFocusedIndex = idx;
+        }
+      }
+      // If track hasn't arrived yet, it will be handled by ontrack when it arrives
+      
+      updateMultiStreamUI();
+    }
+    
+    // Handle stream deactivated (fast path - no renegotiation needed)
+    // The track still exists but is no longer active
+    function handleStreamDeactivated(trackID) {
+      if (!trackID) return;
+      
+      console.log('Stream deactivated (fast path):', trackID);
+      
+      // Extract index from trackId (e.g., "video2" -> 2)
+      const match = trackID.match(/video(\d+)/);
+      if (!match) return;
+      
+      const deactivatedIndex = parseInt(match[1], 10);
+      
+      // Remove info but keep the stream object (track still exists in SDP)
+      if (streams[deactivatedIndex]) {
+        streams[deactivatedIndex].info = null;
+      }
+      
+      // Remove from streamOrder (not active anymore)
+      streamOrder = streamOrder.filter(idx => idx !== deactivatedIndex);
+      
+      // Remove from streamsInfo
+      streamsInfo = streamsInfo.filter(info => info.trackId !== trackID);
+      
+      // If this was the viewer's focused stream, switch to another
+      if (viewerFocusedIndex === deactivatedIndex) {
+        if (streamOrder.length > 0) {
+          // Switch to first available active stream
+          switchToStream(streamOrder[0]);
+        } else {
+          // No active streams left
+          viewerFocusedIndex = null;
+          mainVideo.srcObject = null;
+          setStatus('Waiting for stream', 'connecting');
+          waitingEl.classList.remove('hidden');
+          setWaitingState('Nothing is being shared', 'Waiting for the sharer to select a window...');
+          streamStats.style.display = 'none';
+        }
+      }
+      
+      // If sharer focus was on deactivated stream, clear it
+      if (sharerFocusedIndex === deactivatedIndex) {
         sharerFocusedIndex = null;
       }
       
@@ -1501,6 +1672,22 @@
             console.log('Stream removed:', msg.streamRemoved);
             handleStreamRemoved(msg.streamRemoved);
             break;
+          
+          case 'stream-activated':
+            // Fast path: stream activated on pre-allocated slot (no renegotiation!)
+            console.log('Stream activated (fast path):', msg.streamActivated);
+            if (msg.streamActivated) {
+              handleStreamActivated(msg.streamActivated);
+            }
+            break;
+            
+          case 'stream-deactivated':
+            // Fast path: stream deactivated (no renegotiation!)
+            console.log('Stream deactivated (fast path):', msg.streamDeactivated);
+            if (msg.streamDeactivated) {
+              handleStreamDeactivated(msg.streamDeactivated);
+            }
+            break;
             
           case 'sharer-ready':
             setStatus('Sharer reconnected', 'connecting');
@@ -1637,13 +1824,18 @@
           stream = new MediaStream([track]);
         }
         
-        console.log('Received track:', track.id, track.kind, 'stream:', stream?.id, 'muted:', track.muted, 'readyState:', track.readyState);
+        // Get the transceiver's mid to determine the track index
+        // The mid corresponds to the m-line order in SDP (video0, video1, etc.)
+        const transceiver = event.transceiver;
+        const mid = transceiver?.mid;
+        
+        console.log('Received track:', track.id, track.kind, 'mid:', mid, 'stream:', stream?.id, 'muted:', track.muted, 'readyState:', track.readyState);
         console.log('Stream tracks:', stream.getTracks().map(t => t.id + '/' + t.kind + '/' + t.readyState));
         console.log('Current streamOrder:', streamOrder, 'streamsInfo:', streamsInfo.map(i => i.trackId));
         
         // Listen for track unmute (tracks may arrive muted initially)
         track.onunmute = () => {
-          console.log('Track unmuted:', track.id);
+          console.log('Track unmuted:', track.id, 'mid:', mid);
           updateMultiStreamUI();
         };
         
@@ -1652,76 +1844,111 @@
         };
         
         if (track.kind === 'video') {
-          // Check if we already have this exact stream (by stream ID, not track ID)
-          // Track IDs can be reused but stream IDs are unique per negotiation
-          for (const idx of streamOrder) {
+          // Determine stream index for this track
+          // After renegotiation (codec change), mids may not match logical indices
+          let streamIndex = null;
+          
+          console.log('ontrack: Processing video track, mid:', mid, 'stream.id:', stream.id, 'track.id:', track.id);
+          
+          // Method 1: Check if we already have this exact stream (by stream ID)
+          for (const idx of Object.keys(streams)) {
             if (streams[idx]?.stream?.id === stream.id) {
               console.log('Stream already exists at index', idx, ', updating track reference');
-              // Update the track reference but don't add duplicate
               streams[idx].browserTrackId = track.id;
-              // Also update the stream reference in case it changed
               streams[idx].stream = stream;
               updateMultiStreamUI();
               return;
             }
           }
           
-          // For dynamic additions, try to find matching streamsInfo entry
-          // The streamsInfo should have been received via stream-added message
-          let streamIndex = null;
-          
-          // Try to find an unassigned streamsInfo entry (sorted to get consistent order)
-          const sortedInfo = [...streamsInfo].sort((a, b) => {
-            const aMatch = a.trackId.match(/video(\d+)/);
-            const bMatch = b.trackId.match(/video(\d+)/);
-            return (aMatch ? parseInt(aMatch[1], 10) : 999) - (bMatch ? parseInt(bMatch[1], 10) : 999);
-          });
-          
-          for (const info of sortedInfo) {
-            const match = info.trackId.match(/video(\d+)/);
-            if (match) {
-              const infoIndex = parseInt(match[1], 10);
-              if (!streams[infoIndex]) {
-                streamIndex = infoIndex;
-                console.log('Matched track to streamsInfo index:', streamIndex, 'trackId:', info.trackId);
-                break;
+          // Method 2: Use transceiver mid if it maps to a valid streamsInfo entry (0-3)
+          // This works for initial connection where mids are 0,1,2,3
+          if (mid !== null && mid !== undefined) {
+            const midNum = parseInt(mid, 10);
+            if (!isNaN(midNum) && midNum >= 0 && midNum <= 3) {
+              // Check if we have streamsInfo for this index and haven't already stored a stream here
+              const hasInfo = streamsInfo.some(i => i.trackId === `video${midNum}`);
+              if (hasInfo && !streams[midNum]) {
+                streamIndex = midNum;
+                console.log('Using transceiver mid for index:', streamIndex);
               }
             }
           }
           
-          // If no match found, calculate next index based on existing streams
+          // Method 3: Assign to next available slot that has streamsInfo
+          // This handles renegotiation where mids don't match logical indices
           if (streamIndex === null) {
-            // Find max existing index and add 1
-            const existingIndices = streamOrder.length > 0 ? streamOrder : [-1];
-            streamIndex = Math.max(...existingIndices) + 1;
+            const sortedInfo = [...streamsInfo].sort((a, b) => {
+              const aMatch = a.trackId.match(/video(\d+)/);
+              const bMatch = b.trackId.match(/video(\d+)/);
+              return (aMatch ? parseInt(aMatch[1], 10) : 999) - (bMatch ? parseInt(bMatch[1], 10) : 999);
+            });
+            
+            for (const info of sortedInfo) {
+              const match = info.trackId.match(/video(\d+)/);
+              if (match) {
+                const infoIndex = parseInt(match[1], 10);
+                if (!streams[infoIndex]) {
+                  streamIndex = infoIndex;
+                  console.log('Matched track to next available streamsInfo index:', streamIndex, 'trackId:', info.trackId);
+                  break;
+                }
+              }
+            }
+          }
+          
+          // Method 4: Calculate next index based on existing streams (fallback)
+          if (streamIndex === null) {
+            const existingIndices = Object.keys(streams).map(k => parseInt(k, 10)).filter(n => !isNaN(n));
+            streamIndex = existingIndices.length > 0 ? Math.max(...existingIndices) + 1 : 0;
             console.log('Using calculated next index:', streamIndex);
           }
           
-          // Store the stream
+          // Find the matching streamsInfo for this track
+          const trackInfo = streamsInfo.find(i => i.trackId === `video${streamIndex}`) || null;
+          
+          // Store the stream (even if inactive, we need to keep the reference)
           streams[streamIndex] = {
             stream: stream,
             browserTrackId: track.id,
-            info: streamsInfo.find(i => i.trackId === `video${streamIndex}`) || null
+            info: trackInfo
           };
           
-          if (!streamOrder.includes(streamIndex)) {
-            streamOrder.push(streamIndex);
-            streamOrder.sort((a, b) => a - b); // Keep sorted
-          }
-          
-          console.log('Added stream at index:', streamIndex, 'total streams:', streamOrder.length, 'track muted:', track.muted);
-          
-          // If no video is showing, show this one
-          if (viewerFocusedIndex === null || !mainVideo.srcObject) {
-            viewerFocusedIndex = streamIndex;
-            mainVideo.srcObject = stream;
+          // Only add to streamOrder if this track is active (has info)
+          // Inactive pre-allocated tracks should not be displayed
+          if (trackInfo) {
+            if (!streamOrder.includes(streamIndex)) {
+              streamOrder.push(streamIndex);
+              streamOrder.sort((a, b) => a - b); // Keep sorted
+            }
             
-            setStatus('Connected', 'connected');
-            waitingEl.classList.add('hidden');
-            streamStats.style.display = 'flex';
-            mainVideo.play().catch(e => console.log('Autoplay blocked:', e));
-            startStatsCollection();
-            showUI();
+            console.log('Added active stream at index:', streamIndex, 'total active:', streamOrder.length, 'track muted:', track.muted);
+            
+            // Determine if we should display this stream
+            const shouldDisplay = 
+              viewerFocusedIndex === null ||  // No focus set yet (first stream)
+              viewerFocusedIndex === streamIndex;  // This is the focused stream (renegotiation)
+            
+            if (shouldDisplay) {
+              const isFirstStream = viewerFocusedIndex === null;
+              viewerFocusedIndex = streamIndex;
+              mainVideo.srcObject = stream;
+              
+              if (isFirstStream) {
+                // First stream - initialize everything
+                setStatus('Connected', 'connected');
+                waitingEl.classList.add('hidden');
+                streamStats.style.display = 'flex';
+                startStatsCollection();
+                showUI();
+              } else {
+                // Renegotiation - just update the stream
+                console.log('Updating focused stream to new track (renegotiation)');
+              }
+              mainVideo.play().catch(e => console.log('Autoplay blocked:', e));
+            }
+          } else {
+            console.log('Stored inactive pre-allocated track at index:', streamIndex, '(not displaying until activated)');
           }
           
           updateMultiStreamUI();
