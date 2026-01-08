@@ -403,6 +403,96 @@ void mc_stop_all() {
     }
 }
 
+// Start capturing a window in a specific slot (for in-place swapping)
+// Returns 0 on success, negative on error
+int mc_start_window_capture_in_slot(int slot, uint32_t window_id, int target_width, int target_height, int fps) {
+    mc_init();
+
+    if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES) {
+        return -1; // Invalid slot
+    }
+
+    CaptureInstance* inst = &g_instances[slot];
+
+    // Ensure slot is not active (should be stopped before swapping)
+    if (inst->active) {
+        return -5; // Slot is still active
+    }
+
+    __block SCContentFilter* filter = nil;
+    __block int configWidth = target_width;
+    __block int configHeight = target_height;
+    dispatch_semaphore_t findSemaphore = dispatch_semaphore_create(0);
+
+    [SCShareableContent getShareableContentWithCompletionHandler:^(SCShareableContent* content, NSError* error) {
+        if (error == nil && content != nil) {
+            for (SCWindow* window in content.windows) {
+                if (window.windowID == window_id) {
+                    filter = [[SCContentFilter alloc] initWithDesktopIndependentWindow:window];
+                    if (configWidth <= 0) configWidth = (int)window.frame.size.width;
+                    if (configHeight <= 0) configHeight = (int)window.frame.size.height;
+                    break;
+                }
+            }
+        }
+        dispatch_semaphore_signal(findSemaphore);
+    }];
+
+    dispatch_semaphore_wait(findSemaphore, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
+
+    if (filter == nil) {
+        return -2; // Window not found
+    }
+
+    @autoreleasepool {
+        inst->config = [[SCStreamConfiguration alloc] init];
+        inst->config.width = configWidth;
+        inst->config.height = configHeight;
+        inst->config.minimumFrameInterval = CMTimeMake(1, fps > 0 ? fps : 30);
+        inst->config.pixelFormat = kCVPixelFormatType_32BGRA;
+        inst->config.showsCursor = YES;
+
+        inst->stream = [[SCStream alloc] initWithFilter:filter configuration:inst->config delegate:nil];
+
+        char queueName[64];
+        snprintf(queueName, sizeof(queueName), "com.gopeep.capture.%d", slot);
+        inst->queue = dispatch_queue_create(queueName, DISPATCH_QUEUE_SERIAL);
+
+        MCStreamOutputDelegate* delegate = [[MCStreamOutputDelegate alloc] init];
+        delegate.instanceIndex = slot;
+        inst->output_delegate = delegate;
+        inst->frame_semaphore = dispatch_semaphore_create(0);
+        inst->window_id = window_id;
+
+        NSError* addError = nil;
+        [inst->stream addStreamOutput:delegate type:SCStreamOutputTypeScreen sampleHandlerQueue:inst->queue error:&addError];
+        if (addError != nil) {
+            NSLog(@"Failed to add stream output for instance %d: %@", slot, addError);
+            return -3;
+        }
+
+        __block int startResult = 0;
+        dispatch_semaphore_t startSemaphore = dispatch_semaphore_create(0);
+
+        [inst->stream startCaptureWithCompletionHandler:^(NSError* error) {
+            if (error != nil) {
+                NSLog(@"Failed to start capture for instance %d: %@", slot, error);
+                startResult = -4;
+            }
+            dispatch_semaphore_signal(startSemaphore);
+        }];
+
+        dispatch_semaphore_wait(startSemaphore, dispatch_time(DISPATCH_TIME_NOW, 5 * NSEC_PER_SEC));
+
+        if (startResult == 0) {
+            inst->active = 1;
+            return 0; // Success
+        }
+
+        return startResult;
+    }
+}
+
 // Update stream configuration with new dimensions (called when window resizes)
 // This is non-blocking - the update happens asynchronously
 int mc_update_stream_size(int slot, int new_width, int new_height) {
@@ -630,10 +720,64 @@ uint32_t mc_get_topmost_window(uint32_t* window_ids, int count) {
     }
 }
 
-// Legacy function - kept for compatibility but now just returns 0
-// Use mc_get_topmost_window() instead
+// Get the actual frontmost window ID (the window receiving keyboard input)
+// This uses NSWorkspace to get the frontmost application, then finds its topmost window
+uint32_t mc_get_frontmost_window_id() {
+    @autoreleasepool {
+        // Get the frontmost application (the one receiving keyboard input)
+        NSRunningApplication *frontApp = [[NSWorkspace sharedWorkspace] frontmostApplication];
+        if (frontApp == nil) return 0;
+
+        pid_t frontPID = frontApp.processIdentifier;
+
+        // Get all on-screen windows in z-order
+        CFArrayRef windowList = CGWindowListCopyWindowInfo(
+            kCGWindowListOptionOnScreenOnly | kCGWindowListExcludeDesktopElements,
+            kCGNullWindowID
+        );
+
+        if (windowList == NULL) return 0;
+
+        uint32_t frontmostWindowID = 0;
+        CFIndex listCount = CFArrayGetCount(windowList);
+
+        // Find the first (topmost) window belonging to the frontmost application
+        for (CFIndex i = 0; i < listCount && frontmostWindowID == 0; i++) {
+            CFDictionaryRef windowInfo = (CFDictionaryRef)CFArrayGetValueAtIndex(windowList, i);
+
+            // Get window layer - only care about normal windows (layer 0)
+            CFNumberRef layerRef = (CFNumberRef)CFDictionaryGetValue(windowInfo, kCGWindowLayer);
+            if (layerRef == NULL) continue;
+
+            int layer;
+            CFNumberGetValue(layerRef, kCFNumberIntType, &layer);
+            if (layer != 0) continue;
+
+            // Get owner PID
+            CFNumberRef pidRef = (CFNumberRef)CFDictionaryGetValue(windowInfo, kCGWindowOwnerPID);
+            if (pidRef == NULL) continue;
+
+            pid_t windowPID;
+            CFNumberGetValue(pidRef, kCFNumberIntType, &windowPID);
+
+            // Check if this window belongs to the frontmost app
+            if (windowPID == frontPID) {
+                // Get window ID
+                CFNumberRef windowIDRef = (CFNumberRef)CFDictionaryGetValue(windowInfo, kCGWindowNumber);
+                if (windowIDRef != NULL) {
+                    CFNumberGetValue(windowIDRef, kCFNumberIntType, &frontmostWindowID);
+                }
+            }
+        }
+
+        CFRelease(windowList);
+        return frontmostWindowID;
+    }
+}
+
+// Legacy function - kept for compatibility
 uint32_t mc_get_focused_window_id() {
-    return 0;
+    return mc_get_frontmost_window_id();
 }
 
 // Get number of active instances
@@ -774,6 +918,52 @@ func (mc *MultiCapture) StartDisplayCapture(width, height, fps int) (*CaptureIns
 	return inst, nil
 }
 
+// StartWindowCaptureInSlot starts capturing a window in a specific slot
+// This is used for in-place window swapping in auto-share mode
+// The slot must be stopped (inactive) before calling this
+func (mc *MultiCapture) StartWindowCaptureInSlot(slot int, windowID uint32, width, height, fps int) (*CaptureInstance, error) {
+	mc.mu.Lock()
+	defer mc.mu.Unlock()
+
+	if slot < 0 || slot >= MaxCaptureInstances {
+		return nil, fmt.Errorf("invalid slot index: %d", slot)
+	}
+
+	// Check if already capturing this window in another slot
+	for _, inst := range mc.instances {
+		if inst.windowID == windowID {
+			return nil, fmt.Errorf("window %d is already being captured", windowID)
+		}
+	}
+
+	result := C.mc_start_window_capture_in_slot(C.int(slot), C.uint32_t(windowID), C.int(width), C.int(height), C.int(fps))
+	if result != 0 {
+		switch result {
+		case -1:
+			return nil, fmt.Errorf("invalid slot index")
+		case -2:
+			return nil, fmt.Errorf("window not found: %d", windowID)
+		case -3:
+			return nil, fmt.Errorf("failed to add stream output")
+		case -4:
+			return nil, fmt.Errorf("failed to start capture")
+		case -5:
+			return nil, fmt.Errorf("slot %d is still active", slot)
+		default:
+			return nil, fmt.Errorf("capture error: %d", result)
+		}
+	}
+
+	inst := &CaptureInstance{
+		slot:     slot,
+		windowID: windowID,
+		active:   true,
+	}
+	mc.instances = append(mc.instances, inst)
+
+	return inst, nil
+}
+
 // StopCapture stops a capture instance
 func (mc *MultiCapture) StopCapture(inst *CaptureInstance) {
 	mc.mu.Lock()
@@ -896,10 +1086,15 @@ func (mc *MultiCapture) GetActiveCount() int {
 	return len(mc.instances)
 }
 
-// GetFocusedWindowID returns the currently focused window ID (legacy - returns 0)
-// Use GetTopmostWindow instead
+// GetFrontmostWindowID returns the window ID of the frontmost window (receiving keyboard input)
+// This is the window that belongs to the frontmost application in macOS
+func GetFrontmostWindowID() uint32 {
+	return uint32(C.mc_get_frontmost_window_id())
+}
+
+// GetFocusedWindowID is an alias for GetFrontmostWindowID for backwards compatibility
 func GetFocusedWindowID() uint32 {
-	return uint32(C.mc_get_focused_window_id())
+	return GetFrontmostWindowID()
 }
 
 // GetTopmostWindow returns which of the given window IDs is topmost in z-order

@@ -208,6 +208,13 @@ type model struct {
 	// OS focus tracking
 	osFocusedWindowID uint32 // Currently OS-focused window ID
 
+	// Auto-share mode (automatically shares the frontmost window)
+	autoShareEnabled    bool   // true when in auto-share mode
+	autoShareWindowID   uint32 // window ID currently being auto-shared
+	autoShareWindowName string // display name of auto-shared window
+	autoShareTicks      int    // debug: count fast ticks
+	autoShareLastFocus  uint32 // debug: last detected focus window ID
+
 	// Password protection
 	passwordEnabled bool
 	password        string
@@ -302,6 +309,15 @@ func tickCmd() tea.Cmd {
 	})
 }
 
+// fastTickMsg is used for rapid focus checking in auto-share mode
+type fastTickMsg time.Time
+
+func fastTickCmd() tea.Cmd {
+	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
+		return fastTickMsg(t)
+	})
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -382,6 +398,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			log.Printf("Cannot broadcast sharer-started: server=%v roomCode=%s", m.server != nil, m.roomCode)
 		}
+		// If in auto-share mode, start fast tick for rapid focus detection
+		if m.autoShareEnabled {
+			return m, tea.Batch(tickCmd(), fastTickCmd())
+		}
 		return m, tickCmd()
 
 	case captureErrorMsg:
@@ -454,6 +474,56 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, tea.Batch(cmds...)
+
+	case fastTickMsg:
+		// Fast tick for auto-share mode - rapid focus checking using z-order
+		// Uses m.sources (refreshed every 1s by regular tick) to avoid expensive ListWindows() calls
+		m.autoShareTicks++
+		if m.autoShareEnabled {
+			// Extract window IDs from m.sources (already in memory - cheap)
+			var windowIDs []uint32
+			for _, source := range m.sources {
+				if !source.IsFullscreen && source.Window != nil {
+					windowIDs = append(windowIDs, source.Window.ID)
+				}
+			}
+
+			// Find topmost window by z-order (cheap - just CGWindowList check)
+			topmost := GetTopmostWindow(windowIDs)
+			m.autoShareLastFocus = topmost
+
+			if m.sharing && m.streamer != nil {
+				if topmost != 0 && topmost != m.autoShareWindowID {
+					// Topmost window changed - find its info from m.sources
+					var topmostWindow *WindowInfo
+					for _, source := range m.sources {
+						if !source.IsFullscreen && source.Window != nil && source.Window.ID == topmost {
+							topmostWindow = source.Window
+							break
+						}
+					}
+
+					if topmostWindow != nil {
+						log.Printf("Auto-share: swapping to topmost %d (%s)", topmost, topmostWindow.WindowName)
+						if err := m.streamer.SwapWindowCapture(m.autoShareWindowID, *topmostWindow); err != nil {
+							log.Printf("Auto-share swap failed: %v", err)
+						} else {
+							m.autoShareWindowID = topmost
+							m.autoShareWindowName = topmostWindow.WindowName
+							if m.autoShareWindowName == "" {
+								m.autoShareWindowName = topmostWindow.OwnerName
+							}
+							m.selectedWindows = make(map[uint32]bool)
+							m.selectedWindows[topmost] = true
+						}
+					}
+				}
+			}
+			// Continue fast ticking while in auto-share mode
+			return m, fastTickCmd()
+		}
+		// If no longer in auto-share mode, don't continue fast tick
+		return m, nil
 
 	case reconnectMsg:
 		// WebSocket disconnected, attempt reconnection
@@ -574,6 +644,10 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "enter":
+		// In auto-share mode, ignore source selection via enter
+		if m.activeColumn == columnSources && m.autoShareEnabled {
+			return m, nil
+		}
 		if m.activeColumn == columnSources {
 			// Start sharing based on selection (fullscreen or windows)
 			if m.fullscreenSelected {
@@ -603,6 +677,10 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case " ":
+		// In auto-share mode, ignore source selection via space
+		if m.activeColumn == columnSources && m.autoShareEnabled {
+			return m, nil
+		}
 		if m.activeColumn == columnSources {
 			// Toggle source selection (fullscreen or windows, mutually exclusive)
 			if m.sourceCursor < len(m.sources) {
@@ -670,6 +748,10 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// F for fullscreen - toggles fullscreen selection (mutually exclusive with windows)
 	case "f":
+		// Disabled in auto-share mode
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		if len(m.sources) > 0 && m.sources[0].IsFullscreen {
 			m.fullscreenSelected = !m.fullscreenSelected
 			if m.fullscreenSelected {
@@ -685,23 +767,51 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Quick window selection with number keys (1-9 selects windows, skipping fullscreen)
+	// Disabled in auto-share mode
 	case "1":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(1)
 	case "2":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(2)
 	case "3":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(3)
 	case "4":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(4)
 	case "5":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(5)
 	case "6":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(6)
 	case "7":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(7)
 	case "8":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(8)
 	case "9":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(9)
 
 	case "i":
@@ -742,6 +852,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.streamer.SetAdaptiveBitrate(m.adaptiveBitrate)
 		}
 		return m, nil
+
+	case "A": // Shift+A - Toggle auto-share mode
+		return m.toggleAutoShareMode()
 
 	case "q":
 		// Toggle quality mode (quality vs performance)
@@ -884,6 +997,174 @@ func (m model) applyBitrateChange() (tea.Model, tea.Cmd) {
 	// Use SetBitrate to change bitrate dynamically (no restart needed)
 	bitrate := QualityPresets[m.selectedQuality].Bitrate
 	m.streamer.SetBitrate(bitrate, bitrate/2)
+
+	return m, nil
+}
+
+// toggleAutoShareMode toggles the auto-share mode on/off
+// When enabled, the app automatically shares whichever window has OS focus
+func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
+	if m.autoShareEnabled {
+		// Disable auto-share mode
+		m.autoShareEnabled = false
+		m.autoShareWindowID = 0
+		m.autoShareWindowName = ""
+		// Stop streaming (same as escape key behavior)
+		if m.sharing {
+			if m.server != nil && m.roomCode != "" {
+				m.server.BroadcastToViewers(m.roomCode, sig.SignalMessage{Type: "sharer-stopped"})
+			}
+			m.stopCapture(false)
+			m.selectedWindows = make(map[uint32]bool)
+			m.fullscreenSelected = false
+			if m.peerManager != nil {
+				m.peerManager.CloseAllConnections()
+			}
+		}
+		return m, nil
+	}
+
+	// Enable auto-share mode
+	m.autoShareEnabled = true
+	m.fullscreenSelected = false              // Disable fullscreen in auto mode
+	m.selectedWindows = make(map[uint32]bool) // Clear manual selections
+
+	// Get all shareable windows and find topmost by z-order
+	windows, err := ListWindows()
+	if err != nil {
+		m.lastError = fmt.Sprintf("Failed to list windows: %v", err)
+		m.autoShareEnabled = false
+		return m, nil
+	}
+
+	if len(windows) == 0 {
+		m.lastError = "No shareable windows found"
+		m.autoShareEnabled = false
+		return m, nil
+	}
+
+	// Extract window IDs for z-order check
+	var windowIDs []uint32
+	for _, w := range windows {
+		windowIDs = append(windowIDs, w.ID)
+	}
+
+	// Find topmost window by z-order (same logic as focusDetectionLoop)
+	topmost := GetTopmostWindow(windowIDs)
+	log.Printf("Auto-share: Topmost window by z-order: %d", topmost)
+
+	if topmost == 0 {
+		m.lastError = "No topmost window found"
+		m.autoShareEnabled = false
+		return m, nil
+	}
+
+	// Find window info for the topmost window
+	var targetWindow *WindowInfo
+	for i := range windows {
+		if windows[i].ID == topmost {
+			targetWindow = &windows[i]
+			break
+		}
+	}
+
+	if targetWindow == nil {
+		m.lastError = "Topmost window not in list"
+		m.autoShareEnabled = false
+		return m, nil
+	}
+
+	log.Printf("Auto-share: Starting with window %d (%s)", topmost, targetWindow.WindowName)
+
+	m.autoShareWindowID = topmost
+	m.autoShareWindowName = targetWindow.WindowName
+	if m.autoShareWindowName == "" {
+		m.autoShareWindowName = targetWindow.OwnerName
+	}
+
+	// Start sharing this window directly (bypass m.sources lookup)
+	return m.startAutoShareCapture(*targetWindow)
+}
+
+// startAutoShareCapture starts capture for a specific window in auto-share mode
+// This bypasses the normal m.sources lookup to ensure the window is captured
+func (m model) startAutoShareCapture(window WindowInfo) (tea.Model, tea.Cmd) {
+	if m.starting || m.sharing {
+		return m, nil
+	}
+
+	m.stopCapture(false)
+	if !m.serverStarted {
+		m.stopMultiCapture()
+	}
+	m.lastError = ""
+
+	// Initialize server
+	if err := m.initMultiServer(); err != nil {
+		m.lastError = err.Error()
+		m.autoShareEnabled = false
+		return m, nil
+	}
+
+	m.starting = true
+	m.selectedWindows = make(map[uint32]bool)
+	m.selectedWindows[window.ID] = true
+
+	// Capture config
+	fps := m.getSelectedFPS()
+	focusBitrate := QualityPresets[m.selectedQuality].Bitrate
+	bgBitrate := focusBitrate / 3
+	if bgBitrate < 500 {
+		bgBitrate = 500
+	}
+	adaptiveBR := m.adaptiveBitrate
+	qualityMode := m.qualityMode
+	codecType := m.getSelectedCodecType()
+
+	// Start capture with just this one window, and start fast tick for focus detection
+	captureCmd := startMultiCaptureAsync(m.peerManager, []WindowInfo{window}, false, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode, codecType)
+	return m, tea.Batch(captureCmd, fastTickCmd())
+}
+
+// swapAutoShareWindow swaps the capture to a new window in auto-share mode
+func (m model) swapAutoShareWindow(newWindowID uint32) (tea.Model, tea.Cmd) {
+	if m.streamer == nil || !m.autoShareEnabled {
+		return m, nil
+	}
+
+	// Find new window info
+	windows, _ := ListWindows()
+	var newWindow *WindowInfo
+	for i := range windows {
+		if windows[i].ID == newWindowID {
+			newWindow = &windows[i]
+			break
+		}
+	}
+
+	if newWindow == nil {
+		// Window not in shareable list - this is common for filtered windows
+		// Don't log spam, just skip this swap attempt
+		return m, nil
+	}
+
+	log.Printf("Auto-share: Found window %d in list, proceeding with swap", newWindowID)
+
+	// Swap the capture source in-place
+	if err := m.streamer.SwapWindowCapture(m.autoShareWindowID, *newWindow); err != nil {
+		log.Printf("Auto-share swap failed: %v", err)
+		return m, nil
+	}
+
+	m.autoShareWindowID = newWindowID
+	m.autoShareWindowName = newWindow.WindowName
+	if m.autoShareWindowName == "" {
+		m.autoShareWindowName = newWindow.OwnerName
+	}
+
+	// Update selection map for consistency
+	m.selectedWindows = make(map[uint32]bool)
+	m.selectedWindows[newWindowID] = true
 
 	return m, nil
 }
@@ -1734,6 +2015,38 @@ func (m model) renderColumns() string {
 func (m model) renderSourcesList() string {
 	var b strings.Builder
 
+	// Auto-share mode: simplified view showing only the currently shared window
+	if m.autoShareEnabled {
+		b.WriteString(selectedStyle.Render("AUTO-SHARE MODE"))
+		b.WriteString("\n\n")
+		if m.sharing && m.autoShareWindowName != "" {
+			b.WriteString(normalStyle.Render("Sharing: "))
+			b.WriteString(selectedStyle.Render(truncate(m.autoShareWindowName, 30)))
+		} else if m.starting {
+			b.WriteString(dimStyle.Render("Starting capture..."))
+		} else {
+			b.WriteString(dimStyle.Render("Waiting for focus..."))
+		}
+		b.WriteString("\n\n")
+		// Debug: show current state
+		b.WriteString(dimStyle.Render(fmt.Sprintf("Current: %d", m.autoShareWindowID)))
+		b.WriteString("\n")
+		b.WriteString(dimStyle.Render(fmt.Sprintf("Focus:   %d", m.autoShareLastFocus)))
+		b.WriteString("\n")
+		b.WriteString(dimStyle.Render(fmt.Sprintf("Ticks:   %d", m.autoShareTicks)))
+		b.WriteString("\n")
+		if m.sharing {
+			b.WriteString(dimStyle.Render("Status: SHARING"))
+		} else if m.starting {
+			b.WriteString(dimStyle.Render("Status: STARTING"))
+		} else {
+			b.WriteString(dimStyle.Render("Status: IDLE"))
+		}
+		b.WriteString("\n\n")
+		b.WriteString(dimStyle.Render("Press Shift+A to exit"))
+		return b.String()
+	}
+
 	// Show selection count
 	if len(m.selectedWindows) > 0 {
 		modeText := fmt.Sprintf("Selected: %d/%d windows", len(m.selectedWindows), MaxCaptureInstances)
@@ -2125,6 +2438,9 @@ func (m model) renderHelp() string {
 	if m.sharing {
 		toggles = append(toggles, m.renderToggle("i", "stats", m.showStats))
 	}
+
+	// Auto-share mode toggle
+	toggles = append(toggles, m.renderToggle("A", "auto", m.autoShareEnabled))
 
 	if len(toggles) > 0 {
 		b.WriteString("\n\n")

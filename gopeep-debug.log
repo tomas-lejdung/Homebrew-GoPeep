@@ -1,72 +1,680 @@
-2026/01/08 16:26:27 === GoPeep started at 2026-01-08T16:26:27+01:00 ===
-2026/01/08 16:26:34 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
-2026/01/08 16:26:34 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/08 16:26:34 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/08 16:26:34 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/08 16:26:34 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/08 16:26:34 InitializeTrackSlots: All 4 track slots ready
-2026/01/08 16:26:34 Signal server starting on :8080
-2026/01/08 16:26:34 ActivateSlot: Activated video0 for window 325183 (Finder - gopeep)
-2026/01/08 16:26:34 ActivateSlot: Activated video1 for window 325008 (Messages - Alex Henningsson)
-2026/01/08 16:26:35 ActivateSlot: Activated video2 for window 318244 (OpenCode - OpenCode)
-2026/01/08 16:26:36 Broadcasting sharer-started to room PLAIN-DEER-56
-2026/01/08 16:26:36 Focus detection loop started with 3 pipelines:
-2026/01/08 16:26:36   - Track video0: windowID=325183, name=gopeep
-2026/01/08 16:26:36   - Track video1: windowID=325008, name=Alex Henningsson
-2026/01/08 16:26:36   - Track video2: windowID=318244, name=OpenCode
-2026/01/08 16:26:36 Renegotiating with 0 peers
-2026/01/08 16:26:36 Topmost captured window changed to: 318244 (was 0)
-2026/01/08 16:26:36 Focus set to track=video2, windowID=318244, name=OpenCode
-2026/01/08 16:26:36 Calling NotifyFocusChange for track: video2
-2026/01/08 16:26:36 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/08 16:26:36 Focus change callback triggered for track: video2
-2026/01/08 16:26:36 sendLoop: Writing frame 1 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:26:36 sendLoop: Writing frame 1 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:26:36 sendLoop: Writing frame 1 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:26:36 Size change callback triggered for track video0: 1051x637
-2026/01/08 16:26:43 sendLoop: Writing frame 101 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:26:43 sendLoop: Writing frame 101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:26:43 sendLoop: Writing frame 101 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:26:53 sendLoop: Writing frame 201 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:26:53 sendLoop: Writing frame 201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:26:53 sendLoop: Writing frame 201 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:26:58 Viewer joined room PLAIN-DEER-56 (total viewers: 1)
-2026/01/08 16:26:58 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/08 16:26:58 Peer viewer-1 connection state: connecting
-2026/01/08 16:26:59 Peer viewer-1 connection state: connected
-2026/01/08 16:27:02 sendLoop: Writing frame 301 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:27:03 sendLoop: Writing frame 301 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:27:03 sendLoop: Writing frame 301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:27:13 sendLoop: Writing frame 401 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:27:13 sendLoop: Writing frame 401 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:27:13 sendLoop: Writing frame 401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:27:22 sendLoop: Writing frame 501 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:27:22 sendLoop: Writing frame 501 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:27:22 sendLoop: Writing frame 501 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:27:26 sendLoop: Writing frame 601 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:27:26 sendLoop: Writing frame 601 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:27:26 sendLoop: Writing frame 601 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:27:27 Topmost captured window changed to: 325183 (was 318244)
-2026/01/08 16:27:27 Focus set to track=video0, windowID=325183, name=gopeep
-2026/01/08 16:27:27 Calling NotifyFocusChange for track: video0
-2026/01/08 16:27:27 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/08 16:27:27 Focus change callback triggered for track: video0
-2026/01/08 16:27:28 Topmost captured window changed to: 325008 (was 325183)
-2026/01/08 16:27:28 Focus set to track=video1, windowID=325008, name=Alex Henningsson
-2026/01/08 16:27:28 Calling NotifyFocusChange for track: video1
-2026/01/08 16:27:28 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/08 16:27:28 Focus change callback triggered for track: video1
-2026/01/08 16:27:30 sendLoop: Writing frame 701 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:27:30 sendLoop: Writing frame 701 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:27:30 sendLoop: Writing frame 701 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:27:34 sendLoop: Writing frame 801 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:27:34 sendLoop: Writing frame 801 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:27:34 sendLoop: Writing frame 801 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:27:39 sendLoop: Writing frame 901 to track video2 (windowID=318244, streamID=gopeep-stream-2)
-2026/01/08 16:27:39 sendLoop: Writing frame 901 to track video0 (windowID=325183, streamID=gopeep-stream-0)
-2026/01/08 16:27:39 sendLoop: Writing frame 901 to track video1 (windowID=325008, streamID=gopeep-stream-1)
-2026/01/08 16:27:40 Focus detection loop stopped
-2026/01/08 16:27:40 Broadcasting stream-removed: video0
-2026/01/08 16:27:40 Broadcasting stream-removed: video1
-2026/01/08 16:27:40 Broadcasting stream-removed: video2
-2026/01/08 16:27:40 Peer viewer-1 connection state: closed
+2026/01/08 17:25:26 === GoPeep started at 2026-01-08T17:25:26+01:00 ===
+2026/01/08 17:25:27 Auto-share: Topmost window by z-order: 319186
+2026/01/08 17:25:27 Auto-share: Starting with window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:25:27 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/08 17:25:27 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 17:25:27 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 17:25:27 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 17:25:27 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 17:25:27 InitializeTrackSlots: All 4 track slots ready
+2026/01/08 17:25:27 Signal server starting on :8080
+2026/01/08 17:25:27 ActivateSlot: Activated video0 for window 319186 (Ghostty - GoPeep - Screen Sharing)
+2026/01/08 17:25:27 Viewer joined room MILD-EAGLE-52 (total viewers: 1)
+2026/01/08 17:25:28 Focus detection loop started with 1 pipelines:
+2026/01/08 17:25:28   - Track video0: windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:25:28 Broadcasting sharer-started to room TRUE-WAVE-35
+2026/01/08 17:25:28 Renegotiating with 0 peers
+2026/01/08 17:25:28 sendLoop: Writing frame 1 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:25:28 Topmost captured window changed to: 319186 (was 0)
+2026/01/08 17:25:28 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:25:28 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:28 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:28 Focus change callback triggered for track: video0
+2026/01/08 17:25:28 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:25:29 Auto-share: swapping to topmost 328497 (GoPeep - Viewing)
+2026/01/08 17:25:29 SwapWindowCapture: Swapping from window 319186 to 328497 (GoPeep - Viewing) in slot 0
+2026/01/08 17:25:29 Viewer joined room TRUE-WAVE-35 (total viewers: 1)
+2026/01/08 17:25:29 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 17:25:29 Peer viewer-1 connection state: connecting
+2026/01/08 17:25:29 Size change callback triggered for track video0: 2163x1208
+2026/01/08 17:25:29 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:29 SwapWindowCapture: Successfully swapped to window 328497 (GoPeep - Viewing)
+2026/01/08 17:25:29 Topmost captured window changed to: 328497 (was 319186)
+2026/01/08 17:25:29 Focus set to track=video0, windowID=328497, name=GoPeep - Viewing
+2026/01/08 17:25:29 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:29 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:29 Focus change callback triggered for track: video0
+2026/01/08 17:25:29 Size change callback triggered for track video0: 2163x1208
+2026/01/08 17:25:30 Peer viewer-1 connection state: connected
+2026/01/08 17:25:30 Auto-share: swapping to topmost 328639 (GoPeep - Viewing)
+2026/01/08 17:25:30 SwapWindowCapture: Swapping from window 328497 to 328639 (GoPeep - Viewing) in slot 0
+2026/01/08 17:25:30 Size change callback triggered for track video0: 2163x1208
+2026/01/08 17:25:30 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:30 SwapWindowCapture: Successfully swapped to window 328639 (GoPeep - Viewing)
+2026/01/08 17:25:31 Topmost captured window changed to: 328639 (was 328497)
+2026/01/08 17:25:31 Focus set to track=video0, windowID=328639, name=GoPeep - Viewing
+2026/01/08 17:25:31 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:31 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:31 Focus change callback triggered for track: video0
+2026/01/08 17:25:31 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:25:31 SwapWindowCapture: Swapping from window 328639 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:25:32 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:25:32 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:32 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:25:32 Topmost captured window changed to: 319186 (was 328639)
+2026/01/08 17:25:32 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:25:32 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:32 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:32 Focus change callback triggered for track: video0
+2026/01/08 17:25:32 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:25:33 sendLoop: Writing frame 101 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:25:33 Track video0 bitrate set to 15000 kbps
+2026/01/08 17:25:33 Streamer bitrate updated: focus=15000 kbps, bg=7500 kbps
+2026/01/08 17:25:35 SetCodec: Changing codec from vp8 to h264
+2026/01/08 17:25:35 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/08 17:25:35 SetCodec: Using slots path - recreating slots with new codec
+2026/01/08 17:25:35 Removed track video0 from peer viewer-1
+2026/01/08 17:25:35 Removed track video1 from peer viewer-1
+2026/01/08 17:25:35 Removed track video2 from peer viewer-1
+2026/01/08 17:25:35 Removed track video3 from peer viewer-1
+2026/01/08 17:25:35 RecreateSlots: Recreating 4 track slots with new codec video/H264
+2026/01/08 17:25:35 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 17:25:35 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 17:25:35 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 17:25:35 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 17:25:35 RecreateSlots: Restored active slot 0 for window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:25:35 RecreateSlots: Completed - 1 active slots restored
+2026/01/08 17:25:35 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/08 17:25:35 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
+2026/01/08 17:25:35 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
+2026/01/08 17:25:35 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/08 17:25:35 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/08 17:25:35 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/08 17:25:35 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/08 17:25:35 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/08 17:25:35 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/08 17:25:35 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/08 17:25:35 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/08 17:25:35 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/08 17:25:35 SetCodec: Created pipeline for slot video0 (window 319186)
+2026/01/08 17:25:35 SetCodec: Triggering renegotiation for 1 pipelines
+2026/01/08 17:25:35 SetCodec: Successfully changed codec to h264 with 1 pipelines
+2026/01/08 17:25:35 Renegotiating with 1 peers
+2026/01/08 17:25:35 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 17:25:35 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 17:25:35 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 17:25:35 Renegotiation: sending offer to peer viewer-1 (SDP length: 31208)
+2026/01/08 17:25:35 Renegotiation: sending offer to peer viewer-1
+2026/01/08 17:25:35 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/08 17:25:35 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 17:25:35 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 17:25:35 VideoToolbox: First frame encoded successfully, size=25180 bytes, keyframe=1
+2026/01/08 17:25:35 sendLoop: Writing frame 1 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:25:35 encodeLoop: Encode failed for track video0 (error #1): encoding failed
+2026/01/08 17:25:36 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:25:36 Auto-share: swapping to topmost 318244 (OpenCode)
+2026/01/08 17:25:36 SwapWindowCapture: Swapping from window 319186 to 318244 (OpenCode) in slot 0
+2026/01/08 17:25:37 Size change callback triggered for track video0: 1613x1019
+2026/01/08 17:25:37 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:37 SwapWindowCapture: Successfully swapped to window 318244 (OpenCode)
+2026/01/08 17:25:37 Topmost captured window changed to: 318244 (was 319186)
+2026/01/08 17:25:37 Focus set to track=video0, windowID=318244, name=OpenCode
+2026/01/08 17:25:37 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:37 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:37 Focus change callback triggered for track: video0
+2026/01/08 17:25:37 VideoToolbox: Recreating encoder - dimensions changed (1108x760 -> 1612x1018)
+2026/01/08 17:25:37 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 17:25:37 VideoToolbox: First frame encoded successfully, size=43772 bytes, keyframe=1
+2026/01/08 17:25:37 Size change callback triggered for track video0: 1613x1019
+2026/01/08 17:25:38 Auto-share: swapping to topmost 325183 (gopeep)
+2026/01/08 17:25:38 SwapWindowCapture: Swapping from window 318244 to 325183 (gopeep) in slot 0
+2026/01/08 17:25:39 Size change callback triggered for track video0: 1051x637
+2026/01/08 17:25:39 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:39 SwapWindowCapture: Successfully swapped to window 325183 (gopeep)
+2026/01/08 17:25:39 VideoToolbox: Recreating encoder - dimensions changed (1612x1018 -> 1050x636)
+2026/01/08 17:25:39 Topmost captured window changed to: 325183 (was 318244)
+2026/01/08 17:25:39 Focus set to track=video0, windowID=325183, name=gopeep
+2026/01/08 17:25:39 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:39 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:39 Focus change callback triggered for track: video0
+2026/01/08 17:25:39 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 17:25:39 VideoToolbox: First frame encoded successfully, size=31847 bytes, keyframe=1
+2026/01/08 17:25:39 Size change callback triggered for track video0: 1051x637
+2026/01/08 17:25:41 sendLoop: Writing frame 101 to track video0 (windowID=325183, streamID=gopeep-stream-0)
+2026/01/08 17:25:42 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:25:42 SwapWindowCapture: Swapping from window 325183 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:25:43 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:25:43 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:43 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:25:43 VideoToolbox: Recreating encoder - dimensions changed (1050x636 -> 2560x1408)
+2026/01/08 17:25:43 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 17:25:44 VideoToolbox: First frame encoded successfully, size=125369 bytes, keyframe=1
+2026/01/08 17:25:44 Topmost captured window changed to: 312846 (was 325183)
+2026/01/08 17:25:44 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:25:44 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:44 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:44 Focus change callback triggered for track: video0
+2026/01/08 17:25:44 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:25:45 sendLoop: Writing frame 201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:25:46 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:25:46 SwapWindowCapture: Swapping from window 312846 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:25:47 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:25:47 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:47 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:25:47 VideoToolbox: Recreating encoder - dimensions changed (2560x1408 -> 1108x760)
+2026/01/08 17:25:47 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 17:25:47 VideoToolbox: First frame encoded successfully, size=25040 bytes, keyframe=1
+2026/01/08 17:25:47 Topmost captured window changed to: 319186 (was 312846)
+2026/01/08 17:25:47 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:25:47 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:47 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:47 Focus change callback triggered for track: video0
+2026/01/08 17:25:47 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:25:50 sendLoop: Writing frame 301 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:25:50 Track video0 bitrate set to 500 kbps
+2026/01/08 17:25:50 Streamer bitrate updated: focus=500 kbps, bg=250 kbps
+2026/01/08 17:25:50 VideoToolbox: Recreating encoder - settings changed (qualityMode=false, qualityValue=0.00)
+2026/01/08 17:25:50 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 17:25:50 VideoToolbox: First frame encoded successfully, size=5311 bytes, keyframe=1
+2026/01/08 17:25:52 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:25:52 SwapWindowCapture: Swapping from window 319186 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:25:53 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:25:53 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:53 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:25:53 VideoToolbox: Recreating encoder - dimensions changed (1108x760 -> 2560x1408)
+2026/01/08 17:25:53 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 17:25:53 VideoToolbox: First frame encoded successfully, size=31640 bytes, keyframe=1
+2026/01/08 17:25:53 Topmost captured window changed to: 312846 (was 319186)
+2026/01/08 17:25:53 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:25:53 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:53 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:53 Focus change callback triggered for track: video0
+2026/01/08 17:25:53 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:25:54 sendLoop: Writing frame 401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:25:55 Auto-share: swapping to topmost 325183 (gopeep)
+2026/01/08 17:25:55 SwapWindowCapture: Swapping from window 312846 to 325183 (gopeep) in slot 0
+2026/01/08 17:25:56 Size change callback triggered for track video0: 1051x637
+2026/01/08 17:25:56 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:56 SwapWindowCapture: Successfully swapped to window 325183 (gopeep)
+2026/01/08 17:25:56 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:25:56 SwapWindowCapture: Swapping from window 325183 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:25:56 Topmost captured window changed to: 325183 (was 312846)
+2026/01/08 17:25:56 Focus set to track=video0, windowID=325183, name=gopeep
+2026/01/08 17:25:56 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:56 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:56 Focus change callback triggered for track: video0
+2026/01/08 17:25:57 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:25:57 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:25:57 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:25:57 VideoToolbox: Recreating encoder - dimensions changed (2560x1408 -> 1108x760)
+2026/01/08 17:25:57 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 17:25:57 VideoToolbox: First frame encoded successfully, size=5276 bytes, keyframe=1
+2026/01/08 17:25:57 Topmost captured window changed to: 319186 (was 325183)
+2026/01/08 17:25:57 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:25:57 Calling NotifyFocusChange for track: video0
+2026/01/08 17:25:57 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:25:57 Focus change callback triggered for track: video0
+2026/01/08 17:25:57 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:25:58 Track video0 bitrate set to 6000 kbps
+2026/01/08 17:25:58 Streamer bitrate updated: focus=6000 kbps, bg=3000 kbps
+2026/01/08 17:25:58 VideoToolbox: Recreating encoder - settings changed (qualityMode=false, qualityValue=0.00)
+2026/01/08 17:25:58 VideoToolbox: Encoder recreated successfully (qualityMode=false)
+2026/01/08 17:25:58 VideoToolbox: First frame encoded successfully, size=23802 bytes, keyframe=1
+2026/01/08 17:25:59 sendLoop: Writing frame 501 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:26:00 SetCodec: Changing codec from h264 to vp8
+2026/01/08 17:26:00 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/08 17:26:00 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/08 17:26:00 SetCodec: Using slots path - recreating slots with new codec
+2026/01/08 17:26:00 Removed track video0 from peer viewer-1
+2026/01/08 17:26:00 Removed track video1 from peer viewer-1
+2026/01/08 17:26:00 Removed track video2 from peer viewer-1
+2026/01/08 17:26:00 Removed track video3 from peer viewer-1
+2026/01/08 17:26:00 RecreateSlots: Recreating 4 track slots with new codec video/VP8
+2026/01/08 17:26:00 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/08 17:26:00 encodeLoop: Encode failed for track video0 (error #3): encoder not initialized
+2026/01/08 17:26:00 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/08 17:26:00 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/08 17:26:00 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/08 17:26:00 RecreateSlots: Restored active slot 0 for window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:26:00 RecreateSlots: Completed - 1 active slots restored
+2026/01/08 17:26:00 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/08 17:26:00 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
+2026/01/08 17:26:00 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
+2026/01/08 17:26:00 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/08 17:26:00 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/08 17:26:00 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/08 17:26:00 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/08 17:26:00 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/08 17:26:00 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/08 17:26:00 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/08 17:26:00 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/08 17:26:00 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/08 17:26:00 SetCodec: Created pipeline for slot video0 (window 319186)
+2026/01/08 17:26:00 SetCodec: Triggering renegotiation for 1 pipelines
+2026/01/08 17:26:00 SetCodec: Successfully changed codec to vp8 with 1 pipelines
+2026/01/08 17:26:00 Renegotiating with 1 peers
+2026/01/08 17:26:00 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/08 17:26:00 Renegotiation: peer viewer-1 connection state: connected
+2026/01/08 17:26:00 Renegotiation: ICE gathering complete for viewer-1
+2026/01/08 17:26:00 Renegotiation: sending offer to peer viewer-1 (SDP length: 31216)
+2026/01/08 17:26:00 Renegotiation: sending offer to peer viewer-1
+2026/01/08 17:26:00 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/08 17:26:00 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/08 17:26:00 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/08 17:26:00 sendLoop: Writing frame 1 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:26:00 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:26:02 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:02 SwapWindowCapture: Swapping from window 319186 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:26:03 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:03 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:03 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:03 Topmost captured window changed to: 312846 (was 319186)
+2026/01/08 17:26:03 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:26:03 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:03 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:03 Focus change callback triggered for track: video0
+2026/01/08 17:26:03 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:05 sendLoop: Writing frame 101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:26:05 Auto-share: swapping to topmost 325183 (gopeep)
+2026/01/08 17:26:05 SwapWindowCapture: Swapping from window 312846 to 325183 (gopeep) in slot 0
+2026/01/08 17:26:06 Size change callback triggered for track video0: 1051x637
+2026/01/08 17:26:06 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:06 SwapWindowCapture: Successfully swapped to window 325183 (gopeep)
+2026/01/08 17:26:06 Topmost captured window changed to: 325183 (was 312846)
+2026/01/08 17:26:06 Focus set to track=video0, windowID=325183, name=gopeep
+2026/01/08 17:26:06 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:06 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:06 Focus change callback triggered for track: video0
+2026/01/08 17:26:06 Size change callback triggered for track video0: 1051x637
+2026/01/08 17:26:07 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:07 SwapWindowCapture: Swapping from window 325183 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:26:07 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:07 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:07 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:08 Topmost captured window changed to: 312846 (was 325183)
+2026/01/08 17:26:08 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:26:08 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:08 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:08 Focus change callback triggered for track: video0
+2026/01/08 17:26:08 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:09 Auto-share: swapping to topmost 211498 (Untitled)
+2026/01/08 17:26:09 SwapWindowCapture: Swapping from window 312846 to 211498 (Untitled) in slot 0
+2026/01/08 17:26:10 Size change callback triggered for track video0: 437x630
+2026/01/08 17:26:10 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:10 SwapWindowCapture: Successfully swapped to window 211498 (Untitled)
+2026/01/08 17:26:10 Topmost captured window changed to: 211498 (was 312846)
+2026/01/08 17:26:10 Focus set to track=video0, windowID=211498, name=Untitled
+2026/01/08 17:26:10 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:10 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:10 Focus change callback triggered for track: video0
+2026/01/08 17:26:10 Size change callback triggered for track video0: 437x630
+2026/01/08 17:26:11 sendLoop: Writing frame 201 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/08 17:26:14 sendLoop: Writing frame 301 to track video0 (windowID=211498, streamID=gopeep-stream-0)
+2026/01/08 17:26:14 Auto-share: swapping to topmost 328719 (Docker DB : vbs - MySQL 8.0.35)
+2026/01/08 17:26:14 SwapWindowCapture: Swapping from window 211498 to 328719 (Docker DB : vbs - MySQL 8.0.35) in slot 0
+2026/01/08 17:26:15 Size change callback triggered for track video0: 1844x1133
+2026/01/08 17:26:15 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:15 SwapWindowCapture: Successfully swapped to window 328719 (Docker DB : vbs - MySQL 8.0.35)
+2026/01/08 17:26:15 Topmost captured window changed to: 328719 (was 211498)
+2026/01/08 17:26:15 Focus set to track=video0, windowID=328719, name=Docker DB : vbs - MySQL 8.0.35
+2026/01/08 17:26:15 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:15 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:15 Focus change callback triggered for track: video0
+2026/01/08 17:26:15 Size change callback triggered for track video0: 1844x1133
+2026/01/08 17:26:18 sendLoop: Writing frame 401 to track video0 (windowID=328719, streamID=gopeep-stream-0)
+2026/01/08 17:26:21 Auto-share: swapping to topmost 211498 (Untitled)
+2026/01/08 17:26:21 SwapWindowCapture: Swapping from window 328719 to 211498 (Untitled) in slot 0
+2026/01/08 17:26:23 Size change callback triggered for track video0: 437x630
+2026/01/08 17:26:23 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:23 SwapWindowCapture: Successfully swapped to window 211498 (Untitled)
+2026/01/08 17:26:23 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:23 SwapWindowCapture: Swapping from window 211498 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:26:23 Topmost captured window changed to: 211498 (was 328719)
+2026/01/08 17:26:23 Focus set to track=video0, windowID=211498, name=Untitled
+2026/01/08 17:26:23 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:23 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:23 Focus change callback triggered for track: video0
+2026/01/08 17:26:23 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:23 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:23 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:23 Topmost captured window changed to: 312846 (was 211498)
+2026/01/08 17:26:23 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:26:23 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:23 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:23 Focus change callback triggered for track: video0
+2026/01/08 17:26:23 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:24 sendLoop: Writing frame 501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:26:25 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:26:25 SwapWindowCapture: Swapping from window 312846 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:26:26 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:26:26 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:26 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:26:26 Topmost captured window changed to: 319186 (was 312846)
+2026/01/08 17:26:26 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:26:26 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:26 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:26 Focus change callback triggered for track: video0
+2026/01/08 17:26:26 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:26:28 sendLoop: Writing frame 601 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:26:30 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:30 SwapWindowCapture: Swapping from window 319186 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:26:31 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:31 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:31 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:31 Topmost captured window changed to: 312846 (was 319186)
+2026/01/08 17:26:31 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:26:31 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:31 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:31 Focus change callback triggered for track: video0
+2026/01/08 17:26:31 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:32 sendLoop: Writing frame 701 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:26:35 sendLoop: Writing frame 801 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:26:39 sendLoop: Writing frame 901 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:26:40 Auto-share: swapping to topmost 328639 (GoPeep - Viewing)
+2026/01/08 17:26:40 SwapWindowCapture: Swapping from window 312846 to 328639 (GoPeep - Viewing) in slot 0
+2026/01/08 17:26:41 Size change callback triggered for track video0: 2163x1208
+2026/01/08 17:26:41 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:41 SwapWindowCapture: Successfully swapped to window 328639 (GoPeep - Viewing)
+2026/01/08 17:26:41 Topmost captured window changed to: 328639 (was 312846)
+2026/01/08 17:26:41 Focus set to track=video0, windowID=328639, name=GoPeep - Viewing
+2026/01/08 17:26:41 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:41 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:41 Focus change callback triggered for track: video0
+2026/01/08 17:26:42 Size change callback triggered for track video0: 2163x1208
+2026/01/08 17:26:42 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:42 SwapWindowCapture: Swapping from window 328639 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:26:43 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:43 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:43 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:44 Topmost captured window changed to: 312846 (was 328639)
+2026/01/08 17:26:44 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:26:44 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:44 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:44 Focus change callback triggered for track: video0
+2026/01/08 17:26:44 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:44 sendLoop: Writing frame 1001 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:26:47 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:26:47 SwapWindowCapture: Swapping from window 312846 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:26:48 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:26:48 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:48 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:26:48 Topmost captured window changed to: 319186 (was 312846)
+2026/01/08 17:26:48 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:26:48 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:48 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:48 Focus change callback triggered for track: video0
+2026/01/08 17:26:48 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:26:49 sendLoop: Writing frame 1101 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:26:50 Track video0 bitrate set to 20000 kbps
+2026/01/08 17:26:50 Streamer bitrate updated: focus=20000 kbps, bg=10000 kbps
+2026/01/08 17:26:50 Track video0 bitrate set to 50000 kbps
+2026/01/08 17:26:50 Streamer bitrate updated: focus=50000 kbps, bg=25000 kbps
+2026/01/08 17:26:52 Track video0 FPS changed from 30 to 60
+2026/01/08 17:26:52 Streamer FPS updated to 60
+2026/01/08 17:26:52 Pipeline ticker updated to 60 FPS
+2026/01/08 17:26:52 sendLoop: Writing frame 1201 to track video0 (windowID=319186, streamID=gopeep-stream-0)
+2026/01/08 17:26:54 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:54 SwapWindowCapture: Swapping from window 319186 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:26:54 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:54 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:26:54 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:26:54 Topmost captured window changed to: 312846 (was 319186)
+2026/01/08 17:26:54 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:26:54 Calling NotifyFocusChange for track: video0
+2026/01/08 17:26:54 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:26:54 Focus change callback triggered for track: video0
+2026/01/08 17:26:54 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:26:55 sendLoop: Writing frame 1301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:26:57 sendLoop: Writing frame 1401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:26:59 sendLoop: Writing frame 1501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:27:01 sendLoop: Writing frame 1601 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:27:01 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:01 SwapWindowCapture: Swapping from window 312846 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:27:01 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:27:01 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:01 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:01 Track video0 quality mode set to quality
+2026/01/08 17:27:01 Streamer quality mode: quality
+2026/01/08 17:27:01 encodeLoop: Encode failed for track video0 (error #1): encoding failed
+2026/01/08 17:27:01 Topmost captured window changed to: 319186 (was 312846)
+2026/01/08 17:27:01 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:27:01 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:01 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:01 Focus change callback triggered for track: video0
+2026/01/08 17:27:01 encodeLoop: Encode failed for track video0 (error #2): encoding failed
+2026/01/08 17:27:01 encodeLoop: Encode failed for track video0 (error #3): encoding failed
+2026/01/08 17:27:01 encodeLoop: Encode failed for track video0 (error #4): encoding failed
+2026/01/08 17:27:01 encodeLoop: Encode failed for track video0 (error #5): encoding failed
+2026/01/08 17:27:02 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:27:02 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:27:02 SwapWindowCapture: Swapping from window 319186 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:27:03 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:27:03 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:03 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:27:03 Topmost captured window changed to: 312846 (was 319186)
+2026/01/08 17:27:03 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:27:03 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:03 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:03 Focus change callback triggered for track: video0
+2026/01/08 17:27:03 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:27:06 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:06 SwapWindowCapture: Swapping from window 312846 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:27:06 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:27:06 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:06 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:06 Topmost captured window changed to: 319186 (was 312846)
+2026/01/08 17:27:06 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:27:06 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:06 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:06 Focus change callback triggered for track: video0
+2026/01/08 17:27:07 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:27:08 Auto-share: swapping to topmost 325183 (gopeep)
+2026/01/08 17:27:08 SwapWindowCapture: Swapping from window 319186 to 325183 (gopeep) in slot 0
+2026/01/08 17:27:09 Size change callback triggered for track video0: 1051x637
+2026/01/08 17:27:09 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:09 SwapWindowCapture: Successfully swapped to window 325183 (gopeep)
+2026/01/08 17:27:09 Topmost captured window changed to: 325183 (was 319186)
+2026/01/08 17:27:09 Focus set to track=video0, windowID=325183, name=gopeep
+2026/01/08 17:27:09 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:09 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:09 Focus change callback triggered for track: video0
+2026/01/08 17:27:09 Size change callback triggered for track video0: 1051x637
+2026/01/08 17:27:12 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:27:12 SwapWindowCapture: Swapping from window 325183 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:27:12 Viewer joined room TRUE-WAVE-35 (total viewers: 1)
+2026/01/08 17:27:12 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 17:27:13 Peer viewer-2 connection state: connecting
+2026/01/08 17:27:14 Peer viewer-2 connection state: connected
+2026/01/08 17:27:14 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:27:14 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:14 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:27:14 Auto-share: swapping to topmost 328639 (GoPeep - Viewing)
+2026/01/08 17:27:14 SwapWindowCapture: Swapping from window 312846 to 328639 (GoPeep - Viewing) in slot 0
+2026/01/08 17:27:14 Topmost captured window changed to: 312846 (was 325183)
+2026/01/08 17:27:14 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:27:14 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:14 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:14 Focus change callback triggered for track: video0
+2026/01/08 17:27:14 Size change callback triggered for track video0: 2163x1208
+2026/01/08 17:27:14 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:14 SwapWindowCapture: Successfully swapped to window 328639 (GoPeep - Viewing)
+2026/01/08 17:27:15 Topmost captured window changed to: 328639 (was 312846)
+2026/01/08 17:27:15 Focus set to track=video0, windowID=328639, name=GoPeep - Viewing
+2026/01/08 17:27:15 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:15 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:15 Focus change callback triggered for track: video0
+2026/01/08 17:27:15 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:27:15 SwapWindowCapture: Swapping from window 328639 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:27:15 Size change callback triggered for track video0: 2163x1208
+2026/01/08 17:27:16 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:27:16 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:16 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:27:16 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:16 SwapWindowCapture: Swapping from window 312846 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:27:16 Topmost captured window changed to: 312846 (was 328639)
+2026/01/08 17:27:16 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:27:16 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:16 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:16 Focus change callback triggered for track: video0
+2026/01/08 17:27:16 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:27:16 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:27:16 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:16 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:16 Track video0 quality mode set to performance
+2026/01/08 17:27:16 Streamer quality mode: performance
+2026/01/08 17:27:16 Topmost captured window changed to: 319186 (was 312846)
+2026/01/08 17:27:16 Focus set to track=video0, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:27:16 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:16 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:16 Focus change callback triggered for track: video0
+2026/01/08 17:27:17 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:27:17 Auto-share: swapping to topmost 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:27:17 SwapWindowCapture: Swapping from window 319186 to 312846 (vbs 185 look into slack integration with calloff list) in slot 0
+2026/01/08 17:27:18 Peer viewer-1 connection state: disconnected
+2026/01/08 17:27:18 Peer viewer-1 connection state: closed
+2026/01/08 17:27:18 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:27:18 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:18 SwapWindowCapture: Successfully swapped to window 312846 (vbs 185 look into slack integration with calloff list)
+2026/01/08 17:27:19 Topmost captured window changed to: 312846 (was 319186)
+2026/01/08 17:27:19 Focus set to track=video0, windowID=312846, name=vbs 185 look into slack integration with calloff list
+2026/01/08 17:27:19 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:19 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:19 Focus change callback triggered for track: video0
+2026/01/08 17:27:19 Size change callback triggered for track video0: 2560x1409
+2026/01/08 17:27:19 sendLoop: Writing frame 1701 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:27:21 sendLoop: Writing frame 1801 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/08 17:27:21 Auto-share: swapping to topmost 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:21 SwapWindowCapture: Swapping from window 312846 to 319186 (GoPeep - Screen Sharing) in slot 0
+2026/01/08 17:27:22 Size change callback triggered for track video0: 1109x761
+2026/01/08 17:27:22 Broadcasting stream-activated: video0 (fast path)
+2026/01/08 17:27:22 SwapWindowCapture: Successfully swapped to window 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:22 Focus detection loop stopped
+2026/01/08 17:27:22 Broadcasting stream-removed: video0
+2026/01/08 17:27:22 Closing peer connection: viewer-2
+2026/01/08 17:27:22 Peer viewer-2 connection state: closed
+2026/01/08 17:27:28 Viewer joined room TRUE-WAVE-35 (total viewers: 1)
+2026/01/08 17:27:28 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 17:27:28 Peer viewer-3 connection state: connecting
+2026/01/08 17:27:29 Peer viewer-3 connection state: connected
+2026/01/08 17:27:33 ActivateSlot: Activated video0 for window 325008 (Messages - Alex Henningsson)
+2026/01/08 17:27:34 ActivateSlot: Activated video1 for window 318244 (OpenCode - OpenCode)
+2026/01/08 17:27:35 Broadcasting sharer-started to room TRUE-WAVE-35
+2026/01/08 17:27:35 Renegotiating with 1 peers
+2026/01/08 17:27:35 Renegotiation: peer viewer-3 signaling state: stable
+2026/01/08 17:27:35 Renegotiation: peer viewer-3 connection state: connected
+2026/01/08 17:27:35 Focus detection loop started with 2 pipelines:
+2026/01/08 17:27:35   - Track video1: windowID=318244, name=OpenCode
+2026/01/08 17:27:35   - Track video0: windowID=325008, name=Alex Henningsson
+2026/01/08 17:27:35 Renegotiation: ICE gathering complete for viewer-3
+2026/01/08 17:27:35 Renegotiation: sending offer to peer viewer-3 (SDP length: 16880)
+2026/01/08 17:27:35 Renegotiation: sending offer to peer viewer-3
+2026/01/08 17:27:35 Renegotiation: sent streams-info with 2 tracks to peer viewer-3
+2026/01/08 17:27:35 Viewer joined room TRUE-WAVE-35 (total viewers: 1)
+2026/01/08 17:27:35 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 17:27:35 Renegotiation: received answer from peer viewer-4, setting remote description
+2026/01/08 17:27:35 Renegotiation: complete for peer viewer-4, signaling state: stable, connection state: new
+2026/01/08 17:27:35 Peer viewer-4 connection state: connecting
+2026/01/08 17:27:35 Renegotiation: received answer from peer viewer-4, setting remote description
+2026/01/08 17:27:35 Renegotiation: failed to set remote description for viewer-4: InvalidModificationError: invalid proposed signaling state transition: stable->SetRemote(answer)->stable
+2026/01/08 17:27:35 Failed to handle renegotiate answer for viewer-4: InvalidModificationError: invalid proposed signaling state transition: stable->SetRemote(answer)->stable
+2026/01/08 17:27:35 sendLoop: Writing frame 1 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:35 sendLoop: Writing frame 1 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:36 Topmost captured window changed to: 318244 (was 0)
+2026/01/08 17:27:36 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 17:27:36 Calling NotifyFocusChange for track: video1
+2026/01/08 17:27:36 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 17:27:36 Focus change callback triggered for track: video1
+2026/01/08 17:27:36 Size change callback triggered for track video0: 1281x862
+2026/01/08 17:27:37 sendLoop: Writing frame 101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:37 sendLoop: Writing frame 101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:39 sendLoop: Writing frame 201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:39 sendLoop: Writing frame 201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:40 Viewer joined room TRUE-WAVE-35 (total viewers: 1)
+2026/01/08 17:27:40 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/08 17:27:40 Peer viewer-5 connection state: connecting
+2026/01/08 17:27:41 Peer viewer-5 connection state: connected
+2026/01/08 17:27:41 sendLoop: Writing frame 301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:41 sendLoop: Writing frame 301 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:43 Peer viewer-4 connection state: disconnected
+2026/01/08 17:27:43 Peer viewer-4 connection state: closed
+2026/01/08 17:27:43 sendLoop: Writing frame 401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:43 sendLoop: Writing frame 401 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:43 Topmost captured window changed to: 325008 (was 318244)
+2026/01/08 17:27:43 Focus set to track=video0, windowID=325008, name=Alex Henningsson
+2026/01/08 17:27:43 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:43 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:43 Focus change callback triggered for track: video0
+2026/01/08 17:27:44 Topmost captured window changed to: 318244 (was 325008)
+2026/01/08 17:27:44 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 17:27:44 Calling NotifyFocusChange for track: video1
+2026/01/08 17:27:44 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 17:27:44 Focus change callback triggered for track: video1
+2026/01/08 17:27:45 sendLoop: Writing frame 501 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:45 sendLoop: Writing frame 501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:46 Peer viewer-3 connection state: disconnected
+2026/01/08 17:27:46 Peer viewer-3 connection state: closed
+2026/01/08 17:27:46 Topmost captured window changed to: 325008 (was 318244)
+2026/01/08 17:27:46 Focus set to track=video0, windowID=325008, name=Alex Henningsson
+2026/01/08 17:27:46 Calling NotifyFocusChange for track: video0
+2026/01/08 17:27:46 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/08 17:27:46 Focus change callback triggered for track: video0
+2026/01/08 17:27:47 Topmost captured window changed to: 318244 (was 325008)
+2026/01/08 17:27:47 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 17:27:47 Calling NotifyFocusChange for track: video1
+2026/01/08 17:27:47 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 17:27:47 Focus change callback triggered for track: video1
+2026/01/08 17:27:47 sendLoop: Writing frame 601 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:47 sendLoop: Writing frame 601 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:48 sendLoop: Writing frame 701 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:49 sendLoop: Writing frame 701 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:50 sendLoop: Writing frame 801 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:50 sendLoop: Writing frame 801 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:52 sendLoop: Writing frame 901 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:52 sendLoop: Writing frame 901 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:54 sendLoop: Writing frame 1001 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:54 sendLoop: Writing frame 1001 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:56 sendLoop: Writing frame 1101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:56 sendLoop: Writing frame 1101 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:57 TUI: Adding window dynamically: 317592 (Scratch)
+2026/01/08 17:27:57 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 17:27:57 ActivateSlot: Activated video2 for window 317592 (Heynote - Scratch)
+2026/01/08 17:27:58 sendLoop: Writing frame 1201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:27:58 sendLoop: Writing frame 1201 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:27:59 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/08 17:27:59 Broadcasting stream-activated: video2 (fast path)
+2026/01/08 17:27:59 Added window dynamically: video2 (windowID=317592, fastPath=true)
+2026/01/08 17:27:59 TUI: Adding window dynamically: 319186 (GoPeep - Screen Sharing)
+2026/01/08 17:27:59 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/08 17:27:59 ActivateSlot: Activated video3 for window 319186 (Ghostty - GoPeep - Screen Sharing)
+2026/01/08 17:27:59 sendLoop: Writing frame 1 to track video2 (windowID=317592, streamID=gopeep-stream-2)
+2026/01/08 17:27:59 AddWindowDynamic: Notifying stream activated video3 (NO renegotiation)
+2026/01/08 17:27:59 Broadcasting stream-activated: video3 (fast path)
+2026/01/08 17:27:59 Added window dynamically: video3 (windowID=319186, fastPath=true)
+2026/01/08 17:27:59 Topmost captured window changed to: 319186 (was 318244)
+2026/01/08 17:27:59 Focus set to track=video3, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:27:59 Calling NotifyFocusChange for track: video3
+2026/01/08 17:27:59 NotifyFocusChange: callback exists, calling with trackID: video3
+2026/01/08 17:27:59 Focus change callback triggered for track: video3
+2026/01/08 17:27:59 sendLoop: Writing frame 1 to track video3 (windowID=319186, streamID=gopeep-stream-3)
+2026/01/08 17:28:00 sendLoop: Writing frame 1301 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:28:00 sendLoop: Writing frame 1301 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:28:01 sendLoop: Writing frame 101 to track video2 (windowID=317592, streamID=gopeep-stream-2)
+2026/01/08 17:28:01 sendLoop: Writing frame 101 to track video3 (windowID=319186, streamID=gopeep-stream-3)
+2026/01/08 17:28:01 sendLoop: Writing frame 1401 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:28:02 Topmost captured window changed to: 318244 (was 319186)
+2026/01/08 17:28:02 Focus set to track=video1, windowID=318244, name=OpenCode
+2026/01/08 17:28:02 Calling NotifyFocusChange for track: video1
+2026/01/08 17:28:02 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/08 17:28:02 Focus change callback triggered for track: video1
+2026/01/08 17:28:02 sendLoop: Writing frame 1401 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:28:03 sendLoop: Writing frame 201 to track video2 (windowID=317592, streamID=gopeep-stream-2)
+2026/01/08 17:28:03 sendLoop: Writing frame 201 to track video3 (windowID=319186, streamID=gopeep-stream-3)
+2026/01/08 17:28:03 sendLoop: Writing frame 1501 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:28:04 sendLoop: Writing frame 1501 to track video1 (windowID=318244, streamID=gopeep-stream-1)
+2026/01/08 17:28:04 sendLoop: Writing frame 301 to track video2 (windowID=317592, streamID=gopeep-stream-2)
+2026/01/08 17:28:05 Topmost captured window changed to: 319186 (was 318244)
+2026/01/08 17:28:05 Focus set to track=video3, windowID=319186, name=GoPeep - Screen Sharing
+2026/01/08 17:28:05 Calling NotifyFocusChange for track: video3
+2026/01/08 17:28:05 NotifyFocusChange: callback exists, calling with trackID: video3
+2026/01/08 17:28:05 Focus change callback triggered for track: video3
+2026/01/08 17:28:05 sendLoop: Writing frame 301 to track video3 (windowID=319186, streamID=gopeep-stream-3)
+2026/01/08 17:28:05 sendLoop: Writing frame 1601 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/08 17:28:05 Focus detection loop stopped
+2026/01/08 17:28:05 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/08 17:28:05 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/08 17:28:05 encodeLoop: Encode failed for track video3 (error #1): encoder not initialized
+2026/01/08 17:28:07 Broadcasting stream-removed: video1
+2026/01/08 17:28:07 Broadcasting stream-removed: video2
+2026/01/08 17:28:07 Broadcasting stream-removed: video3
+2026/01/08 17:28:07 Broadcasting stream-removed: video0
+2026/01/08 17:28:07 Peer viewer-5 connection state: closed

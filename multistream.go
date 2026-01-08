@@ -441,6 +441,31 @@ func (mpm *PeerManager) GetTrackInfo(trackID string) *StreamTrackInfo {
 	return mpm.tracks[trackID]
 }
 
+// UpdateTrackInfo updates the window info for an existing track
+// Used when swapping capture sources in auto-share mode
+func (mpm *PeerManager) UpdateTrackInfo(trackID string, info *StreamTrackInfo) {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+	if existing, ok := mpm.tracks[trackID]; ok {
+		existing.WindowID = info.WindowID
+		existing.WindowName = info.WindowName
+		existing.AppName = info.AppName
+		existing.Width = info.Width
+		existing.Height = info.Height
+	}
+	// Also update slot info if using pre-allocated slots
+	for _, slot := range mpm.slots {
+		if slot != nil && slot.Info != nil && slot.Info.TrackID == trackID {
+			slot.Info.WindowID = info.WindowID
+			slot.Info.WindowName = info.WindowName
+			slot.Info.AppName = info.AppName
+			slot.Info.Width = info.Width
+			slot.Info.Height = info.Height
+			break
+		}
+	}
+}
+
 // GetSlot returns the TrackSlot at the given index (0-3)
 func (mpm *PeerManager) GetSlot(index int) *TrackSlot {
 	mpm.mu.RLock()
@@ -530,6 +555,14 @@ func (mpm *PeerManager) RemoveAllTracks() {
 	defer mpm.mu.Unlock()
 	mpm.tracks = make(map[string]*StreamTrackInfo)
 	mpm.trackCounter = 0 // Reset counter so track IDs start fresh on restart
+
+	// Also deactivate all slots so they can be reused
+	for i := 0; i < 4; i++ {
+		if mpm.slots[i] != nil {
+			mpm.slots[i].Active = false
+			mpm.slots[i].Info = nil
+		}
+	}
 }
 
 // GetTracks returns all current tracks in sorted order by TrackID
@@ -2105,6 +2138,84 @@ func (ms *Streamer) RemoveWindowDynamic(windowID uint32) error {
 		ms.peerManager.NotifyStreamRemoved(trackIDToRemove)
 	}
 
+	return nil
+}
+
+// SwapWindowCapture swaps the capture source for an existing pipeline in-place.
+// This keeps the same WebRTC track but changes which window is being captured.
+// Used for auto-share mode to seamlessly switch windows without renegotiation.
+func (ms *Streamer) SwapWindowCapture(oldWindowID uint32, newWindow WindowInfo) error {
+	ms.mu.Lock()
+
+	// Find the pipeline for the old window
+	var targetPipeline *StreamPipeline
+	var trackID string
+	for tid, pipeline := range ms.pipelines {
+		if pipeline.trackInfo.WindowID == oldWindowID {
+			targetPipeline = pipeline
+			trackID = tid
+			break
+		}
+	}
+
+	if targetPipeline == nil {
+		ms.mu.Unlock()
+		return fmt.Errorf("window %d not found in active streams", oldWindowID)
+	}
+
+	// Get the capture slot index before stopping
+	captureSlot := targetPipeline.capture.slot
+
+	ms.mu.Unlock()
+
+	log.Printf("SwapWindowCapture: Swapping from window %d to %d (%s) in slot %d",
+		oldWindowID, newWindow.ID, newWindow.WindowName, captureSlot)
+
+	// Stop capture for old window
+	ms.multiCapture.StopCapture(targetPipeline.capture)
+
+	// Start capture for new window in the same slot
+	newCapture, err := ms.multiCapture.StartWindowCaptureInSlot(captureSlot, newWindow.ID, 0, 0, ms.fps)
+	if err != nil {
+		// Try to restart old capture if new one fails
+		log.Printf("SwapWindowCapture: Failed to start new capture, attempting recovery: %v", err)
+		oldCapture, recoverErr := ms.multiCapture.StartWindowCaptureInSlot(captureSlot, oldWindowID, 0, 0, ms.fps)
+		if recoverErr == nil {
+			targetPipeline.capture = oldCapture
+		}
+		return fmt.Errorf("failed to start capture for new window: %w", err)
+	}
+
+	// Update pipeline with new capture and window info
+	ms.mu.Lock()
+	targetPipeline.capture = newCapture
+	targetPipeline.trackInfo.WindowID = newWindow.ID
+	targetPipeline.trackInfo.WindowName = newWindow.WindowName
+	targetPipeline.trackInfo.AppName = newWindow.OwnerName
+	targetPipeline.trackInfo.Width = int(newWindow.Width)
+	targetPipeline.trackInfo.Height = int(newWindow.Height)
+	ms.mu.Unlock()
+
+	// Update peer manager's track info
+	ms.peerManager.UpdateTrackInfo(trackID, targetPipeline.trackInfo)
+
+	// Notify viewers about the window change
+	streamInfo := sig.StreamInfo{
+		TrackID:    trackID,
+		WindowName: newWindow.WindowName,
+		AppName:    newWindow.OwnerName,
+		IsFocused:  targetPipeline.trackInfo.IsFocused,
+		Width:      int(newWindow.Width),
+		Height:     int(newWindow.Height),
+	}
+
+	// Send size change notification (viewer may need to adjust)
+	ms.peerManager.NotifySizeChange(trackID, int(newWindow.Width), int(newWindow.Height))
+
+	// Send stream-activated to notify of the window swap (viewer will update display name)
+	ms.peerManager.NotifyStreamActivated(streamInfo)
+
+	log.Printf("SwapWindowCapture: Successfully swapped to window %d (%s)", newWindow.ID, newWindow.WindowName)
 	return nil
 }
 
