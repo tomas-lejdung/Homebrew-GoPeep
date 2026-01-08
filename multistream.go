@@ -744,6 +744,18 @@ func (mpm *PeerManager) NotifyStreamRemoved(trackID string) {
 }
 
 // StreamPipeline manages capture-encode-stream for a single window
+// capturedFrame holds a frame ready for encoding
+type capturedFrame struct {
+	frame         *BGRAFrame
+	frameDuration time.Duration
+}
+
+// encodedFrame holds encoded data ready for sending
+type encodedFrame struct {
+	data          []byte
+	frameDuration time.Duration
+}
+
 type StreamPipeline struct {
 	trackInfo    *StreamTrackInfo
 	capture      *CaptureInstance
@@ -759,6 +771,10 @@ type StreamPipeline struct {
 	qualityMode  bool // false = performance, true = quality
 	mu           sync.Mutex
 	wg           sync.WaitGroup // For waiting on run loop to exit
+
+	// Pipeline channels for decoupled capture/encode/send
+	capturedFrames chan capturedFrame // Buffer between capture and encode
+	encodedFrames  chan encodedFrame  // Buffer between encode and send
 
 	// Stats tracking
 	frameCount     uint64    // Total frames encoded
@@ -879,19 +895,21 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 		encoder.SetQualityMode(true, bitrate)
 	}
 
-	// Create pipeline
+	// Create pipeline with buffered channels for decoupled processing
 	pipeline := &StreamPipeline{
-		trackInfo:    trackInfo,
-		capture:      capture,
-		encoder:      encoder,
-		fps:          ms.fps,
-		bitrate:      bitrate,
-		focusBitrate: ms.focusBitrate,
-		bgBitrate:    ms.bgBitrate,
-		adaptiveBR:   ms.adaptiveBitrate,
-		qualityMode:  ms.qualityMode,
-		stopChan:     make(chan struct{}),
-		fpsChanged:   make(chan int, 1),
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     ms.adaptiveBitrate,
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2), // Small buffer to decouple capture/encode
+		encodedFrames:  make(chan encodedFrame, 2),  // Small buffer to decouple encode/send
 	}
 
 	ms.pipelines[trackInfo.TrackID] = pipeline
@@ -1275,18 +1293,20 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 		// Create new pipeline (reusing capture)
 		// Note: running must be false so run() can start properly
 		pipeline := &StreamPipeline{
-			trackInfo:    trackInfo,
-			capture:      info.capture,
-			encoder:      encoder,
-			stopChan:     make(chan struct{}),
-			fpsChanged:   make(chan int, 1),
-			fps:          ms.fps,
-			bitrate:      bitrate,
-			focusBitrate: ms.focusBitrate,
-			bgBitrate:    ms.bgBitrate,
-			adaptiveBR:   ms.adaptiveBitrate,
-			qualityMode:  ms.qualityMode,
-			running:      false,
+			trackInfo:      trackInfo,
+			capture:        info.capture,
+			encoder:        encoder,
+			stopChan:       make(chan struct{}),
+			fpsChanged:     make(chan int, 1),
+			capturedFrames: make(chan capturedFrame, 2),
+			encodedFrames:  make(chan encodedFrame, 2),
+			fps:            ms.fps,
+			bitrate:        bitrate,
+			focusBitrate:   ms.focusBitrate,
+			bgBitrate:      ms.bgBitrate,
+			adaptiveBR:     ms.adaptiveBitrate,
+			qualityMode:    ms.qualityMode,
+			running:        false,
 		}
 
 		ms.pipelines[trackInfo.TrackID] = pipeline
@@ -1394,19 +1414,21 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 		encoder.SetQualityMode(true, bitrate)
 	}
 
-	// Create pipeline
+	// Create pipeline with buffered channels
 	pipeline := &StreamPipeline{
-		trackInfo:    trackInfo,
-		capture:      capture,
-		encoder:      encoder,
-		fps:          ms.fps,
-		bitrate:      bitrate,
-		focusBitrate: ms.focusBitrate,
-		bgBitrate:    ms.bgBitrate,
-		adaptiveBR:   ms.adaptiveBitrate,
-		qualityMode:  ms.qualityMode,
-		stopChan:     make(chan struct{}),
-		fpsChanged:   make(chan int, 1),
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     ms.adaptiveBitrate,
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2),
+		encodedFrames:  make(chan encodedFrame, 2),
 	}
 
 	ms.mu.Lock()
@@ -1546,19 +1568,21 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 		encoder.SetQualityMode(true, bitrate)
 	}
 
-	// Create pipeline
+	// Create pipeline with buffered channels
 	pipeline := &StreamPipeline{
-		trackInfo:    trackInfo,
-		capture:      capture,
-		encoder:      encoder,
-		fps:          ms.fps,
-		bitrate:      bitrate,
-		focusBitrate: ms.focusBitrate,
-		bgBitrate:    ms.bgBitrate,
-		adaptiveBR:   false, // No adaptive bitrate for display
-		qualityMode:  ms.qualityMode,
-		stopChan:     make(chan struct{}),
-		fpsChanged:   make(chan int, 1),
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     false, // No adaptive bitrate for display
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2),
+		encodedFrames:  make(chan encodedFrame, 2),
 	}
 
 	ms.pipelines[trackInfo.TrackID] = pipeline
@@ -1624,19 +1648,21 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 		encoder.SetQualityMode(true, bitrate)
 	}
 
-	// Create pipeline
+	// Create pipeline with buffered channels
 	pipeline := &StreamPipeline{
-		trackInfo:    trackInfo,
-		capture:      capture,
-		encoder:      encoder,
-		fps:          ms.fps,
-		bitrate:      bitrate,
-		focusBitrate: ms.focusBitrate,
-		bgBitrate:    ms.bgBitrate,
-		adaptiveBR:   false,
-		qualityMode:  ms.qualityMode,
-		stopChan:     make(chan struct{}),
-		fpsChanged:   make(chan int, 1),
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     false,
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2),
+		encodedFrames:  make(chan encodedFrame, 2),
 	}
 
 	ms.mu.Lock()
@@ -1710,6 +1736,17 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 	p.mu.Unlock()
 
 	frameDuration := time.Second / time.Duration(currentFPS)
+
+	// Create a done channel for coordinating goroutine shutdown
+	done := make(chan struct{})
+
+	// Start encoder goroutine (consumes captured frames, produces encoded frames)
+	go p.encodeLoop(done)
+
+	// Start sender goroutine (consumes encoded frames, sends to WebRTC)
+	go p.sendLoop(done)
+
+	// Main capture loop
 	ticker := time.NewTicker(frameDuration)
 	defer ticker.Stop()
 
@@ -1718,6 +1755,13 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 	defer statsTicker.Stop()
 
 	var framesSinceLastStats uint64
+
+	defer func() {
+		// Signal goroutines to stop and close channels
+		close(done)
+		close(p.capturedFrames)
+		// encodedFrames will be closed by encodeLoop when it exits
+	}()
 
 	for {
 		select {
@@ -1749,7 +1793,6 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 			p.mu.Unlock()
 
 			// Check if window has been resized and update stream configuration
-			// Run in separate goroutine to avoid any blocking
 			if p.capture != nil && p.trackInfo.WindowID != 0 {
 				go func(capture *CaptureInstance, windowID uint32) {
 					actualW, actualH, err := mc.GetWindowSize(capture)
@@ -1779,17 +1822,14 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 				p.trackInfo.Height = frame.Height
 
 				// Debounced size change notification (only for focused track)
-				// Uses both the local callback and PeerManager notification for signaling
 				if p.trackInfo.IsFocused {
 					p.sizeChangeMu.Lock()
-					// Store pending size change info
 					p.pendingSizeTrackID = p.trackInfo.TrackID
 					p.pendingSizeWidth = frame.Width
 					p.pendingSizeHeight = frame.Height
 					p.sizeChangePending = true
 
 					if p.sizeChangeTimer == nil {
-						// Create timer once, reuse thereafter
 						p.sizeChangeTimer = time.AfterFunc(250*time.Millisecond, func() {
 							p.sizeChangeMu.Lock()
 							if p.sizeChangePending {
@@ -1798,10 +1838,7 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 								height := p.pendingSizeHeight
 								p.sizeChangePending = false
 								p.sizeChangeMu.Unlock()
-
-								// Notify via PeerManager for WebSocket signaling
 								pm.NotifySizeChange(trackID, width, height)
-								// Also call local callback if set
 								if onSizeChange != nil {
 									onSizeChange(trackID, width, height)
 								}
@@ -1810,31 +1847,73 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 							}
 						})
 					} else {
-						// Reset existing timer
 						p.sizeChangeTimer.Reset(250 * time.Millisecond)
 					}
 					p.sizeChangeMu.Unlock()
 				}
 			}
 
-			// Encode
-			data, err := p.encoder.EncodeBGRAFrame(frame)
+			// Send frame to encode goroutine (non-blocking with small buffer)
+			select {
+			case p.capturedFrames <- capturedFrame{frame: frame, frameDuration: frameDuration}:
+				framesSinceLastStats++
+			default:
+				// Buffer full - drop frame to maintain timing
+				// This prevents capture from blocking if encoding is slow
+			}
+		}
+	}
+}
+
+// encodeLoop runs in a separate goroutine, encoding frames as they arrive
+func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
+	defer close(p.encodedFrames)
+
+	for {
+		select {
+		case <-done:
+			return
+		case cf, ok := <-p.capturedFrames:
+			if !ok {
+				return
+			}
+
+			// Encode the frame
+			data, err := p.encoder.EncodeBGRAFrame(cf.frame)
 			if err != nil {
 				continue
 			}
 
 			atomic.AddUint64(&p.frameCount, 1)
 			atomic.AddUint64(&p.byteCount, uint64(len(data)))
-			framesSinceLastStats++
 
-			// Write directly to track (cached reference, no map lookup)
+			// Send to sender goroutine (non-blocking)
+			select {
+			case p.encodedFrames <- encodedFrame{data: data, frameDuration: cf.frameDuration}:
+			default:
+				// Buffer full - drop encoded frame
+			}
+		}
+	}
+}
+
+// sendLoop runs in a separate goroutine, sending encoded frames to WebRTC
+func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
+	for {
+		select {
+		case <-done:
+			return
+		case ef, ok := <-p.encodedFrames:
+			if !ok {
+				return
+			}
+
+			// Write directly to track
 			if p.trackInfo.Track != nil {
-				if err := p.trackInfo.Track.WriteSample(media.Sample{
-					Data:     data,
-					Duration: frameDuration,
-				}); err != nil {
-					continue
-				}
+				p.trackInfo.Track.WriteSample(media.Sample{
+					Data:     ef.data,
+					Duration: ef.frameDuration,
+				})
 			}
 		}
 	}

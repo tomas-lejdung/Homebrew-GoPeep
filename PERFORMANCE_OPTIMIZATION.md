@@ -50,12 +50,14 @@ This document tracks performance optimizations to improve visual quality and red
 
 ## Phase 3: Pipeline Optimization (Higher effort, best latency)
 
-- [ ] **3.1 Decouple capture/encode/send with buffered channels**
+- [x] **3.1 Decouple capture/encode/send with buffered channels**
   - File: `multistream.go:1762-1812`
   - Separate goroutines for capture, encode, and WebRTC send
   - Impact: Better frame timing, reduced drops
+  - Implementation: Added `capturedFrames` and `encodedFrames` channels with buffer size 2
+  - Added `encodeLoop()` and `sendLoop()` goroutines
 
-- [ ] **3.2 Reduce frame copies in capture path**
+- [ ] **3.2 Reduce frame copies in capture path** _(Deferred - complex, diminishing returns)_
   - File: `capture_multi_darwin.go`
   - Currently: 3 copies per frame (callback → get_frame → Go)
   - Target: 1-2 copies maximum
@@ -65,16 +67,22 @@ This document tracks performance optimizations to improve visual quality and red
 
 ## Phase 4: Algorithm Optimization (Highest effort, highest impact)
 
-- [ ] **4.1 Optimize BGRA→NV12 color conversion**
-  - Files: `encoder_videotoolbox.go:371-399`, `encoder_h264.go:129-157`
-  - Options: SIMD intrinsics, libyuv library, or Accelerate framework
-  - Impact: 20-30% CPU reduction
+- [x] **4.1 Optimize BGRA→NV12 color conversion**
+  - File: `encoder_videotoolbox.go:48-170`
+  - Implementation: Added `convert_bgra_to_nv12_vimage()` function
+  - Processes 4 pixels at a time for Y plane, 2 UV pairs at a time
+  - Better cache locality with row-based processing
+  - Enables compiler auto-vectorization (SIMD/NEON on ARM)
+  - Impact: 20-30% CPU reduction on color conversion
 
-- [ ] **4.2 Async VideoToolbox encoding**
-  - File: `encoder_videotoolbox.go:443-444`
-  - Remove per-frame `VTCompressionSessionCompleteFrames` call
-  - Process encoded frames in async callback
-  - Impact: Better encoding throughput
+- [x] **4.2 Async VideoToolbox encoding**
+  - File: `encoder_videotoolbox.go:625-715`
+  - Implementation: Double-buffered async encoding
+  - Added two output buffers that alternate between writing and reading
+  - Callback signals completion via `pthread_cond_signal`
+  - First frame/keyframes wait synchronously, subsequent frames pipeline
+  - Removed per-frame `VTCompressionSessionCompleteFrames` for normal frames
+  - Impact: Better encoding throughput, reduced frame latency
 
 ---
 
@@ -84,8 +92,8 @@ This document tracks performance optimizations to improve visual quality and red
 |-------|-------|-----------|--------|
 | Phase 1 | 3 | 3 | Complete |
 | Phase 2 | 3 | 1 | Partial (2 deferred) |
-| Phase 3 | 2 | 0 | Not started |
-| Phase 4 | 2 | 0 | Not started |
+| Phase 3 | 2 | 1 | Partial (1 deferred) |
+| Phase 4 | 2 | 2 | Complete |
 
 ---
 
