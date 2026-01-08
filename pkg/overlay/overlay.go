@@ -113,11 +113,13 @@ func (o *Overlay) Start() error {
 }
 
 // Stop stops the game loop and cleans up resources.
+// This closes the Events() channel, causing any goroutine reading from it to exit.
 func (o *Overlay) Stop() {
 	if !o.started {
 		return
 	}
 	o.platformStop()
+	close(o.events) // Close channel to unblock any goroutine reading from Events()
 	o.started = false
 }
 

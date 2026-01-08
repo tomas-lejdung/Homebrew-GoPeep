@@ -12,6 +12,7 @@ package overlay
 #import <QuartzCore/QuartzCore.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <stdatomic.h>
 
 // Forward declarations for Go callbacks
 void goOverlayButtonClicked(uint32_t windowID);
@@ -39,7 +40,8 @@ static BOOL g_positionedRight = NO;  // false = left corner, true = right corner
 static volatile BOOL g_shouldStop = NO;
 
 // Animation state (updated every frame by game loop)
-static BOOL g_isAnimating = NO;
+// g_isAnimating is atomic to synchronize between event tap thread and game loop thread
+static _Atomic BOOL g_isAnimating = NO;
 static CGFloat g_animStartX = 0;
 static CGFloat g_animEndX = 0;
 static CFAbsoluteTime g_animStartTime = 0;
@@ -278,8 +280,13 @@ static void doFrame(void) {
     g_currentWindowID = windowID;
     g_lastWindowBounds = windowBounds;
 
-    // Check hover state
-    CGPoint mousePos = CGEventGetLocation(CGEventCreate(NULL));
+    // Check hover state (must release the CGEventRef to avoid memory leak)
+    CGEventRef mouseEvent = CGEventCreate(NULL);
+    CGPoint mousePos = CGPointZero;
+    if (mouseEvent) {
+        mousePos = CGEventGetLocation(mouseEvent);
+        CFRelease(mouseEvent);
+    }
     BOOL nowHovered = isPointOverOverlay(mousePos);
     BOOL arrowHovered = isPointOverArrow(mousePos);
 

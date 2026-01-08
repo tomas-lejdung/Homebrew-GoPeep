@@ -1036,17 +1036,21 @@ func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 			// Deselect
 			delete(m.selectedWindows, windowID)
 		} else {
-			// Select - check if we need to evict oldest
+			// Select - check if we need to evict LRU window
 			if len(m.selectedWindows) >= MaxCaptureInstances {
-				var oldestID uint32
-				for id := range m.selectedWindows {
-					oldestID = id
-					break
+				lruID := m.getLRUWindow(windowID)
+				if lruID != 0 {
+					delete(m.selectedWindows, lruID)
+					delete(m.autoShareFocusTimes, lruID)
+					log.Printf("Overlay: Evicted LRU window %d to make room", lruID)
 				}
-				delete(m.selectedWindows, oldestID)
-				log.Printf("Overlay: Evicted window %d to make room", oldestID)
 			}
 			m.selectedWindows[windowID] = true
+			// Track focus time for LRU eviction
+			if m.autoShareFocusTimes == nil {
+				m.autoShareFocusTimes = make(map[uint32]time.Time)
+			}
+			m.autoShareFocusTimes[windowID] = time.Now()
 		}
 		m.syncOverlay()
 		if m.streamer != nil {
@@ -1062,15 +1066,19 @@ func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 	// Add window to selection if not already selected
 	if !m.selectedWindows[windowID] {
 		if len(m.selectedWindows) >= MaxCaptureInstances {
-			var oldestID uint32
-			for id := range m.selectedWindows {
-				oldestID = id
-				break
+			lruID := m.getLRUWindow(windowID)
+			if lruID != 0 {
+				delete(m.selectedWindows, lruID)
+				delete(m.autoShareFocusTimes, lruID)
+				log.Printf("Overlay: Evicted LRU window %d to make room", lruID)
 			}
-			delete(m.selectedWindows, oldestID)
-			log.Printf("Overlay: Evicted window %d to make room", oldestID)
 		}
 		m.selectedWindows[windowID] = true
+		// Track focus time for LRU eviction
+		if m.autoShareFocusTimes == nil {
+			m.autoShareFocusTimes = make(map[uint32]time.Time)
+		}
+		m.autoShareFocusTimes[windowID] = time.Now()
 	}
 
 	m.syncOverlay()
