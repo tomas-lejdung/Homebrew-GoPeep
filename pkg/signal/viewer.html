@@ -1488,6 +1488,39 @@
             waitingEl.classList.remove('hidden');
             break;
             
+          case 'sharer-stopped':
+            console.log('Sharer stopped sharing');
+            setStatus('Waiting for stream', 'connecting');
+            if (pc) {
+              pc.close();
+              pc = null;
+              stopStatsCollection();
+            }
+            streams = {};
+            streamOrder = [];
+            streamsInfo = [];
+            viewerFocusedIndex = null;
+            sharerFocusedIndex = null;
+            mainVideo.srcObject = null;
+            streamStats.style.display = 'none';
+            updateMultiStreamUI();
+            setWaitingState('Sharer Stopped', 'Waiting for sharer to start streaming again...');
+            waitingEl.classList.remove('hidden');
+            // Don't rejoin yet - wait for sharer-ready message
+            break;
+          
+          case 'sharer-started':
+            console.log('Sharer started sharing again');
+            setStatus('Connecting...', 'connecting');
+            setWaitingState('Connecting', 'Sharer started streaming, establishing connection...');
+            // Now rejoin to get a new offer
+            const rejoinMsg = { type: 'join', role: 'viewer' };
+            if (roomPassword) {
+              rejoinMsg.password = roomPassword;
+            }
+            ws.send(JSON.stringify(rejoinMsg));
+            break;
+            
           case 'password-required':
             showPasswordDialog();
             break;
@@ -1673,6 +1706,7 @@
       };
       
       pc.oniceconnectionstatechange = () => {
+        console.log('ICE connection state:', pc.iceConnectionState);
         switch (pc.iceConnectionState) {
           case 'connected':
             setStatus('Connected', 'connected');
@@ -1681,9 +1715,22 @@
             setStatus('Reconnecting...', 'connecting');
             break;
           case 'failed':
-            setStatus('Connection failed', 'error');
+          case 'closed':
+            setStatus('Connection lost', 'connecting');
             stopStatsCollection();
             pc.close();
+            pc = null;
+            // Request to rejoin - server will send new offer
+            if (ws && ws.readyState === WebSocket.OPEN) {
+              console.log('Peer connection closed, requesting rejoin...');
+              setWaitingState('Reconnecting...', 'Waiting for sharer to start streaming');
+              waitingEl.classList.remove('hidden');
+              const joinMsg = { type: 'join', role: 'viewer' };
+              if (roomPassword) {
+                joinMsg.password = roomPassword;
+              }
+              ws.send(JSON.stringify(joinMsg));
+            }
             break;
         }
       };

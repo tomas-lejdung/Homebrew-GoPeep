@@ -375,6 +375,13 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.peerManager = msg.peerManager
 		m.startTime = time.Now()
 		m.showStats = true // Show stats by default when sharing starts
+		// Notify viewers that sharer has started (so they can rejoin)
+		if m.server != nil && m.roomCode != "" {
+			log.Printf("Broadcasting sharer-started to room %s", m.roomCode)
+			m.server.BroadcastToViewers(m.roomCode, sig.SignalMessage{Type: "sharer-started"})
+		} else {
+			log.Printf("Cannot broadcast sharer-started: server=%v roomCode=%s", m.server != nil, m.roomCode)
+		}
 		return m, tickCmd()
 
 	case captureErrorMsg:
@@ -641,8 +648,19 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	case "s":
 		// Stop sharing (but keep server running)
+		// Clear selections so user must reselect to start again
+		// Close peer connections so viewers reconnect with fresh state
 		if m.sharing {
+			// Notify viewers that sharer has stopped so they reset and wait
+			if m.server != nil && m.roomCode != "" {
+				m.server.BroadcastToViewers(m.roomCode, sig.SignalMessage{Type: "sharer-stopped"})
+			}
 			m.stopCapture(false)
+			m.selectedWindows = make(map[uint32]bool)
+			m.fullscreenSelected = false
+			if m.peerManager != nil {
+				m.peerManager.CloseAllConnections()
+			}
 		}
 		return m, nil
 
@@ -1101,7 +1119,11 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 	}
 
 	m.stopCapture(false)
-	m.stopMultiCapture()
+	// Only do full cleanup if server isn't already running
+	// If server is running, keep peerManager alive to reuse the connection
+	if !m.serverStarted {
+		m.stopMultiCapture()
+	}
 	m.lastError = ""
 
 	// Initialize server for multi-window mode
@@ -1447,6 +1469,10 @@ func startMultiCaptureAsync(pm *PeerManager, windows []WindowInfo, fullscreen bo
 			ms.Stop()
 			return captureErrorMsg{err: fmt.Sprintf("Failed to start multi-streamer: %v", err)}
 		}
+
+		// Trigger renegotiation with any existing viewers
+		// This is needed when restarting after stop ('s' key) to update viewers with new tracks
+		pm.RenegotiateAllPeers()
 
 		return captureStartedMsg{
 			streamer:    ms,

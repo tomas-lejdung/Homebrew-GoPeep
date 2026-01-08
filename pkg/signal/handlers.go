@@ -155,6 +155,10 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 			return
 		}
 
+		// Clear peerID on rejoin so they can get a new offer
+		// This handles the case where viewer rejoins after sharer stopped
+		c.peerID = ""
+
 		room.viewers[c] = true
 		log.Printf("Viewer joined room %s (total viewers: %d)", room.code, len(room.viewers))
 

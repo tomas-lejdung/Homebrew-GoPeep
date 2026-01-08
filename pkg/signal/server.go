@@ -211,6 +211,29 @@ func (s *Server) BroadcastToRoom(roomCode string, msg SignalMessage) {
 	}
 }
 
+// BroadcastToViewers sends a message to all viewers in a room (not the sharer)
+func (s *Server) BroadcastToViewers(roomCode string, msg SignalMessage) {
+	s.mu.RLock()
+	room, exists := s.rooms[NormalizeRoomCode(roomCode)]
+	s.mu.RUnlock()
+
+	if !exists {
+		return
+	}
+
+	room.mu.RLock()
+	defer room.mu.RUnlock()
+
+	data, _ := json.Marshal(msg)
+
+	for viewer := range room.viewers {
+		select {
+		case viewer.send <- data:
+		default:
+		}
+	}
+}
+
 // LocalSharer provides an interface for local (in-process) sharing
 // It registers as the sharer for a room and provides methods to interact with viewers
 type LocalSharer struct {

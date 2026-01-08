@@ -184,6 +184,7 @@ func (mpm *PeerManager) RemoveAllTracks() {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 	mpm.tracks = make(map[string]*StreamTrackInfo)
+	mpm.trackCounter = 0 // Reset counter so track IDs start fresh on restart
 }
 
 // GetTracks returns all current tracks in sorted order by TrackID
@@ -491,6 +492,19 @@ func (mpm *PeerManager) Close() {
 	defer mpm.mu.Unlock()
 
 	for id, peerInfo := range mpm.connections {
+		peerInfo.PC.Close()
+		delete(mpm.connections, id)
+	}
+}
+
+// CloseAllConnections closes all peer connections but keeps the PeerManager usable
+// This forces viewers to reconnect with a fresh state
+func (mpm *PeerManager) CloseAllConnections() {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+
+	for id, peerInfo := range mpm.connections {
+		log.Printf("Closing peer connection: %s", id)
 		peerInfo.PC.Close()
 		delete(mpm.connections, id)
 	}
@@ -928,6 +942,15 @@ func (ms *Streamer) Stop() {
 	}
 
 	ms.multiCapture.StopAll()
+
+	// Notify viewers about each removed stream before clearing tracks
+	// This ensures viewers clear their state properly
+	if ms.peerManager != nil {
+		for trackID := range ms.pipelines {
+			ms.peerManager.NotifyStreamRemoved(trackID)
+		}
+		ms.peerManager.RemoveAllTracks()
+	}
 }
 
 // focusDetectionLoop periodically checks for focus changes using z-order
