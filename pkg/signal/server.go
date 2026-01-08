@@ -165,52 +165,6 @@ func (s *Server) StartServer(addr string) error {
 	return http.ListenAndServe(addr, mux)
 }
 
-// GetViewerCount returns number of viewers in a room
-func (s *Server) GetViewerCount(roomCode string) int {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
-	room, exists := s.rooms[NormalizeRoomCode(roomCode)]
-	if !exists {
-		return 0
-	}
-
-	room.mu.RLock()
-	defer room.mu.RUnlock()
-
-	return len(room.viewers)
-}
-
-// BroadcastToRoom sends a message to all clients in a room
-func (s *Server) BroadcastToRoom(roomCode string, msg SignalMessage) {
-	s.mu.RLock()
-	room, exists := s.rooms[NormalizeRoomCode(roomCode)]
-	s.mu.RUnlock()
-
-	if !exists {
-		return
-	}
-
-	room.mu.RLock()
-	defer room.mu.RUnlock()
-
-	data, _ := json.Marshal(msg)
-
-	if room.sharer != nil {
-		select {
-		case room.sharer.send <- data:
-		default:
-		}
-	}
-
-	for viewer := range room.viewers {
-		select {
-		case viewer.send <- data:
-		default:
-		}
-	}
-}
-
 // BroadcastToViewers sends a message to all viewers in a room (not the sharer)
 func (s *Server) BroadcastToViewers(roomCode string, msg SignalMessage) {
 	s.mu.RLock()
@@ -320,23 +274,4 @@ func (ls *LocalSharer) GetUnassignedViewer() (found bool, assignPeerID func(stri
 		}
 	}
 	return false, nil
-}
-
-// GetViewerByPeerID returns the viewer client by peerID (for sending messages)
-func (ls *LocalSharer) GetViewerByPeerID(peerID string) (send func(SignalMessage), found bool) {
-	ls.room.mu.RLock()
-	defer ls.room.mu.RUnlock()
-
-	for viewer := range ls.room.viewers {
-		if viewer.peerID == peerID {
-			return func(msg SignalMessage) {
-				data, _ := json.Marshal(msg)
-				select {
-				case viewer.send <- data:
-				default:
-				}
-			}, true
-		}
-	}
-	return nil, false
 }

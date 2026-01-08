@@ -55,6 +55,18 @@ func copyToClipboard(text string) error {
 	return cmd.Wait()
 }
 
+// normalizeSignalURL converts HTTP URLs to WebSocket URLs
+func normalizeSignalURL(url string) string {
+	if strings.HasPrefix(url, "http://") {
+		return "ws://" + strings.TrimPrefix(url, "http://")
+	} else if strings.HasPrefix(url, "https://") {
+		return "wss://" + strings.TrimPrefix(url, "https://")
+	} else if !strings.HasPrefix(url, "ws://") && !strings.HasPrefix(url, "wss://") {
+		return "wss://" + url
+	}
+	return url
+}
+
 // Column indices
 const (
 	columnSources = 0
@@ -208,6 +220,10 @@ type model struct {
 	// OS focus tracking
 	osFocusedWindowID uint32 // Currently OS-focused window ID
 
+	// Auto-share mode (automatically shares the topmost window)
+	autoShareEnabled    bool                 // true when in auto-share mode
+	autoShareFocusTimes map[uint32]time.Time // track last focus time per window for LRU eviction
+
 	// Password protection
 	passwordEnabled bool
 	password        string
@@ -302,6 +318,16 @@ func tickCmd() tea.Cmd {
 	})
 }
 
+// fastTickMsg is used for rapid focus checking in auto-share mode
+type fastTickMsg time.Time
+
+func fastTickCmd() tea.Cmd {
+	// Slow backup tick (500ms) - most focus detection happens via NSWorkspace notifications
+	return tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
+		return fastTickMsg(t)
+	})
+}
+
 func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
@@ -382,6 +408,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		} else {
 			log.Printf("Cannot broadcast sharer-started: server=%v roomCode=%s", m.server != nil, m.roomCode)
 		}
+		// If in auto-share mode, start fast tick for rapid focus detection
+		if m.autoShareEnabled {
+			return m, tea.Batch(tickCmd(), fastTickCmd())
+		}
 		return m, tickCmd()
 
 	case captureErrorMsg:
@@ -437,8 +467,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 		// Check if our window was closed (if streaming a window)
 		if m.sharing && !m.isFullscreen && m.activeWindowID != 0 {
-			// If window is no longer in the sources list and capture is not active, stop
-			if m.selectedSource == -1 && !IsCaptureActive() {
+			// If window is no longer in the sources list, stop capture
+			if m.selectedSource == -1 {
 				m.stopCapture(false)
 				m.lastError = "Window was closed"
 			}
@@ -454,6 +484,90 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		return m, tea.Batch(cmds...)
+
+	case fastTickMsg:
+		// Auto-share mode: automatically add/remove windows based on OS focus
+		// Uses same multi-stream infrastructure as normal mode
+		if m.autoShareEnabled && m.sharing && m.streamer != nil {
+			// Check if focus changed via OS notification (instant detection)
+			if CheckFocusChanged() {
+				log.Printf("Auto-share: Focus change detected via OS notification")
+			}
+
+			// Extract window IDs from m.sources (already in memory - cheap)
+			var windowIDs []uint32
+			for _, source := range m.sources {
+				if !source.IsFullscreen && source.Window != nil {
+					windowIDs = append(windowIDs, source.Window.ID)
+				}
+			}
+
+			// Find topmost window by z-order
+			topmost := GetTopmostWindow(windowIDs)
+
+			if topmost != 0 {
+				// Update focus time for LRU tracking
+				if m.autoShareFocusTimes == nil {
+					m.autoShareFocusTimes = make(map[uint32]time.Time)
+				}
+				m.autoShareFocusTimes[topmost] = time.Now()
+
+				// Check if this window is already streaming
+				if !m.streamer.IsWindowStreaming(topmost) {
+					// Find window info from m.sources
+					var topmostWindow *WindowInfo
+					for _, source := range m.sources {
+						if !source.IsFullscreen && source.Window != nil && source.Window.ID == topmost {
+							topmostWindow = source.Window
+							break
+						}
+					}
+
+					if topmostWindow != nil {
+						windowName := topmostWindow.WindowName
+						if windowName == "" {
+							windowName = topmostWindow.OwnerName
+						}
+
+						// Check if pool is full (4 windows)
+						if m.streamer.GetActiveStreamCount() >= MaxCaptureInstances {
+							// Remove LRU window to make room
+							lruWindowID := m.getLRUWindow(topmost)
+							if lruWindowID != 0 {
+								log.Printf("Auto-share: Pool full, removing LRU window %d", lruWindowID)
+								if err := m.streamer.RemoveWindowDynamic(lruWindowID); err != nil {
+									log.Printf("Auto-share: Failed to remove LRU window: %v", err)
+								} else {
+									delete(m.selectedWindows, lruWindowID)
+									delete(m.autoShareFocusTimes, lruWindowID)
+								}
+							}
+						}
+
+						// Add new window
+						log.Printf("Auto-share: Adding window %d (%s)", topmost, windowName)
+						if _, err := m.streamer.AddWindowDynamic(*topmostWindow); err != nil {
+							log.Printf("Auto-share: Failed to add window: %v", err)
+						} else {
+							m.selectedWindows[topmost] = true
+							log.Printf("Auto-share: Successfully added %s", windowName)
+						}
+					}
+				}
+				// If window is already streaming, focus detection loop handles the focus change
+			}
+
+			// Continue ticking while in auto-share mode
+			return m, fastTickCmd()
+		}
+
+		// If auto-share enabled but not sharing yet, keep ticking
+		if m.autoShareEnabled {
+			return m, fastTickCmd()
+		}
+
+		// If no longer in auto-share mode, don't continue fast tick
+		return m, nil
 
 	case reconnectMsg:
 		// WebSocket disconnected, attempt reconnection
@@ -574,6 +688,10 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "enter":
+		// In auto-share mode, ignore source selection via enter
+		if m.activeColumn == columnSources && m.autoShareEnabled {
+			return m, nil
+		}
 		if m.activeColumn == columnSources {
 			// Start sharing based on selection (fullscreen or windows)
 			if m.fullscreenSelected {
@@ -603,6 +721,10 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case " ":
+		// In auto-share mode, ignore source selection via space
+		if m.activeColumn == columnSources && m.autoShareEnabled {
+			return m, nil
+		}
 		if m.activeColumn == columnSources {
 			// Toggle source selection (fullscreen or windows, mutually exclusive)
 			if m.sourceCursor < len(m.sources) {
@@ -670,6 +792,10 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 
 	// F for fullscreen - toggles fullscreen selection (mutually exclusive with windows)
 	case "f":
+		// Disabled in auto-share mode
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		if len(m.sources) > 0 && m.sources[0].IsFullscreen {
 			m.fullscreenSelected = !m.fullscreenSelected
 			if m.fullscreenSelected {
@@ -685,23 +811,51 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	// Quick window selection with number keys (1-9 selects windows, skipping fullscreen)
+	// Disabled in auto-share mode
 	case "1":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(1)
 	case "2":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(2)
 	case "3":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(3)
 	case "4":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(4)
 	case "5":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(5)
 	case "6":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(6)
 	case "7":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(7)
 	case "8":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(8)
 	case "9":
+		if m.autoShareEnabled {
+			return m, nil
+		}
 		return m.selectWindowByNumber(9)
 
 	case "i":
@@ -742,6 +896,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.streamer.SetAdaptiveBitrate(m.adaptiveBitrate)
 		}
 		return m, nil
+
+	case "A": // Shift+A - Toggle auto-share mode
+		return m.toggleAutoShareMode()
 
 	case "q":
 		// Toggle quality mode (quality vs performance)
@@ -796,15 +953,6 @@ func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// selectSourceByIndex selects a source by its index in the sources list
-func (m model) selectSourceByIndex(index int) (tea.Model, tea.Cmd) {
-	if index >= 0 && index < len(m.sources) {
-		m.sourceCursor = index
-		return m.startSharing(index)
-	}
-	return m, nil
-}
-
 // selectWindowByNumber toggles window selection by its display number (1-9)
 // Windows are numbered starting from 1, excluding fullscreen
 func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
@@ -854,6 +1002,33 @@ func (m model) getSelectedFPS() int {
 	return 30 // default
 }
 
+// getLRUWindow returns the least recently focused window ID for eviction
+// excludeWindowID is the window that should not be evicted (typically the new focused window)
+func (m model) getLRUWindow(excludeWindowID uint32) uint32 {
+	var lruWindowID uint32
+	var lruTime time.Time
+	first := true
+
+	for windowID := range m.selectedWindows {
+		if windowID == excludeWindowID {
+			continue // Don't evict the window we're about to focus
+		}
+
+		focusTime, exists := m.autoShareFocusTimes[windowID]
+		if !exists {
+			// Window with no focus time = oldest, evict immediately
+			return windowID
+		}
+
+		if first || focusTime.Before(lruTime) {
+			lruWindowID = windowID
+			lruTime = focusTime
+			first = false
+		}
+	}
+	return lruWindowID
+}
+
 // applyFPS changes the FPS setting dynamically without full restart
 func (m model) applyFPS(index int) (tea.Model, tea.Cmd) {
 	if index < 0 || index >= len(FPSPresets) {
@@ -888,66 +1063,135 @@ func (m model) applyBitrateChange() (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// initServer initializes the server and room (only once)
-func (m *model) initServer() error {
-	if m.serverStarted {
-		return nil
+// toggleAutoShareMode toggles the auto-share mode on/off
+// When enabled, the app automatically shares whichever window has OS focus
+// Works exactly like normal mode but with automatic window management
+func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
+	if m.autoShareEnabled {
+		// Disable auto-share mode - keep windows streaming (switch to manual mode)
+		log.Printf("Auto-share: Disabling mode, switching to manual management")
+		StopFocusObserver()
+		m.autoShareEnabled = false
+		m.autoShareFocusTimes = nil
+		// DON'T stop streaming - windows stay selected for manual management
+		return m, nil
 	}
 
-	// Generate room code only if not already set (preserve on codec restart)
-	if m.roomCode == "" {
-		m.roomCode = sig.GenerateRoomCode()
-	}
+	// Enable auto-share mode
+	log.Printf("Auto-share: Enabling mode, starting focus observer")
+	StartFocusObserver()
+	m.autoShareEnabled = true
+	m.autoShareFocusTimes = make(map[uint32]time.Time)
+	m.fullscreenSelected = false // Disable fullscreen in auto mode
 
-	// Create peer manager with ICE config and selected codec
-	iceConfig := ICEConfig{
-		TURNServer: m.config.TURNServer,
-		TURNUser:   m.config.TURNUser,
-		TURNPass:   m.config.TURNPass,
-		ForceRelay: m.config.ForceRelay,
-	}
-	codecType := m.getSelectedCodecType()
-	var err error
-	m.peerManager, err = NewPeerManager(iceConfig, codecType)
-	if err != nil {
-		return fmt.Errorf("failed to create peer manager: %v", err)
-	}
-
-	// Initialize pre-allocated track slots for instant window sharing
-	if err := m.peerManager.InitializeTrackSlots(); err != nil {
-		return fmt.Errorf("failed to initialize track slots: %v", err)
-	}
-
-	// Try remote signal server first (unless local mode is forced)
-	if !m.config.LocalMode && m.config.SignalURL != "" {
-		if err := m.initRemoteSignaling(); err == nil {
-			m.serverStarted = true
-			return nil
+	// If already sharing, keep existing windows and initialize LRU times
+	if m.sharing && m.streamer != nil {
+		log.Printf("Auto-share: Already sharing, keeping existing %d windows", len(m.selectedWindows))
+		// Initialize focus times for existing windows
+		now := time.Now()
+		for windowID := range m.selectedWindows {
+			m.autoShareFocusTimes[windowID] = now
 		}
-		// Fall through to local mode
+		return m, fastTickCmd()
 	}
 
-	// Local mode: start local signal server
-	m.isRemote = false
-	m.server = sig.NewServer()
-	addr := fmt.Sprintf(":%d", m.config.Port)
+	// Not sharing yet - start with focused window
+	m.selectedWindows = make(map[uint32]bool)
 
-	go func() {
-		m.server.StartServer(addr)
-	}()
+	// Get all shareable windows and find topmost by z-order
+	windows, err := ListWindows()
+	if err != nil {
+		m.lastError = fmt.Sprintf("Failed to list windows: %v", err)
+		StopFocusObserver()
+		m.autoShareEnabled = false
+		return m, nil
+	}
 
-	// Give server time to start
-	time.Sleep(100 * time.Millisecond)
+	if len(windows) == 0 {
+		m.lastError = "No shareable windows found"
+		StopFocusObserver()
+		m.autoShareEnabled = false
+		return m, nil
+	}
 
-	// Get local IP
-	localIP := getLocalIP()
-	m.shareURL = fmt.Sprintf("http://%s:%d/%s", localIP, m.config.Port, m.roomCode)
+	// Extract window IDs for z-order check
+	var windowIDs []uint32
+	for _, w := range windows {
+		windowIDs = append(windowIDs, w.ID)
+	}
 
-	// Set up signaling (connects server to peer manager)
-	setupPeerSignaling(m.server, m.peerManager, m.roomCode, m.password)
+	// Find topmost window by z-order
+	topmost := GetTopmostWindow(windowIDs)
 
-	m.serverStarted = true
-	return nil
+	if topmost == 0 {
+		m.lastError = "No topmost window found"
+		StopFocusObserver()
+		m.autoShareEnabled = false
+		return m, nil
+	}
+
+	// Find window info for the topmost window
+	var targetWindow *WindowInfo
+	for i := range windows {
+		if windows[i].ID == topmost {
+			targetWindow = &windows[i]
+			break
+		}
+	}
+
+	if targetWindow == nil {
+		m.lastError = "Topmost window not in list"
+		StopFocusObserver()
+		m.autoShareEnabled = false
+		return m, nil
+	}
+
+	// Initialize focus time for first window
+	m.autoShareFocusTimes[topmost] = time.Now()
+
+	// Start sharing this window directly (bypass m.sources lookup)
+	return m.startAutoShareCapture(*targetWindow)
+}
+
+// startAutoShareCapture starts capture for a specific window in auto-share mode
+// This bypasses the normal m.sources lookup to ensure the window is captured
+func (m model) startAutoShareCapture(window WindowInfo) (tea.Model, tea.Cmd) {
+	if m.starting || m.sharing {
+		return m, nil
+	}
+
+	m.stopCapture(false)
+	if !m.serverStarted {
+		m.stopMultiCapture()
+	}
+	m.lastError = ""
+
+	// Initialize server
+	if err := m.initMultiServer(); err != nil {
+		m.lastError = err.Error()
+		StopFocusObserver()
+		m.autoShareEnabled = false
+		return m, nil
+	}
+
+	m.starting = true
+	m.selectedWindows = make(map[uint32]bool)
+	m.selectedWindows[window.ID] = true
+
+	// Capture config
+	fps := m.getSelectedFPS()
+	focusBitrate := QualityPresets[m.selectedQuality].Bitrate
+	bgBitrate := focusBitrate / 3
+	if bgBitrate < 500 {
+		bgBitrate = 500
+	}
+	adaptiveBR := m.adaptiveBitrate
+	qualityMode := m.qualityMode
+	codecType := m.getSelectedCodecType()
+
+	// Start capture with just this one window, and start fast tick for focus detection
+	captureCmd := startMultiCaptureAsync(m.peerManager, []WindowInfo{window}, false, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode, codecType)
+	return m, tea.Batch(captureCmd, fastTickCmd())
 }
 
 // attemptReconnect tries to reconnect to the remote signal server
@@ -957,16 +1201,7 @@ func (m model) attemptReconnect(attempt int, delay time.Duration) tea.Cmd {
 		time.Sleep(delay)
 
 		// Try to reconnect
-		signalURL := m.config.SignalURL
-
-		// Normalize URL scheme
-		if strings.HasPrefix(signalURL, "http://") {
-			signalURL = "ws://" + strings.TrimPrefix(signalURL, "http://")
-		} else if strings.HasPrefix(signalURL, "https://") {
-			signalURL = "wss://" + strings.TrimPrefix(signalURL, "https://")
-		} else if !strings.HasPrefix(signalURL, "ws://") && !strings.HasPrefix(signalURL, "wss://") {
-			signalURL = "wss://" + signalURL
-		}
+		signalURL := normalizeSignalURL(m.config.SignalURL)
 
 		// Build WebSocket URL
 		wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + m.roomCode
@@ -1015,16 +1250,7 @@ func (m model) attemptReconnect(attempt int, delay time.Duration) tea.Cmd {
 
 // initRemoteSignaling connects to the remote signal server
 func (m *model) initRemoteSignaling() error {
-	signalURL := m.config.SignalURL
-
-	// Normalize URL scheme
-	if strings.HasPrefix(signalURL, "http://") {
-		signalURL = "ws://" + strings.TrimPrefix(signalURL, "http://")
-	} else if strings.HasPrefix(signalURL, "https://") {
-		signalURL = "wss://" + strings.TrimPrefix(signalURL, "https://")
-	} else if !strings.HasPrefix(signalURL, "ws://") && !strings.HasPrefix(signalURL, "wss://") {
-		signalURL = "wss://" + signalURL
-	}
+	signalURL := normalizeSignalURL(m.config.SignalURL)
 
 	// Build WebSocket URL
 	wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + m.roomCode
@@ -1167,51 +1393,6 @@ func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
 	return m, startMultiCaptureAsync(multiPeerManager, selectedWindowInfos, fullscreen, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode, codecType)
 }
 
-// restartMultiStreamWithSelection restarts multi-stream with updated window selection (legacy - full restart)
-func (m model) restartMultiStreamWithSelection() (tea.Model, tea.Cmd) {
-	// Stop current multi streamer
-	if m.streamer != nil {
-		m.streamer.Stop()
-		m.streamer = nil
-	}
-
-	// If no windows selected, just stop completely
-	if len(m.selectedWindows) == 0 {
-		// Full cleanup
-		if m.peerManager != nil {
-			m.peerManager.Close()
-			m.peerManager = nil
-		}
-		if m.wsConn != nil {
-			m.wsConn.Close()
-			m.wsConn = nil
-		}
-		m.sharing = false
-		m.serverStarted = false
-		return m, nil
-	}
-
-	// Close multi peer manager to reset tracks (but keep server/websocket)
-	if m.peerManager != nil {
-		m.peerManager.Close()
-		m.peerManager = nil
-	}
-
-	// We need to fully restart the server connection for new tracks
-	// Close existing websocket if any
-	if m.wsConn != nil {
-		m.wsConn.Close()
-		m.wsConn = nil
-	}
-
-	// Mark as not sharing/server to reinitialize
-	m.sharing = false
-	m.serverStarted = false
-
-	// Start fresh with new selection
-	return m.startMultiWindowSharing()
-}
-
 // updateMultiStreamSelection dynamically adds/removes windows/display without full restart
 func (m model) updateMultiStreamSelection() (tea.Model, tea.Cmd) {
 	// If not currently streaming, fall back to starting fresh
@@ -1347,7 +1528,7 @@ func (m *model) initMultiServer() error {
 
 	// Try remote signal server first
 	if !m.config.LocalMode && m.config.SignalURL != "" {
-		if err := m.initMultiRemoteSignaling(); err == nil {
+		if err := m.initRemoteSignaling(); err == nil {
 			m.serverStarted = true
 			return nil
 		}
@@ -1371,64 +1552,6 @@ func (m *model) initMultiServer() error {
 	setupPeerSignaling(m.server, m.peerManager, m.roomCode, m.password)
 
 	m.serverStarted = true
-	return nil
-}
-
-// initMultiRemoteSignaling connects to remote signal server for multi-window
-func (m *model) initMultiRemoteSignaling() error {
-	signalURL := m.config.SignalURL
-
-	if strings.HasPrefix(signalURL, "http://") {
-		signalURL = "ws://" + strings.TrimPrefix(signalURL, "http://")
-	} else if strings.HasPrefix(signalURL, "https://") {
-		signalURL = "wss://" + strings.TrimPrefix(signalURL, "https://")
-	} else if !strings.HasPrefix(signalURL, "ws://") && !strings.HasPrefix(signalURL, "wss://") {
-		signalURL = "wss://" + signalURL
-	}
-
-	wsURL := strings.TrimSuffix(signalURL, "/") + "/ws/" + m.roomCode
-
-	viewerURL := strings.Replace(signalURL, "wss://", "https://", 1)
-	viewerURL = strings.Replace(viewerURL, "ws://", "http://", 1)
-	m.shareURL = strings.TrimSuffix(viewerURL, "/") + "/" + m.roomCode
-
-	dialer := websocket.Dialer{
-		HandshakeTimeout: 5 * time.Second,
-	}
-	conn, _, err := dialer.Dial(wsURL, nil)
-	if err != nil {
-		return fmt.Errorf("failed to connect to signal server: %v", err)
-	}
-
-	joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password}
-	if err := conn.WriteJSON(joinMsg); err != nil {
-		conn.Close()
-		return fmt.Errorf("failed to send join message: %v", err)
-	}
-
-	var joinResp sig.SignalMessage
-	if err := conn.ReadJSON(&joinResp); err != nil {
-		conn.Close()
-		return fmt.Errorf("failed to read join response: %v", err)
-	}
-	if joinResp.Type == "error" {
-		conn.Close()
-		return fmt.Errorf("failed to join room: %s", joinResp.Error)
-	}
-
-	m.wsConn = conn
-	m.isRemote = true
-
-	if m.wsDisconnected == nil {
-		m.wsDisconnected = new(bool)
-	}
-	*m.wsDisconnected = false
-
-	disconnectFlag := m.wsDisconnected
-	setupRemotePeerSignaling(conn, m.peerManager, func() {
-		*disconnectFlag = true
-	})
-
 	return nil
 }
 
@@ -1499,8 +1622,6 @@ func (m *model) stopCapture(preserveState bool) {
 		m.streamer.Stop()
 		m.streamer = nil
 	}
-
-	StopCapture()
 
 	m.sharing = false
 	m.streamStats = nil
@@ -1734,8 +1855,20 @@ func (m model) renderColumns() string {
 func (m model) renderSourcesList() string {
 	var b strings.Builder
 
-	// Show selection count
-	if len(m.selectedWindows) > 0 {
+	// Show header based on mode
+	if m.autoShareEnabled {
+		// Auto-share mode: show badge and auto-managed window count
+		if len(m.selectedWindows) > 0 {
+			modeText := fmt.Sprintf("AUTO-SHARE: %d/%d windows", len(m.selectedWindows), MaxCaptureInstances)
+			b.WriteString(selectedStyle.Render(modeText))
+		} else {
+			b.WriteString(selectedStyle.Render("AUTO-SHARE MODE"))
+		}
+		b.WriteString("\n")
+		b.WriteString(dimStyle.Render("Windows auto-managed (Shift+A to exit)"))
+		b.WriteString("\n")
+	} else if len(m.selectedWindows) > 0 {
+		// Normal mode with selections
 		modeText := fmt.Sprintf("Selected: %d/%d windows", len(m.selectedWindows), MaxCaptureInstances)
 		b.WriteString(selectedStyle.Render(modeText))
 		b.WriteString("\n")
@@ -2125,6 +2258,9 @@ func (m model) renderHelp() string {
 	if m.sharing {
 		toggles = append(toggles, m.renderToggle("i", "stats", m.showStats))
 	}
+
+	// Auto-share mode toggle
+	toggles = append(toggles, m.renderToggle("A", "auto", m.autoShareEnabled))
 
 	if len(toggles) > 0 {
 		b.WriteString("\n\n")

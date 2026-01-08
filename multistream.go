@@ -377,20 +377,6 @@ func (mpm *PeerManager) DeactivateSlot(trackID string) error {
 	return fmt.Errorf("slot not found: %s", trackID)
 }
 
-// GetActiveSlotCount returns the number of currently active slots
-func (mpm *PeerManager) GetActiveSlotCount() int {
-	mpm.mu.RLock()
-	defer mpm.mu.RUnlock()
-
-	count := 0
-	for i := 0; i < 4; i++ {
-		if mpm.slots[i] != nil && mpm.slots[i].Active {
-			count++
-		}
-	}
-	return count
-}
-
 // GetActiveStreamsInfo returns StreamInfo for all active slots
 // Used for sending initial streams-info to new viewers
 func (mpm *PeerManager) GetActiveStreamsInfo() []sig.StreamInfo {
@@ -530,6 +516,14 @@ func (mpm *PeerManager) RemoveAllTracks() {
 	defer mpm.mu.Unlock()
 	mpm.tracks = make(map[string]*StreamTrackInfo)
 	mpm.trackCounter = 0 // Reset counter so track IDs start fresh on restart
+
+	// Also deactivate all slots so they can be reused
+	for i := 0; i < 4; i++ {
+		if mpm.slots[i] != nil {
+			mpm.slots[i].Active = false
+			mpm.slots[i].Info = nil
+		}
+	}
 }
 
 // GetTracks returns all current tracks in sorted order by TrackID
@@ -549,16 +543,6 @@ func (mpm *PeerManager) GetTracks() []*StreamTrackInfo {
 		tracks = append(tracks, mpm.tracks[id])
 	}
 	return tracks
-}
-
-// SetFocusedTrack sets which track is focused
-func (mpm *PeerManager) SetFocusedTrack(trackID string) {
-	mpm.mu.Lock()
-	defer mpm.mu.Unlock()
-
-	for id, t := range mpm.tracks {
-		t.IsFocused = (id == trackID)
-	}
 }
 
 // SetFocusedWindow sets focus based on window ID
@@ -790,22 +774,6 @@ func (mpm *PeerManager) AddICECandidate(peerID string, candidateJSON string) err
 	return peerInfo.PC.AddICECandidate(candidate)
 }
 
-// WriteVideoSample writes a video sample to a specific track
-func (mpm *PeerManager) WriteVideoSample(trackID string, data []byte, duration time.Duration) error {
-	mpm.mu.RLock()
-	trackInfo, exists := mpm.tracks[trackID]
-	mpm.mu.RUnlock()
-
-	if !exists {
-		return fmt.Errorf("track not found: %s", trackID)
-	}
-
-	return trackInfo.Track.WriteSample(media.Sample{
-		Data:     data,
-		Duration: duration,
-	})
-}
-
 // detectConnectionType checks if connection is direct or relayed
 func (mpm *PeerManager) detectConnectionType(pc *webrtc.PeerConnection) string {
 	stats := pc.GetStats()
@@ -950,37 +918,6 @@ func (mpm *PeerManager) RemoveTrackFromAllPeers(trackID string) error {
 			}
 			delete(peerInfo.Senders, trackID)
 			log.Printf("Removed track %s from peer %s", trackID, peerID)
-		}
-	}
-	return nil
-}
-
-// ReplaceTrackOnAllPeers replaces a track on all existing peer connections
-// This preserves the transceiver and its mid, avoiding renegotiation issues with codec changes
-func (mpm *PeerManager) ReplaceTrackOnAllPeers(trackID string, newTrack *webrtc.TrackLocalStaticSample) error {
-	mpm.mu.Lock()
-	defer mpm.mu.Unlock()
-
-	log.Printf("ReplaceTrackOnAllPeers: Replacing track %s on %d peer connections", trackID, len(mpm.connections))
-
-	for peerID, peerInfo := range mpm.connections {
-		if sender, ok := peerInfo.Senders[trackID]; ok {
-			log.Printf("ReplaceTrackOnAllPeers: Replacing track %s on peer %s", trackID, peerID)
-			if err := sender.ReplaceTrack(newTrack); err != nil {
-				log.Printf("ReplaceTrackOnAllPeers: Failed to replace track %s on peer %s: %v", trackID, peerID, err)
-				continue
-			}
-			log.Printf("ReplaceTrackOnAllPeers: Successfully replaced track %s on peer %s", trackID, peerID)
-		} else {
-			log.Printf("ReplaceTrackOnAllPeers: No sender for track %s on peer %s, will add new", trackID, peerID)
-			// If no sender exists, add the track (shouldn't happen normally during codec change)
-			sender, err := peerInfo.PC.AddTrack(newTrack)
-			if err != nil {
-				log.Printf("ReplaceTrackOnAllPeers: Failed to add track %s to peer %s: %v", trackID, peerID, err)
-				continue
-			}
-			peerInfo.Senders[trackID] = sender
-			log.Printf("ReplaceTrackOnAllPeers: Added new track %s to peer %s", trackID, peerID)
 		}
 	}
 	return nil
@@ -1231,6 +1168,38 @@ func NewStreamer(peerManager *PeerManager, fps, focusBitrate, bgBitrate int, ada
 	}
 }
 
+// newPipeline creates a new StreamPipeline with the standard configuration
+func (ms *Streamer) newPipeline(trackInfo *StreamTrackInfo, capture *CaptureInstance, encoder VideoEncoder, bitrate int) *StreamPipeline {
+	return &StreamPipeline{
+		trackInfo:      trackInfo,
+		capture:        capture,
+		encoder:        encoder,
+		fps:            ms.fps,
+		bitrate:        bitrate,
+		focusBitrate:   ms.focusBitrate,
+		bgBitrate:      ms.bgBitrate,
+		adaptiveBR:     ms.adaptiveBitrate,
+		qualityMode:    ms.qualityMode,
+		stopChan:       make(chan struct{}),
+		fpsChanged:     make(chan int, 1),
+		capturedFrames: make(chan capturedFrame, 2),
+		encodedFrames:  make(chan encodedFrame, 2),
+	}
+}
+
+// createAndConfigureEncoder creates an encoder with the current codec and quality settings
+func (ms *Streamer) createAndConfigureEncoder(bitrate int) (VideoEncoder, error) {
+	factory := NewEncoderFactory()
+	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
+	if err != nil {
+		return nil, err
+	}
+	if ms.qualityMode {
+		encoder.SetQualityMode(true, bitrate)
+	}
+	return encoder, nil
+}
+
 // SetOnFocusChange sets the callback for focus changes
 func (ms *Streamer) SetOnFocusChange(callback func(trackID string)) {
 	ms.onFocusChange = callback
@@ -1305,35 +1274,15 @@ func (ms *Streamer) AddWindow(window WindowInfo) (*StreamTrackInfo, error) {
 	}
 
 	// Create encoder
-	factory := NewEncoderFactory()
-	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
+	encoder, err := ms.createAndConfigureEncoder(bitrate)
 	if err != nil {
 		ms.multiCapture.StopCapture(capture)
 		cleanupTrack()
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
-	// Apply quality mode if enabled
-	if ms.qualityMode {
-		encoder.SetQualityMode(true, bitrate)
-	}
-
-	// Create pipeline with buffered channels for decoupled processing
-	pipeline := &StreamPipeline{
-		trackInfo:      trackInfo,
-		capture:        capture,
-		encoder:        encoder,
-		fps:            ms.fps,
-		bitrate:        bitrate,
-		focusBitrate:   ms.focusBitrate,
-		bgBitrate:      ms.bgBitrate,
-		adaptiveBR:     ms.adaptiveBitrate,
-		qualityMode:    ms.qualityMode,
-		stopChan:       make(chan struct{}),
-		fpsChanged:     make(chan int, 1),
-		capturedFrames: make(chan capturedFrame, 2), // Small buffer to decouple capture/encode
-		encodedFrames:  make(chan encodedFrame, 2),  // Small buffer to decouple encode/send
-	}
+	// Create pipeline
+	pipeline := ms.newPipeline(trackInfo, capture, encoder, bitrate)
 
 	ms.pipelines[trackInfo.TrackID] = pipeline
 
@@ -1961,8 +1910,7 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 	}
 
 	// Create encoder
-	factory := NewEncoderFactory()
-	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
+	encoder, err := ms.createAndConfigureEncoder(bitrate)
 	if err != nil {
 		ms.multiCapture.StopCapture(capture)
 		if useFastPath {
@@ -1973,27 +1921,8 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
-	// Apply quality mode if enabled
-	if ms.qualityMode {
-		encoder.SetQualityMode(true, bitrate)
-	}
-
-	// Create pipeline with buffered channels
-	pipeline := &StreamPipeline{
-		trackInfo:      trackInfo,
-		capture:        capture,
-		encoder:        encoder,
-		fps:            ms.fps,
-		bitrate:        bitrate,
-		focusBitrate:   ms.focusBitrate,
-		bgBitrate:      ms.bgBitrate,
-		adaptiveBR:     ms.adaptiveBitrate,
-		qualityMode:    ms.qualityMode,
-		stopChan:       make(chan struct{}),
-		fpsChanged:     make(chan int, 1),
-		capturedFrames: make(chan capturedFrame, 2),
-		encodedFrames:  make(chan encodedFrame, 2),
-	}
+	// Create pipeline
+	pipeline := ms.newPipeline(trackInfo, capture, encoder, bitrate)
 
 	ms.mu.Lock()
 	ms.pipelines[trackInfo.TrackID] = pipeline
@@ -2048,6 +1977,25 @@ func (ms *Streamer) AddWindowDynamic(window WindowInfo) (*StreamTrackInfo, error
 	log.Printf("Added window dynamically: %s (windowID=%d, fastPath=%v)", trackInfo.TrackID, window.ID, useFastPath)
 
 	return trackInfo, nil
+}
+
+// IsWindowStreaming checks if a window is already being captured
+func (ms *Streamer) IsWindowStreaming(windowID uint32) bool {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+	for _, pipeline := range ms.pipelines {
+		if pipeline.trackInfo.WindowID == windowID {
+			return true
+		}
+	}
+	return false
+}
+
+// GetActiveStreamCount returns number of active streams
+func (ms *Streamer) GetActiveStreamCount() int {
+	ms.mu.RLock()
+	defer ms.mu.RUnlock()
+	return len(ms.pipelines)
 }
 
 // RemoveWindowDynamic removes a window without stopping other streams.
@@ -2164,35 +2112,16 @@ func (ms *Streamer) AddDisplay() (*StreamTrackInfo, error) {
 	bitrate := ms.focusBitrate
 
 	// Create encoder
-	factory := NewEncoderFactory()
-	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
+	encoder, err := ms.createAndConfigureEncoder(bitrate)
 	if err != nil {
 		ms.multiCapture.StopCapture(capture)
 		cleanupTrack()
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
-	// Apply quality mode if enabled
-	if ms.qualityMode {
-		encoder.SetQualityMode(true, bitrate)
-	}
-
-	// Create pipeline with buffered channels
-	pipeline := &StreamPipeline{
-		trackInfo:      trackInfo,
-		capture:        capture,
-		encoder:        encoder,
-		fps:            ms.fps,
-		bitrate:        bitrate,
-		focusBitrate:   ms.focusBitrate,
-		bgBitrate:      ms.bgBitrate,
-		adaptiveBR:     false, // No adaptive bitrate for display
-		qualityMode:    ms.qualityMode,
-		stopChan:       make(chan struct{}),
-		fpsChanged:     make(chan int, 1),
-		capturedFrames: make(chan capturedFrame, 2),
-		encodedFrames:  make(chan encodedFrame, 2),
-	}
+	// Create pipeline (no adaptive bitrate for display)
+	pipeline := ms.newPipeline(trackInfo, capture, encoder, bitrate)
+	pipeline.adaptiveBR = false
 
 	ms.pipelines[trackInfo.TrackID] = pipeline
 
@@ -2272,35 +2201,16 @@ func (ms *Streamer) AddDisplayDynamic() (*StreamTrackInfo, error) {
 	bitrate := ms.focusBitrate
 
 	// Create encoder
-	factory := NewEncoderFactory()
-	encoder, err := factory.CreateEncoder(ms.codecType, ms.fps, bitrate)
+	encoder, err := ms.createAndConfigureEncoder(bitrate)
 	if err != nil {
 		ms.multiCapture.StopCapture(capture)
 		cleanupTrack()
 		return nil, fmt.Errorf("failed to create encoder: %w", err)
 	}
 
-	// Apply quality mode if enabled
-	if ms.qualityMode {
-		encoder.SetQualityMode(true, bitrate)
-	}
-
-	// Create pipeline with buffered channels
-	pipeline := &StreamPipeline{
-		trackInfo:      trackInfo,
-		capture:        capture,
-		encoder:        encoder,
-		fps:            ms.fps,
-		bitrate:        bitrate,
-		focusBitrate:   ms.focusBitrate,
-		bgBitrate:      ms.bgBitrate,
-		adaptiveBR:     false,
-		qualityMode:    ms.qualityMode,
-		stopChan:       make(chan struct{}),
-		fpsChanged:     make(chan int, 1),
-		capturedFrames: make(chan capturedFrame, 2),
-		encodedFrames:  make(chan encodedFrame, 2),
-	}
+	// Create pipeline (no adaptive bitrate for display)
+	pipeline := ms.newPipeline(trackInfo, capture, encoder, bitrate)
+	pipeline.adaptiveBR = false
 
 	ms.mu.Lock()
 	ms.pipelines[trackInfo.TrackID] = pipeline

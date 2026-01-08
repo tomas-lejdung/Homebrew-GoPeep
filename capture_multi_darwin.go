@@ -248,6 +248,11 @@ int mc_start_window_capture(uint32_t window_id, int target_width, int target_hei
         [inst->stream addStreamOutput:delegate type:SCStreamOutputTypeScreen sampleHandlerQueue:inst->queue error:&addError];
         if (addError != nil) {
             NSLog(@"Failed to add stream output for instance %d: %@", slot, addError);
+            // Cleanup allocated resources
+            inst->stream = nil;
+            inst->config = nil;
+            inst->output_delegate = nil;
+            inst->queue = nil;
             return -3;
         }
 
@@ -269,6 +274,11 @@ int mc_start_window_capture(uint32_t window_id, int target_width, int target_hei
             return slot;
         }
 
+        // Cleanup on start failure
+        inst->stream = nil;
+        inst->config = nil;
+        inst->output_delegate = nil;
+        inst->queue = nil;
         return startResult;
     }
 }
@@ -331,6 +341,11 @@ int mc_start_display_capture(int target_width, int target_height, int fps) {
         [inst->stream addStreamOutput:delegate type:SCStreamOutputTypeScreen sampleHandlerQueue:inst->queue error:&addError];
         if (addError != nil) {
             NSLog(@"Failed to add stream output for display capture instance %d: %@", slot, addError);
+            // Cleanup allocated resources
+            inst->stream = nil;
+            inst->config = nil;
+            inst->output_delegate = nil;
+            inst->queue = nil;
             return -3;
         }
 
@@ -352,6 +367,11 @@ int mc_start_display_capture(int target_width, int target_height, int fps) {
             return slot;
         }
 
+        // Cleanup on start failure
+        inst->stream = nil;
+        inst->config = nil;
+        inst->output_delegate = nil;
+        inst->queue = nil;
         return startResult;
     }
 }
@@ -556,14 +576,6 @@ void mc_release_frame_buffer(int slot, uint8_t* data) {
     pthread_mutex_unlock(&inst->buffer_mutex);
 }
 
-// Free frame data - legacy function, now a no-op for zero-copy frames
-// Kept for backward compatibility. Use mc_release_frame_buffer instead.
-void mc_free_frame(MCFrameData frame) {
-    // No-op: buffers are managed by the triple buffer pool
-    // They are released via mc_release_frame_buffer
-    (void)frame;  // Suppress unused parameter warning
-}
-
 // Check if instance is active
 int mc_is_active(int slot) {
     if (slot < 0 || slot >= MAX_CAPTURE_INSTANCES) return 0;
@@ -630,12 +642,6 @@ uint32_t mc_get_topmost_window(uint32_t* window_ids, int count) {
     }
 }
 
-// Legacy function - kept for compatibility but now just returns 0
-// Use mc_get_topmost_window() instead
-uint32_t mc_get_focused_window_id() {
-    return 0;
-}
-
 // Get number of active instances
 int mc_get_active_count() {
     int count = 0;
@@ -644,12 +650,73 @@ int mc_get_active_count() {
     }
     return count;
 }
+
+// ============================================================================
+// Focus Change Observer - Event-driven focus detection
+// ============================================================================
+
+// Global observer state
+static id g_focus_observer = nil;
+static dispatch_queue_t g_focus_queue = nil;
+
+// Callback channel - Go will poll this
+static volatile int g_focus_changed_flag = 0;
+
+// Start observing application focus changes
+// Uses NSWorkspace notifications for instant detection
+void mc_start_focus_observer() {
+    @autoreleasepool {
+        if (g_focus_observer != nil) return; // Already observing
+
+        // Create a serial queue for notifications
+        g_focus_queue = dispatch_queue_create("com.gopeep.focus", DISPATCH_QUEUE_SERIAL);
+
+        // Register for application activation notifications
+        g_focus_observer = [[[NSWorkspace sharedWorkspace] notificationCenter]
+            addObserverForName:NSWorkspaceDidActivateApplicationNotification
+            object:nil
+            queue:nil
+            usingBlock:^(NSNotification* note) {
+                // Set flag - Go will poll this
+                g_focus_changed_flag = 1;
+            }];
+
+        NSLog(@"Focus observer started");
+    }
+}
+
+// Stop observing focus changes
+void mc_stop_focus_observer() {
+    @autoreleasepool {
+        if (g_focus_observer != nil) {
+            [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:g_focus_observer];
+            g_focus_observer = nil;
+            NSLog(@"Focus observer stopped");
+        }
+        if (g_focus_queue != nil) {
+            g_focus_queue = nil;
+        }
+        g_focus_changed_flag = 0;
+    }
+}
+
+// Check if focus changed since last check (and clear the flag)
+// Returns 1 if focus changed, 0 otherwise
+int mc_check_focus_changed() {
+    if (g_focus_changed_flag) {
+        g_focus_changed_flag = 0;
+        return 1;
+    }
+    return 0;
+}
+
 */
 import "C"
 
 import (
 	"fmt"
 	"sync"
+	"sync/atomic"
 	"time"
 	"unsafe"
 )
@@ -657,10 +724,15 @@ import (
 // Release returns the frame buffer to the capture pool.
 // Must be called when done with zero-copy frames from GetLatestFrameBGRA.
 // Safe to call multiple times or on Go-owned frames (no-op).
+// Thread-safe: uses atomic swap to prevent double-release race conditions.
 func (f *BGRAFrame) Release() {
-	if f.cData != nil && f.slot >= 0 {
-		C.mc_release_frame_buffer(C.int(f.slot), (*C.uint8_t)(f.cData))
-		f.cData = nil
+	if f.slot < 0 {
+		return
+	}
+	// Atomic swap to prevent double-release if called concurrently
+	ptr := atomic.SwapPointer((*unsafe.Pointer)(unsafe.Pointer(&f.cData)), nil)
+	if ptr != nil {
+		C.mc_release_frame_buffer(C.int(f.slot), (*C.uint8_t)(ptr))
 		f.Data = nil
 		f.slot = -1
 	}
@@ -689,6 +761,25 @@ func NewMultiCapture() *MultiCapture {
 	}
 }
 
+// captureErrorToGoError converts C capture error codes to Go errors
+func captureErrorToGoError(code C.int, windowID uint32) error {
+	switch code {
+	case -1:
+		return fmt.Errorf("no free capture slots available")
+	case -2:
+		if windowID == 0 {
+			return fmt.Errorf("display not found")
+		}
+		return fmt.Errorf("window not found: %d", windowID)
+	case -3:
+		return fmt.Errorf("failed to add stream output")
+	case -4:
+		return fmt.Errorf("failed to start capture")
+	default:
+		return fmt.Errorf("capture error: %d", code)
+	}
+}
+
 // StartWindowCapture starts capturing a window, returns the capture instance
 func (mc *MultiCapture) StartWindowCapture(windowID uint32, width, height, fps int) (*CaptureInstance, error) {
 	mc.mu.Lock()
@@ -707,18 +798,7 @@ func (mc *MultiCapture) StartWindowCapture(windowID uint32, width, height, fps i
 
 	slot := C.mc_start_window_capture(C.uint32_t(windowID), C.int(width), C.int(height), C.int(fps))
 	if slot < 0 {
-		switch slot {
-		case -1:
-			return nil, fmt.Errorf("no free capture slots available")
-		case -2:
-			return nil, fmt.Errorf("window not found: %d", windowID)
-		case -3:
-			return nil, fmt.Errorf("failed to add stream output")
-		case -4:
-			return nil, fmt.Errorf("failed to start capture")
-		default:
-			return nil, fmt.Errorf("capture error: %d", slot)
-		}
+		return nil, captureErrorToGoError(slot, windowID)
 	}
 
 	inst := &CaptureInstance{
@@ -750,18 +830,7 @@ func (mc *MultiCapture) StartDisplayCapture(width, height, fps int) (*CaptureIns
 
 	slot := C.mc_start_display_capture(C.int(width), C.int(height), C.int(fps))
 	if slot < 0 {
-		switch slot {
-		case -1:
-			return nil, fmt.Errorf("no free capture slots available")
-		case -2:
-			return nil, fmt.Errorf("display not found")
-		case -3:
-			return nil, fmt.Errorf("failed to add stream output")
-		case -4:
-			return nil, fmt.Errorf("failed to start capture")
-		default:
-			return nil, fmt.Errorf("capture error: %d", slot)
-		}
+		return nil, captureErrorToGoError(slot, 0)
 	}
 
 	inst := &CaptureInstance{
@@ -879,31 +948,7 @@ func (mc *MultiCapture) GetLatestFrameBGRA(inst *CaptureInstance, timeout time.D
 	}, nil
 }
 
-// GetActiveInstances returns all active capture instances
-func (mc *MultiCapture) GetActiveInstances() []*CaptureInstance {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-
-	result := make([]*CaptureInstance, len(mc.instances))
-	copy(result, mc.instances)
-	return result
-}
-
-// GetActiveCount returns the number of active captures
-func (mc *MultiCapture) GetActiveCount() int {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
-	return len(mc.instances)
-}
-
-// GetFocusedWindowID returns the currently focused window ID (legacy - returns 0)
-// Use GetTopmostWindow instead
-func GetFocusedWindowID() uint32 {
-	return uint32(C.mc_get_focused_window_id())
-}
-
 // GetTopmostWindow returns which of the given window IDs is topmost in z-order
-// This is more reliable than GetFocusedWindowID as it checks actual z-order
 func GetTopmostWindow(windowIDs []uint32) uint32 {
 	if len(windowIDs) == 0 {
 		return 0
@@ -918,28 +963,24 @@ func GetTopmostWindow(windowIDs []uint32) uint32 {
 	return uint32(C.mc_get_topmost_window(&cArray[0], C.int(len(windowIDs))))
 }
 
-// IsCapturing checks if a specific window is being captured
-func (mc *MultiCapture) IsCapturing(windowID uint32) bool {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
+// ============================================================================
+// Focus Observer - Event-driven focus detection
+// ============================================================================
 
-	for _, inst := range mc.instances {
-		if inst.windowID == windowID && inst.active {
-			return true
-		}
-	}
-	return false
+// StartFocusObserver starts the NSWorkspace focus change observer
+// This provides instant notification when the user switches to a different application
+func StartFocusObserver() {
+	C.mc_start_focus_observer()
 }
 
-// GetInstanceByWindowID returns the capture instance for a window
-func (mc *MultiCapture) GetInstanceByWindowID(windowID uint32) *CaptureInstance {
-	mc.mu.RLock()
-	defer mc.mu.RUnlock()
+// StopFocusObserver stops the NSWorkspace focus change observer
+func StopFocusObserver() {
+	C.mc_stop_focus_observer()
+}
 
-	for _, inst := range mc.instances {
-		if inst.windowID == windowID && inst.active {
-			return inst
-		}
-	}
-	return nil
+// CheckFocusChanged checks if focus changed since last check (and clears the flag)
+// Returns true if focus changed, false otherwise
+// This is a non-blocking poll of the flag set by the NSWorkspace notification
+func CheckFocusChanged() bool {
+	return C.mc_check_focus_changed() != 0
 }
