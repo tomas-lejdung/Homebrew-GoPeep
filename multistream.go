@@ -109,17 +109,33 @@ func NewPeerManager(iceConfig ICEConfig, codecType CodecType) (*PeerManager, err
 // AddTrack creates a new video track for a window
 func (mpm *PeerManager) AddTrack(windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
 	mpm.mu.Lock()
-	defer mpm.mu.Unlock()
-
 	// Generate track ID using monotonic counter (never reuses IDs)
 	trackID := fmt.Sprintf("video%d", mpm.trackCounter)
 	mpm.trackCounter++
+	mpm.mu.Unlock()
+	return mpm.addTrackWithID(trackID, windowID, windowName, appName)
+}
+
+// AddTrackWithID creates a track with a specific ID (used for codec changes to preserve track IDs)
+func (mpm *PeerManager) AddTrackWithID(trackID string, windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
+	return mpm.addTrackWithID(trackID, windowID, windowName, appName)
+}
+
+// addTrackWithID is the internal implementation for adding tracks
+func (mpm *PeerManager) addTrackWithID(trackID string, windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
 
 	// Check if already have a track for this window
 	for _, t := range mpm.tracks {
 		if t.WindowID == windowID {
 			return nil, fmt.Errorf("track already exists for window %d", windowID)
 		}
+	}
+
+	// Check if track ID already exists
+	if _, exists := mpm.tracks[trackID]; exists {
+		return nil, fmt.Errorf("track ID %s already exists", trackID)
 	}
 
 	// Determine MIME type
@@ -485,6 +501,13 @@ func (mpm *PeerManager) GetCodecType() CodecType {
 	return mpm.codecType
 }
 
+// SetCodecType updates the codec type for new tracks
+func (mpm *PeerManager) SetCodecType(codecType CodecType) {
+	mpm.mu.Lock()
+	defer mpm.mu.Unlock()
+	mpm.codecType = codecType
+}
+
 // SetRenegotiateCallback sets callback for when renegotiation offer is ready
 func (mpm *PeerManager) SetRenegotiateCallback(callback func(peerID string, offer string)) {
 	mpm.onRenegotiate = callback
@@ -707,6 +730,7 @@ type StreamPipeline struct {
 	adaptiveBR   bool
 	qualityMode  bool // false = performance, true = quality
 	mu           sync.Mutex
+	wg           sync.WaitGroup // For waiting on run loop to exit
 
 	// Stats tracking
 	frameCount     uint64    // Total frames encoded
@@ -1103,6 +1127,154 @@ func (ms *Streamer) SetFPS(newFPS int) error {
 	return nil
 }
 
+// SetCodec changes the codec dynamically without disconnecting viewers
+func (ms *Streamer) SetCodec(newCodec CodecType) error {
+	ms.mu.Lock()
+	defer ms.mu.Unlock()
+
+	if ms.codecType == newCodec {
+		return nil
+	}
+
+	log.Printf("SetCodec: Changing codec from %v to %v", ms.codecType, newCodec)
+
+	// 1. Collect pipeline info before stopping (including track IDs to preserve them)
+	type pipelineInfo struct {
+		trackID    string // Preserve the original track ID
+		windowID   uint32
+		windowName string
+		appName    string
+		wasFocused bool
+		capture    *CaptureInstance // Reuse existing capture
+	}
+
+	pipelineInfos := make([]pipelineInfo, 0, len(ms.pipelines))
+	for _, pipeline := range ms.pipelines {
+		pipelineInfos = append(pipelineInfos, pipelineInfo{
+			trackID:    pipeline.trackInfo.TrackID,
+			windowID:   pipeline.trackInfo.WindowID,
+			windowName: pipeline.trackInfo.WindowName,
+			appName:    pipeline.trackInfo.AppName,
+			wasFocused: pipeline.trackInfo.IsFocused,
+			capture:    pipeline.capture,
+		})
+	}
+
+	// 2. Stop all pipeline run loops and encoders (but NOT captures)
+	for _, pipeline := range ms.pipelines {
+		pipeline.stopEncoderOnly()
+	}
+
+	// 3. Remove all tracks from all peer connections
+	// NOTE: We do NOT notify viewers of stream removal since we're keeping the same track IDs
+	// The renegotiation will handle updating the codec
+	for trackID := range ms.pipelines {
+		if err := ms.peerManager.RemoveTrackFromAllPeers(trackID); err != nil {
+			log.Printf("SetCodec: Failed to remove track %s from peers: %v", trackID, err)
+		}
+		ms.peerManager.RemoveTrack(trackID)
+	}
+
+	// 4. Update codec type
+	ms.peerManager.SetCodecType(newCodec)
+	ms.codecType = newCodec
+
+	// 5. Clear pipelines map
+	ms.pipelines = make(map[string]*StreamPipeline)
+
+	// 6. Recreate pipelines with new codec, preserving track IDs
+	factory := NewEncoderFactory()
+
+	for _, info := range pipelineInfos {
+		// Create new track with SAME track ID but new codec
+		trackInfo, err := ms.peerManager.AddTrackWithID(info.trackID, info.windowID, info.windowName, info.appName)
+		if err != nil {
+			log.Printf("SetCodec: Failed to create track for window %d: %v", info.windowID, err)
+			continue
+		}
+		trackInfo.IsFocused = info.wasFocused
+
+		// Determine bitrate based on focus
+		bitrate := ms.bgBitrate
+		if info.wasFocused {
+			bitrate = ms.focusBitrate
+		}
+
+		// Create new encoder with new codec
+		encoder, err := factory.CreateEncoder(newCodec, ms.fps, bitrate)
+		if err != nil {
+			log.Printf("SetCodec: Failed to create encoder: %v", err)
+			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+			continue
+		}
+
+		// Apply quality mode if enabled
+		if ms.qualityMode {
+			encoder.SetQualityMode(true, bitrate)
+		}
+
+		if err := encoder.Start(); err != nil {
+			log.Printf("SetCodec: Failed to start encoder: %v", err)
+			ms.peerManager.RemoveTrack(trackInfo.TrackID)
+			continue
+		}
+
+		// Create new pipeline (reusing capture)
+		// Note: running must be false so run() can start properly
+		pipeline := &StreamPipeline{
+			trackInfo:    trackInfo,
+			capture:      info.capture,
+			encoder:      encoder,
+			stopChan:     make(chan struct{}),
+			fpsChanged:   make(chan int, 1),
+			fps:          ms.fps,
+			bitrate:      bitrate,
+			focusBitrate: ms.focusBitrate,
+			bgBitrate:    ms.bgBitrate,
+			adaptiveBR:   ms.adaptiveBitrate,
+			qualityMode:  ms.qualityMode,
+			running:      false,
+		}
+
+		ms.pipelines[trackInfo.TrackID] = pipeline
+
+		// Add track to all peers
+		if err := ms.peerManager.AddTrackToAllPeers(trackInfo); err != nil {
+			log.Printf("SetCodec: Failed to add track to peers: %v", err)
+		}
+
+		// NOTE: We do NOT notify viewers of stream-added since we're keeping the same track IDs
+		// The renegotiation will handle updating the codec, and the viewer's ontrack will
+		// receive the new track with the same ID
+	}
+
+	// 7. Trigger renegotiation with all peers
+	log.Printf("SetCodec: Triggering renegotiation for %d pipelines", len(ms.pipelines))
+	ms.peerManager.RenegotiateAllPeers()
+
+	// 8. Start all new pipeline run loops
+	for _, pipeline := range ms.pipelines {
+		go pipeline.run(ms.peerManager, ms.multiCapture)
+	}
+
+	// 9. Notify streams change
+	if ms.onStreamsChange != nil {
+		streams := make([]sig.StreamInfo, 0, len(ms.pipelines))
+		for _, pipeline := range ms.pipelines {
+			streams = append(streams, sig.StreamInfo{
+				TrackID:    pipeline.trackInfo.TrackID,
+				WindowName: pipeline.trackInfo.WindowName,
+				AppName:    pipeline.trackInfo.AppName,
+				IsFocused:  pipeline.trackInfo.IsFocused,
+			})
+		}
+		ms.onStreamsChange(streams)
+	}
+
+	log.Printf("SetCodec: Successfully changed codec to %v with %d pipelines", newCodec, len(ms.pipelines))
+	return nil
+}
+
 // GetStreamingWindowIDs returns a map of currently streaming window IDs
 func (ms *Streamer) GetStreamingWindowIDs() map[uint32]bool {
 	ms.mu.RLock()
@@ -1467,6 +1639,9 @@ func (ms *Streamer) RemoveDisplayDynamic() error {
 // Pipeline methods
 
 func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture) {
+	p.wg.Add(1)
+	defer p.wg.Done()
+
 	p.mu.Lock()
 	if p.running {
 		p.mu.Unlock()
@@ -1578,6 +1753,27 @@ func (p *StreamPipeline) stop() {
 	p.running = false
 	close(p.stopChan)
 	p.encoder.Stop()
+}
+
+// stopEncoderOnly stops the encoder and run loop but keeps capture alive for reuse
+// It waits for the run loop to fully exit before returning
+func (p *StreamPipeline) stopEncoderOnly() {
+	p.mu.Lock()
+	if !p.running {
+		p.mu.Unlock()
+		return
+	}
+
+	p.running = false
+	close(p.stopChan)
+	if p.encoder != nil {
+		p.encoder.Stop()
+	}
+	p.mu.Unlock()
+
+	// Wait for run loop to exit (outside mutex to avoid deadlock)
+	p.wg.Wait()
+	// Note: capture is NOT stopped - it will be reused
 }
 
 func (p *StreamPipeline) updateBitrate() {

@@ -744,6 +744,7 @@ func (m model) applyQuality(index int) (tea.Model, tea.Cmd) {
 }
 
 // applyCodec changes the codec setting
+// applyCodec changes the codec setting dynamically without full restart
 func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
 	if index < 0 || index >= len(AvailableCodecs) {
 		return m, nil
@@ -753,9 +754,12 @@ func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
 	m.selectedCodec = index
 	m.codecCursor = index
 
-	// If we're sharing and codec changed, restart with new codec
-	if m.sharing && oldCodec != m.selectedCodec {
-		return m.restartWithCodec()
+	// If we're sharing and codec changed, update dynamically
+	if m.sharing && m.streamer != nil && oldCodec != m.selectedCodec {
+		codecType := m.getSelectedCodecType()
+		if err := m.streamer.SetCodec(codecType); err != nil {
+			m.lastError = fmt.Sprintf("Codec change failed: %v", err)
+		}
 	}
 
 	return m, nil
@@ -801,78 +805,6 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
-}
-
-// restartWithCodec restarts streaming with a new codec (requires full restart)
-// Codec change affects WebRTC track negotiation, so we need to recreate peer manager
-func (m model) restartWithCodec() (tea.Model, tea.Cmd) {
-	if !m.sharing {
-		return m, nil
-	}
-
-	// Remember room code
-	savedRoomCode := m.roomCode
-	savedShareURL := m.shareURL
-
-	// Stop streamer
-	if m.streamer != nil {
-		m.streamer.Stop()
-		m.streamer = nil
-	}
-	StopCapture()
-
-	// Close existing peer manager (codec change requires new tracks)
-	if m.peerManager != nil {
-		m.peerManager.Close()
-		m.peerManager = nil
-	}
-
-	// Close WebSocket connection if remote (will reconnect)
-	if m.wsConn != nil {
-		m.wsConn.Close()
-		m.wsConn = nil
-	}
-
-	// Mark server as not started so it will reinitialize with new codec
-	m.serverStarted = false
-	m.roomCode = savedRoomCode
-	m.shareURL = savedShareURL
-
-	m.starting = true
-
-	// Initialize server (this creates new peer manager with new codec)
-	if err := m.initMultiServer(); err != nil {
-		m.lastError = err.Error()
-		m.starting = false
-		return m, nil
-	}
-
-	// Collect selected windows info
-	var selectedWindowInfos []WindowInfo
-	if !m.fullscreenSelected {
-		for _, source := range m.sources {
-			if !source.IsFullscreen && source.Window != nil {
-				if m.selectedWindows[source.Window.ID] {
-					selectedWindowInfos = append(selectedWindowInfos, *source.Window)
-				}
-			}
-		}
-	}
-
-	// Capture config values for async command
-	fps := m.getSelectedFPS()
-	focusBitrate := QualityPresets[m.selectedQuality].Bitrate
-	bgBitrate := focusBitrate / 3
-	if bgBitrate < 500 {
-		bgBitrate = 500
-	}
-	adaptiveBR := m.adaptiveBitrate
-	qualityMode := m.qualityMode
-	codecType := m.getSelectedCodecType()
-	fullscreen := m.fullscreenSelected
-	peerManager := m.peerManager
-
-	return m, startMultiCaptureAsync(peerManager, selectedWindowInfos, fullscreen, fps, focusBitrate, bgBitrate, adaptiveBR, qualityMode, codecType)
 }
 
 // getSelectedCodecType returns the currently selected codec type
