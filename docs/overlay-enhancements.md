@@ -111,10 +111,10 @@ static void pulseOverlay(void) {
 - When state changes from Sharing to Selected
 
 ### Acceptance Criteria
-- [ ] Visual feedback occurs on state change
-- [ ] Effect is subtle, not distracting
-- [ ] Effect completes in <300ms
-- [ ] Works correctly during rapid state changes
+- [x] Visual feedback occurs on state change
+- [x] Effect is subtle, not distracting
+- [x] Effect completes in <300ms (250ms)
+- [x] Works correctly during rapid state changes
 
 ---
 
