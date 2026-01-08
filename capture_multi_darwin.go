@@ -788,6 +788,66 @@ int mc_get_active_count() {
     }
     return count;
 }
+
+// ============================================================================
+// Focus Change Observer - Event-driven focus detection
+// ============================================================================
+
+// Global observer state
+static id g_focus_observer = nil;
+static dispatch_queue_t g_focus_queue = nil;
+
+// Callback channel - Go will poll this
+static volatile int g_focus_changed_flag = 0;
+
+// Start observing application focus changes
+// Uses NSWorkspace notifications for instant detection
+void mc_start_focus_observer() {
+    @autoreleasepool {
+        if (g_focus_observer != nil) return; // Already observing
+
+        // Create a serial queue for notifications
+        g_focus_queue = dispatch_queue_create("com.gopeep.focus", DISPATCH_QUEUE_SERIAL);
+
+        // Register for application activation notifications
+        g_focus_observer = [[[NSWorkspace sharedWorkspace] notificationCenter]
+            addObserverForName:NSWorkspaceDidActivateApplicationNotification
+            object:nil
+            queue:nil
+            usingBlock:^(NSNotification* note) {
+                // Set flag - Go will poll this
+                g_focus_changed_flag = 1;
+            }];
+
+        NSLog(@"Focus observer started");
+    }
+}
+
+// Stop observing focus changes
+void mc_stop_focus_observer() {
+    @autoreleasepool {
+        if (g_focus_observer != nil) {
+            [[[NSWorkspace sharedWorkspace] notificationCenter] removeObserver:g_focus_observer];
+            g_focus_observer = nil;
+            NSLog(@"Focus observer stopped");
+        }
+        if (g_focus_queue != nil) {
+            g_focus_queue = nil;
+        }
+        g_focus_changed_flag = 0;
+    }
+}
+
+// Check if focus changed since last check (and clear the flag)
+// Returns 1 if focus changed, 0 otherwise
+int mc_check_focus_changed() {
+    if (g_focus_changed_flag) {
+        g_focus_changed_flag = 0;
+        return 1;
+    }
+    return 0;
+}
+
 */
 import "C"
 
@@ -1137,4 +1197,26 @@ func (mc *MultiCapture) GetInstanceByWindowID(windowID uint32) *CaptureInstance 
 		}
 	}
 	return nil
+}
+
+// ============================================================================
+// Focus Observer - Event-driven focus detection
+// ============================================================================
+
+// StartFocusObserver starts the NSWorkspace focus change observer
+// This provides instant notification when the user switches to a different application
+func StartFocusObserver() {
+	C.mc_start_focus_observer()
+}
+
+// StopFocusObserver stops the NSWorkspace focus change observer
+func StopFocusObserver() {
+	C.mc_stop_focus_observer()
+}
+
+// CheckFocusChanged checks if focus changed since last check (and clears the flag)
+// Returns true if focus changed, false otherwise
+// This is a non-blocking poll of the flag set by the NSWorkspace notification
+func CheckFocusChanged() bool {
+	return C.mc_check_focus_changed() != 0
 }

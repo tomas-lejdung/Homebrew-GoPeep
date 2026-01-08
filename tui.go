@@ -209,9 +209,8 @@ type model struct {
 	osFocusedWindowID uint32 // Currently OS-focused window ID
 
 	// Auto-share mode (automatically shares the topmost window)
-	autoShareEnabled    bool   // true when in auto-share mode
-	autoShareWindowID   uint32 // window ID currently being auto-shared
-	autoShareWindowName string // display name of auto-shared window
+	autoShareEnabled    bool                 // true when in auto-share mode
+	autoShareFocusTimes map[uint32]time.Time // track last focus time per window for LRU eviction
 
 	// Password protection
 	passwordEnabled bool
@@ -311,7 +310,8 @@ func tickCmd() tea.Cmd {
 type fastTickMsg time.Time
 
 func fastTickCmd() tea.Cmd {
-	return tea.Tick(100*time.Millisecond, func(t time.Time) tea.Msg {
+	// Slow backup tick (500ms) - most focus detection happens via NSWorkspace notifications
+	return tea.Tick(500*time.Millisecond, func(t time.Time) tea.Msg {
 		return fastTickMsg(t)
 	})
 }
@@ -474,9 +474,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, tea.Batch(cmds...)
 
 	case fastTickMsg:
-		// Fast tick for auto-share mode - rapid focus checking using z-order
-		// Uses m.sources (refreshed every 1s by regular tick) to avoid expensive ListWindows() calls
-		if m.autoShareEnabled {
+		// Auto-share mode: automatically add/remove windows based on OS focus
+		// Uses same multi-stream infrastructure as normal mode
+		if m.autoShareEnabled && m.sharing && m.streamer != nil {
+			// Check if focus changed via OS notification (instant detection)
+			if CheckFocusChanged() {
+				log.Printf("Auto-share: Focus change detected via OS notification")
+			}
+
 			// Extract window IDs from m.sources (already in memory - cheap)
 			var windowIDs []uint32
 			for _, source := range m.sources {
@@ -485,12 +490,19 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 			}
 
-			// Find topmost window by z-order (cheap - just CGWindowList check)
+			// Find topmost window by z-order
 			topmost := GetTopmostWindow(windowIDs)
 
-			if m.sharing && m.streamer != nil {
-				if topmost != 0 && topmost != m.autoShareWindowID {
-					// Topmost window changed - find its info from m.sources
+			if topmost != 0 {
+				// Update focus time for LRU tracking
+				if m.autoShareFocusTimes == nil {
+					m.autoShareFocusTimes = make(map[uint32]time.Time)
+				}
+				m.autoShareFocusTimes[topmost] = time.Now()
+
+				// Check if this window is already streaming
+				if !m.streamer.IsWindowStreaming(topmost) {
+					// Find window info from m.sources
 					var topmostWindow *WindowInfo
 					for _, source := range m.sources {
 						if !source.IsFullscreen && source.Window != nil && source.Window.ID == topmost {
@@ -500,23 +512,48 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					}
 
 					if topmostWindow != nil {
-						if err := m.streamer.SwapWindowCapture(m.autoShareWindowID, *topmostWindow); err != nil {
-							log.Printf("Auto-share swap failed: %v", err)
-						} else {
-							m.autoShareWindowID = topmost
-							m.autoShareWindowName = topmostWindow.WindowName
-							if m.autoShareWindowName == "" {
-								m.autoShareWindowName = topmostWindow.OwnerName
+						windowName := topmostWindow.WindowName
+						if windowName == "" {
+							windowName = topmostWindow.OwnerName
+						}
+
+						// Check if pool is full (4 windows)
+						if m.streamer.GetActiveStreamCount() >= MaxCaptureInstances {
+							// Remove LRU window to make room
+							lruWindowID := m.getLRUWindow(topmost)
+							if lruWindowID != 0 {
+								log.Printf("Auto-share: Pool full, removing LRU window %d", lruWindowID)
+								if err := m.streamer.RemoveWindowDynamic(lruWindowID); err != nil {
+									log.Printf("Auto-share: Failed to remove LRU window: %v", err)
+								} else {
+									delete(m.selectedWindows, lruWindowID)
+									delete(m.autoShareFocusTimes, lruWindowID)
+								}
 							}
-							m.selectedWindows = make(map[uint32]bool)
+						}
+
+						// Add new window
+						log.Printf("Auto-share: Adding window %d (%s)", topmost, windowName)
+						if _, err := m.streamer.AddWindowDynamic(*topmostWindow); err != nil {
+							log.Printf("Auto-share: Failed to add window: %v", err)
+						} else {
 							m.selectedWindows[topmost] = true
+							log.Printf("Auto-share: Successfully added %s", windowName)
 						}
 					}
 				}
+				// If window is already streaming, focus detection loop handles the focus change
 			}
-			// Continue fast ticking while in auto-share mode
+
+			// Continue ticking while in auto-share mode
 			return m, fastTickCmd()
 		}
+
+		// If auto-share enabled but not sharing yet, keep ticking
+		if m.autoShareEnabled {
+			return m, fastTickCmd()
+		}
+
 		// If no longer in auto-share mode, don't continue fast tick
 		return m, nil
 
@@ -962,6 +999,33 @@ func (m model) getSelectedFPS() int {
 	return 30 // default
 }
 
+// getLRUWindow returns the least recently focused window ID for eviction
+// excludeWindowID is the window that should not be evicted (typically the new focused window)
+func (m model) getLRUWindow(excludeWindowID uint32) uint32 {
+	var lruWindowID uint32
+	var lruTime time.Time
+	first := true
+
+	for windowID := range m.selectedWindows {
+		if windowID == excludeWindowID {
+			continue // Don't evict the window we're about to focus
+		}
+
+		focusTime, exists := m.autoShareFocusTimes[windowID]
+		if !exists {
+			// Window with no focus time = oldest, evict immediately
+			return windowID
+		}
+
+		if first || focusTime.Before(lruTime) {
+			lruWindowID = windowID
+			lruTime = focusTime
+			first = false
+		}
+	}
+	return lruWindowID
+}
+
 // applyFPS changes the FPS setting dynamically without full restart
 func (m model) applyFPS(index int) (tea.Model, tea.Cmd) {
 	if index < 0 || index >= len(FPSPresets) {
@@ -998,31 +1062,38 @@ func (m model) applyBitrateChange() (tea.Model, tea.Cmd) {
 
 // toggleAutoShareMode toggles the auto-share mode on/off
 // When enabled, the app automatically shares whichever window has OS focus
+// Works exactly like normal mode but with automatic window management
 func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 	if m.autoShareEnabled {
-		// Disable auto-share mode
+		// Disable auto-share mode - keep windows streaming (switch to manual mode)
+		log.Printf("Auto-share: Disabling mode, switching to manual management")
+		StopFocusObserver()
 		m.autoShareEnabled = false
-		m.autoShareWindowID = 0
-		m.autoShareWindowName = ""
-		// Stop streaming (same as escape key behavior)
-		if m.sharing {
-			if m.server != nil && m.roomCode != "" {
-				m.server.BroadcastToViewers(m.roomCode, sig.SignalMessage{Type: "sharer-stopped"})
-			}
-			m.stopCapture(false)
-			m.selectedWindows = make(map[uint32]bool)
-			m.fullscreenSelected = false
-			if m.peerManager != nil {
-				m.peerManager.CloseAllConnections()
-			}
-		}
+		m.autoShareFocusTimes = nil
+		// DON'T stop streaming - windows stay selected for manual management
 		return m, nil
 	}
 
 	// Enable auto-share mode
+	log.Printf("Auto-share: Enabling mode, starting focus observer")
+	StartFocusObserver()
 	m.autoShareEnabled = true
-	m.fullscreenSelected = false              // Disable fullscreen in auto mode
-	m.selectedWindows = make(map[uint32]bool) // Clear manual selections
+	m.autoShareFocusTimes = make(map[uint32]time.Time)
+	m.fullscreenSelected = false // Disable fullscreen in auto mode
+
+	// If already sharing, keep existing windows and initialize LRU times
+	if m.sharing && m.streamer != nil {
+		log.Printf("Auto-share: Already sharing, keeping existing %d windows", len(m.selectedWindows))
+		// Initialize focus times for existing windows
+		now := time.Now()
+		for windowID := range m.selectedWindows {
+			m.autoShareFocusTimes[windowID] = now
+		}
+		return m, fastTickCmd()
+	}
+
+	// Not sharing yet - start with focused window
+	m.selectedWindows = make(map[uint32]bool)
 
 	// Get all shareable windows and find topmost by z-order
 	windows, err := ListWindows()
@@ -1044,7 +1115,7 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 		windowIDs = append(windowIDs, w.ID)
 	}
 
-	// Find topmost window by z-order (same logic as focusDetectionLoop)
+	// Find topmost window by z-order
 	topmost := GetTopmostWindow(windowIDs)
 
 	if topmost == 0 {
@@ -1068,11 +1139,8 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 		return m, nil
 	}
 
-	m.autoShareWindowID = topmost
-	m.autoShareWindowName = targetWindow.WindowName
-	if m.autoShareWindowName == "" {
-		m.autoShareWindowName = targetWindow.OwnerName
-	}
+	// Initialize focus time for first window
+	m.autoShareFocusTimes[topmost] = time.Now()
 
 	// Start sharing this window directly (bypass m.sources lookup)
 	return m.startAutoShareCapture(*targetWindow)
@@ -1964,27 +2032,20 @@ func (m model) renderColumns() string {
 func (m model) renderSourcesList() string {
 	var b strings.Builder
 
-	// Auto-share mode: simplified view showing only the currently shared window
+	// Show header based on mode
 	if m.autoShareEnabled {
-		b.WriteString(selectedStyle.Render("AUTO-SHARE MODE"))
-		b.WriteString("\n\n")
-		if m.sharing && m.autoShareWindowName != "" {
-			b.WriteString(normalStyle.Render("Sharing: "))
-			b.WriteString(selectedStyle.Render(truncate(m.autoShareWindowName, 30)))
-		} else if m.starting {
-			b.WriteString(dimStyle.Render("Starting capture..."))
+		// Auto-share mode: show badge and auto-managed window count
+		if len(m.selectedWindows) > 0 {
+			modeText := fmt.Sprintf("AUTO-SHARE: %d/%d windows", len(m.selectedWindows), MaxCaptureInstances)
+			b.WriteString(selectedStyle.Render(modeText))
 		} else {
-			b.WriteString(dimStyle.Render("Waiting for focus..."))
+			b.WriteString(selectedStyle.Render("AUTO-SHARE MODE"))
 		}
-		b.WriteString("\n\n")
-		b.WriteString(dimStyle.Render("Follows topmost window"))
 		b.WriteString("\n")
-		b.WriteString(dimStyle.Render("Press Shift+A to exit"))
-		return b.String()
-	}
-
-	// Show selection count
-	if len(m.selectedWindows) > 0 {
+		b.WriteString(dimStyle.Render("Windows auto-managed (Shift+A to exit)"))
+		b.WriteString("\n")
+	} else if len(m.selectedWindows) > 0 {
+		// Normal mode with selections
 		modeText := fmt.Sprintf("Selected: %d/%d windows", len(m.selectedWindows), MaxCaptureInstances)
 		b.WriteString(selectedStyle.Render(modeText))
 		b.WriteString("\n")
