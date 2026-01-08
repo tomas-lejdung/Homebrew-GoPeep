@@ -1,7 +1,9 @@
 // Package overlay provides a floating overlay button for window selection.
-// This package is designed to be completely independent from the main TUI,
-// communicating only through the Controller interface.
+// The overlay runs its own 60fps game loop, completely independent from the TUI.
+// It communicates with the main application only through the Controller interface.
 package overlay
+
+import "sync/atomic"
 
 // WindowState represents the selection/sharing state of a window
 type WindowState int
@@ -31,8 +33,17 @@ const (
 	EventToggleSelection EventType = iota
 )
 
+// FocusedWindowInfo contains information about the currently focused window
+type FocusedWindowInfo struct {
+	WindowID uint32
+	X, Y     float64 // Screen position (origin top-left)
+	Width    float64
+	Height   float64
+}
+
 // Controller interface is implemented by the main application (TUI).
-// This is the ONLY coupling point between the overlay and the rest of the codebase.
+// The overlay queries this interface at 60fps to get current state.
+// Implementation must be thread-safe.
 type Controller interface {
 	// GetWindowState returns the current state of a window.
 	GetWindowState(windowID uint32) WindowState
@@ -40,24 +51,34 @@ type Controller interface {
 	// IsManualMode returns true if in manual mode (overlay should be visible).
 	// Returns false in auto mode (overlay should be hidden).
 	IsManualMode() bool
+
+	// GetFocusedWindow returns the currently focused window (excluding terminals).
+	// Returns nil if no valid focused window or a terminal is focused.
+	GetFocusedWindow() *FocusedWindowInfo
 }
 
 // Overlay manages the floating button that appears on focused windows.
-// It is safe for concurrent use.
+// It runs an independent 60fps game loop for smooth animations.
+// Safe for concurrent use.
 type Overlay struct {
 	controller Controller
 	enabled    bool
 	started    bool
 	events     chan Event
+
+	// Game loop state
+	running atomic.Bool   // thread-safe flag for loop control
+	ready   chan struct{} // signals overlay is created and ready
+	stopped chan struct{} // signals game loop has exited
 }
 
 // New creates a new Overlay with the given controller.
-// The overlay starts disabled and must be started with Start().
+// The overlay must be started with Start() to begin the game loop.
 func New(ctrl Controller) *Overlay {
 	return &Overlay{
 		controller: ctrl,
 		enabled:    true,
-		events:     make(chan Event, 16), // Buffered channel for events
+		events:     make(chan Event, 16),
 	}
 }
 
@@ -72,12 +93,12 @@ func (o *Overlay) sendEvent(evt Event) {
 	select {
 	case o.events <- evt:
 	default:
-		// Channel full, drop event (shouldn't happen with buffered channel)
+		// Channel full, drop event
 	}
 }
 
-// Start initializes the overlay system and begins tracking window focus.
-// On macOS, this creates the floating NSPanel.
+// Start initializes the overlay and starts the 60fps game loop.
+// On macOS, this creates the floating NSWindow.
 // Returns an error if initialization fails.
 func (o *Overlay) Start() error {
 	if o.started {
@@ -91,7 +112,7 @@ func (o *Overlay) Start() error {
 	return nil
 }
 
-// Stop cleans up the overlay and releases resources.
+// Stop stops the game loop and cleans up resources.
 func (o *Overlay) Stop() {
 	if !o.started {
 		return
@@ -101,43 +122,10 @@ func (o *Overlay) Stop() {
 }
 
 // SetEnabled enables or disables the overlay visibility.
-// When disabled, the overlay is hidden but tracking continues.
-// Use this to hide the overlay in auto mode.
+// When disabled, the overlay is hidden but the game loop continues.
 func (o *Overlay) SetEnabled(enabled bool) {
 	o.enabled = enabled
 	o.platformSetEnabled(enabled)
-}
-
-// Refresh updates the overlay button state.
-// Call this after selection changes in the TUI to update the button appearance.
-// Deprecated: Use RefreshWithFocus instead for proper positioning.
-func (o *Overlay) Refresh() {
-	if !o.started {
-		return
-	}
-	o.platformRefresh(0, 0, 0, 0, 0)
-}
-
-// FocusedWindow contains information about the currently focused window
-type FocusedWindow struct {
-	WindowID uint32
-	X, Y     float64 // Screen position (origin top-left)
-	Width    float64
-	Height   float64
-}
-
-// RefreshWithFocus updates the overlay button state and position.
-// Pass the focused window information from the TUI for accurate positioning.
-// If focus is nil, the overlay will be hidden.
-func (o *Overlay) RefreshWithFocus(focus *FocusedWindow) {
-	if !o.started {
-		return
-	}
-	if focus == nil {
-		o.platformRefresh(0, 0, 0, 0, 0)
-	} else {
-		o.platformRefresh(focus.WindowID, focus.X, focus.Y, focus.Width, focus.Height)
-	}
 }
 
 // IsEnabled returns whether the overlay is currently enabled.

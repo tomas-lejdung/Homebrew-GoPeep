@@ -62,3 +62,21 @@ func (c *OverlayController) IsManualMode() bool {
 
 	return !c.autoShareMode
 }
+
+// GetFocusedWindow implements overlay.Controller.
+// It uses the same focus detection as the TUI (GetFocusedWindow from capture_multi_darwin.go)
+func (c *OverlayController) GetFocusedWindow() *overlay.FocusedWindowInfo {
+	// Call the existing focus detection (no lock needed, it's independent)
+	info := GetFocusedWindow()
+	if info == nil {
+		return nil
+	}
+
+	return &overlay.FocusedWindowInfo{
+		WindowID: info.WindowID,
+		X:        info.Bounds.X,
+		Y:        info.Bounds.Y,
+		Width:    info.Bounds.Width,
+		Height:   info.Bounds.Height,
+	}
+}
