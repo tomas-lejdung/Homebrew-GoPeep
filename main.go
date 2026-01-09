@@ -432,12 +432,20 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 		case cursorChan <- cursorMsg:
 			// Sent successfully
 		default:
-			// Channel full, drop oldest by receiving and resending
+			// Channel full, drop oldest by receiving and try to resend
 			select {
 			case <-cursorChan:
+				// Dropped oldest message
 			default:
+				// Nothing to drop
 			}
-			cursorChan <- cursorMsg
+			// Try to send again, but don't block if still full
+			select {
+			case cursorChan <- cursorMsg:
+				// Resent successfully
+			default:
+				// Channel still full, drop this message
+			}
 		}
 	})
 
@@ -509,6 +517,7 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 	)
 
 	go func() {
+		defer close(cursorChan) // Close cursor channel when connection ends to prevent goroutine leak
 		for {
 			var msg sig.SignalMessage
 			if err := conn.ReadJSON(&msg); err != nil {
