@@ -407,11 +407,10 @@
     
     #video-row.visible {
       display: flex;
-      align-items: center;
+      align-items: flex-start; /* Start at top so tall content is scrollable */
       gap: 8px;
       padding: 8px;
       padding-top: 60px; /* Space for header */
-      padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); /* Space for minimap */
       padding-left: calc(8px + env(safe-area-inset-left, 0px));
       padding-right: calc(8px + env(safe-area-inset-right, 0px));
     }
@@ -444,6 +443,8 @@
       transition: all var(--transition-fast);
       border: 2px solid transparent;
       scroll-snap-align: center;
+      margin-top: auto;
+      margin-bottom: auto; /* Centers vertically when smaller than container, stays scrollable when larger */
     }
     
     .row-cell:hover {
@@ -1837,6 +1838,22 @@
     };
     let canPan = false; // True when content is larger than viewport
     let minimapUpdateInterval = null;
+
+    // Cursor following state
+    let cursorFollowState = {
+      cursorInView: false,
+      // Focus mode
+      targetX: 0,
+      targetY: 0,
+      animating: false,
+      animationId: null,
+      // Row mode
+      rowTargetX: 0,
+      rowTargetY: 0,
+      rowAnimating: false,
+      rowAnimationId: null
+    };
+    const CURSOR_LERP_FACTOR = 0.12;  // Smooth factor (0-1, higher = faster)
     
     // Password dialog elements
     const passwordDialog = document.getElementById('password-dialog');
@@ -1906,7 +1923,47 @@
     // Multi-stream functions
     let updateUITimeout = null;
     let thumbnailElements = {}; // idx -> { container, video, label }
-    
+    let lastSkipToLive = 0; // Throttle skip-to-live to avoid rapid resets
+
+    // Skip to live - reset video element to flush accumulated buffer
+    // Called when jitter buffer delay exceeds threshold (500ms)
+    function skipToLive() {
+      const now = Date.now();
+      // Throttle to max once every 5 seconds to avoid reset loops
+      if (now - lastSkipToLive < 5000) return;
+      lastSkipToLive = now;
+
+      console.log('Skipping to live - resetting video streams');
+
+      // Reset main video
+      if (mainVideo && mainVideo.srcObject) {
+        const src = mainVideo.srcObject;
+        mainVideo.srcObject = null;
+        mainVideo.srcObject = src;
+        mainVideo.play().catch(e => console.log('Skip-to-live play error:', e));
+      }
+
+      // Reset grid videos
+      Object.values(gridCells).forEach(cell => {
+        if (cell.video && cell.video.srcObject) {
+          const src = cell.video.srcObject;
+          cell.video.srcObject = null;
+          cell.video.srcObject = src;
+          cell.video.play().catch(e => console.log('Skip-to-live grid play error:', e));
+        }
+      });
+
+      // Reset row videos
+      Object.values(rowCells).forEach(cell => {
+        if (cell.video && cell.video.srcObject) {
+          const src = cell.video.srcObject;
+          cell.video.srcObject = null;
+          cell.video.srcObject = src;
+          cell.video.play().catch(e => console.log('Skip-to-live row play error:', e));
+        }
+      });
+    }
+
     function updateMultiStreamUI() {
       // Debounce rapid updates
       if (updateUITimeout) {
@@ -2172,7 +2229,156 @@
       
       updateMultiStreamUI();
     }
-    
+
+    // Cursor position handling for auto-follow
+    function handleCursorPosition(trackId, cursorX, cursorY, cursorInView) {
+      // Only process if follow mode is enabled
+      if (!followMode) return;
+
+      const match = trackId.match(/video(\d+)/);
+      if (!match) return;
+      const streamIndex = parseInt(match[1], 10);
+
+      cursorFollowState.cursorInView = cursorInView;
+
+      if (!cursorInView) {
+        return;
+      }
+
+      // Handle ROW layout - scroll the row container
+      if (currentLayout === 'row') {
+        const cell = rowCells[streamIndex];
+        if (!cell || !cell.video) return;
+
+        const video = cell.video;
+        const videoWidth = video.videoWidth || parseInt(video.style.width) || 0;
+        const videoHeight = video.videoHeight || parseInt(video.style.height) || 0;
+        if (!videoWidth || !videoHeight) return;
+
+        // Get row container and cell position
+        const rowRect = videoRow.getBoundingClientRect();
+        const cellRect = cell.cell.getBoundingClientRect();
+
+        // Check if video is larger than viewport (needs internal panning)
+        const needsInternalHorizontalPan = videoWidth > rowRect.width;
+        const needsInternalVerticalPan = videoHeight > rowRect.height;
+
+        // Convert cursor percentage to pixel position within the video
+        const cursorPixelX = (cursorX / 100) * videoWidth;
+        const cursorPixelY = (cursorY / 100) * videoHeight;
+
+        // Calculate cursor position relative to the row's scroll area
+        const cursorInRowX = (cellRect.left - rowRect.left) + videoRow.scrollLeft + cursorPixelX;
+        const cursorInRowY = (cellRect.top - rowRect.top) + videoRow.scrollTop + cursorPixelY;
+
+        // Calculate cell center position for centering
+        const cellCenterX = (cellRect.left - rowRect.left) + videoRow.scrollLeft + cellRect.width / 2;
+        const cellCenterY = (cellRect.top - rowRect.top) + videoRow.scrollTop + cellRect.height / 2;
+
+        // Target scroll position:
+        // - Horizontal: center cursor if video is wide, otherwise center the cell
+        // - Vertical: center cursor if video is tall, otherwise center the cell
+        const targetScrollX = needsInternalHorizontalPan
+          ? cursorInRowX - rowRect.width / 2
+          : cellCenterX - rowRect.width / 2;
+        const targetScrollY = needsInternalVerticalPan
+          ? cursorInRowY - rowRect.height / 2
+          : cellCenterY - rowRect.height / 2;
+
+        // Set target and start smooth animation
+        cursorFollowState.rowTargetX = Math.max(0, targetScrollX);
+        cursorFollowState.rowTargetY = Math.max(0, targetScrollY);
+        if (!cursorFollowState.rowAnimating) {
+          cursorFollowState.rowAnimating = true;
+          animateRowScroll();
+        }
+        return;
+      }
+
+      // Handle FOCUS layout with native scale - use pan/zoom
+      if (currentLayout === 'focus' && currentScale === 'native' && canPan) {
+        if (streamIndex !== viewerFocusedIndex) return;
+
+        // Calculate target pan position to center cursor in viewport
+        const containerRect = mainVideoContainer.getBoundingClientRect();
+        const videoWidth = mainVideo.videoWidth;
+        const videoHeight = mainVideo.videoHeight;
+
+        if (!videoWidth || !videoHeight) return;
+
+        // Convert percentage to pixel position in video
+        const cursorPixelX = (cursorX / 100) * videoWidth;
+        const cursorPixelY = (cursorY / 100) * videoHeight;
+
+        // Calculate pan needed to center cursor in viewport
+        // Target: cursor should be at center of viewport
+        const targetX = containerRect.width / 2 - cursorPixelX;
+        const targetY = containerRect.height / 2 - cursorPixelY;
+
+        // Clamp to valid pan bounds
+        const maxX = Math.max(0, videoWidth - containerRect.width);
+        const maxY = Math.max(0, videoHeight - containerRect.height);
+
+        // Set target and start smooth animation
+        cursorFollowState.targetX = Math.max(-maxX, Math.min(0, targetX));
+        cursorFollowState.targetY = Math.max(-maxY, Math.min(0, targetY));
+        if (!cursorFollowState.animating) {
+          cursorFollowState.animating = true;
+          animateFocusPan();
+        }
+      }
+    }
+
+    // Lerp animation for focus mode panning
+    function animateFocusPan() {
+      if (!cursorFollowState.animating) return;
+
+      const dx = cursorFollowState.targetX - panZoomState.translateX;
+      const dy = cursorFollowState.targetY - panZoomState.translateY;
+
+      // Check if close enough to snap
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+        panZoomState.translateX = cursorFollowState.targetX;
+        panZoomState.translateY = cursorFollowState.targetY;
+        applyPanZoomTransform();
+        updateMinimap();
+        cursorFollowState.animating = false;
+        return;
+      }
+
+      // Lerp towards target
+      panZoomState.translateX += dx * CURSOR_LERP_FACTOR;
+      panZoomState.translateY += dy * CURSOR_LERP_FACTOR;
+      applyPanZoomTransform();
+      updateMinimap();
+
+      cursorFollowState.animationId = requestAnimationFrame(animateFocusPan);
+    }
+
+    // Lerp animation for row mode scrolling
+    function animateRowScroll() {
+      if (!cursorFollowState.rowAnimating) return;
+
+      const currentX = videoRow.scrollLeft;
+      const currentY = videoRow.scrollTop;
+      const dx = cursorFollowState.rowTargetX - currentX;
+      const dy = cursorFollowState.rowTargetY - currentY;
+
+      // Check if close enough to snap
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+        videoRow.scrollLeft = cursorFollowState.rowTargetX;
+        videoRow.scrollTop = cursorFollowState.rowTargetY;
+        cursorFollowState.rowAnimating = false;
+        return;
+      }
+
+      // Lerp towards target
+      videoRow.scrollLeft = currentX + dx * CURSOR_LERP_FACTOR;
+      videoRow.scrollTop = currentY + dy * CURSOR_LERP_FACTOR;
+
+      cursorFollowState.rowAnimationId = requestAnimationFrame(animateRowScroll);
+    }
+
     function handleSizeChange(trackId, width, height) {
       console.log('Size change received:', trackId, width, height);
       
@@ -2463,6 +2669,10 @@
       } else {
         btn.classList.remove('active');
       }
+      // Update pan/zoom state for new dimensions (cursor following depends on canPan)
+      if (currentScale === 'native') {
+        setTimeout(updatePanZoomState, 100);
+      }
     });
     
     // Picture-in-Picture
@@ -2582,6 +2792,23 @@
             
             const jitter = videoStats.jitter ? (videoStats.jitter * 1000).toFixed(1) + ' ms' : '--';
             document.getElementById('stats-jitter').textContent = jitter;
+
+            // Monitor jitter buffer delay for latency accumulation detection
+            // jitterBufferDelay is cumulative delay in seconds; divide by jitterBufferEmittedCount
+            // to get average per-frame buffer delay. Values above ~0.5s indicate we're behind live.
+            if (videoStats.jitterBufferDelay !== undefined && videoStats.jitterBufferEmittedCount > 0) {
+              const bufferDelay = videoStats.jitterBufferDelay / videoStats.jitterBufferEmittedCount;
+
+              // Validate: ignore non-finite, non-positive, or unrealistically large values (>10s)
+              if (!Number.isFinite(bufferDelay) || bufferDelay <= 0 || bufferDelay > 10) {
+                console.debug('Ignoring invalid jitter buffer delay:', bufferDelay,
+                  '(delay:', videoStats.jitterBufferDelay, 'emittedCount:', videoStats.jitterBufferEmittedCount, ')');
+              } else if (bufferDelay > 1.0) {
+                // If buffer delay exceeds 1 second, we're falling behind - trigger skip-to-live
+                console.warn('High buffer delay detected:', (bufferDelay * 1000).toFixed(0), 'ms - triggering skip-to-live');
+                skipToLive();
+              }
+            }
           }
           
           if (candidatePairStats) {
@@ -2692,7 +2919,11 @@
           case 'size-change':
             handleSizeChange(msg.trackId, msg.width, msg.height);
             break;
-            
+
+          case 'cursor-position':
+            handleCursorPosition(msg.trackId, msg.cursorX, msg.cursorY, msg.cursorInView);
+            break;
+
           case 'stream-added':
             console.log('Stream added:', msg.streamAdded);
             if (msg.streamAdded) {
@@ -2866,7 +3097,7 @@
       pc.ontrack = (event) => {
         const track = event.track;
         let stream = event.streams[0];
-        
+
         // If no stream provided, create one from the track
         if (!stream) {
           console.log('No stream in event, creating new MediaStream for track');
@@ -3165,6 +3396,20 @@
       followMode = !followMode;
       followSwitch.classList.toggle('active', followMode);
       console.log('Follow mode:', followMode ? 'ON' : 'OFF');
+
+      // Stop animations when follow mode is disabled
+      if (!followMode) {
+        cursorFollowState.animating = false;
+        cursorFollowState.rowAnimating = false;
+        if (cursorFollowState.animationId) {
+          cancelAnimationFrame(cursorFollowState.animationId);
+          cursorFollowState.animationId = null;
+        }
+        if (cursorFollowState.rowAnimationId) {
+          cancelAnimationFrame(cursorFollowState.rowAnimationId);
+          cursorFollowState.rowAnimationId = null;
+        }
+      }
     }
     
     function calculateProportionalSizes() {
@@ -3355,9 +3600,11 @@
       layoutSelector.classList.toggle('visible', showSelector);
       layoutDivider.style.display = (showSelector && currentLayout === 'grid') ? '' : 'none';
       proportionalToggle.classList.toggle('visible', showSelector && currentLayout === 'grid');
-      
-      // Show follow toggle when there are multiple streams
-      followToggle.classList.toggle('visible', showSelector);
+
+      // Show follow toggle when there are multiple streams OR when cursor following is possible
+      // (native scale + can pan in focus mode, or in row mode)
+      const showFollow = showSelector || (currentScale === 'native' && canPan) || currentLayout === 'row';
+      followToggle.classList.toggle('visible', showFollow);
       
       // If we only have 1 stream, force focus layout
       if (streamOrder.length <= 1 && (currentLayout === 'grid' || currentLayout === 'row')) {
@@ -3668,8 +3915,11 @@
         applyPanZoomTransform();
         minimap.classList.remove('visible');
       }
+
+      // Update follow toggle visibility (depends on canPan for cursor following)
+      updateLayoutSelectorVisibility();
     }
-    
+
     function applyPanZoomTransform() {
       if (currentScale === 'native' && mainVideo.videoWidth && mainVideo.videoHeight) {
         const containerRect = mainVideoContainer.getBoundingClientRect();
@@ -3750,7 +4000,7 @@
     // Pan/zoom event handlers
     function handlePanStart(e) {
       if (!canPan) return;
-      
+
       panZoomState.isPanning = true;
       panZoomContainer.classList.add('panning');
       

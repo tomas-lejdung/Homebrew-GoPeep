@@ -813,6 +813,93 @@ int mc_check_focus_changed() {
     return 0;
 }
 
+// ============================================================================
+// Cursor Position - Get cursor position relative to a window
+// ============================================================================
+
+// Get cursor position relative to a specific window's content area
+// Returns coordinates in window space (0,0 = top-left of window content)
+// Returns -1,-1 if cursor is not over the specified window
+void mc_get_cursor_position(uint32_t window_id, double* out_x, double* out_y, double* out_window_width, double* out_window_height) {
+    @autoreleasepool {
+        *out_x = -1;
+        *out_y = -1;
+        *out_window_width = 0;
+        *out_window_height = 0;
+
+        // Special handling for fullscreen capture (windowID=0)
+        // Fullscreen uses the main display bounds instead of window bounds
+        if (window_id == 0) {
+            CGEventRef event = CGEventCreate(NULL);
+            CGPoint cursorPos = CGEventGetLocation(event);
+            CFRelease(event);
+
+            // Get main display bounds
+            CGDirectDisplayID mainDisplay = CGMainDisplayID();
+            CGRect displayBounds = CGDisplayBounds(mainDisplay);
+
+            *out_window_width = displayBounds.size.width;
+            *out_window_height = displayBounds.size.height;
+
+            // Cursor is always "in window" for fullscreen (it's the whole screen)
+            *out_x = cursorPos.x - displayBounds.origin.x;
+            *out_y = cursorPos.y - displayBounds.origin.y;
+            return;
+        }
+
+        // Get window bounds using CGWindowList first
+        CFArrayRef windowList = CGWindowListCopyWindowInfo(
+            kCGWindowListOptionIncludingWindow,
+            window_id
+        );
+
+        if (windowList == NULL || CFArrayGetCount(windowList) == 0) {
+            if (windowList) CFRelease(windowList);
+            return;
+        }
+
+        NSDictionary *info = (__bridge NSDictionary *)CFArrayGetValueAtIndex(windowList, 0);
+        NSDictionary *boundsDict = info[(NSString *)kCGWindowBounds];
+
+        if (!boundsDict) {
+            CFRelease(windowList);
+            return;
+        }
+
+        CGRect bounds;
+        if (!CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)boundsDict, &bounds)) {
+            CFRelease(windowList);
+            return;
+        }
+
+        CFRelease(windowList);
+
+        *out_window_width = bounds.size.width;
+        *out_window_height = bounds.size.height;
+
+        // Get global cursor position using CGEvent (more reliable for fullscreen)
+        CGEventRef event = CGEventCreate(NULL);
+        CGPoint cursorPos = CGEventGetLocation(event);
+        CFRelease(event);
+
+        // Debug logging for fullscreen issues
+        // NSLog(@"Cursor check: cursor=(%.0f,%.0f) bounds=(%.0f,%.0f,%.0f,%.0f)",
+        //       cursorPos.x, cursorPos.y, bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
+
+        // CGEvent coordinates are already in top-left origin (same as CGWindow)
+        // Check if cursor is within window bounds
+        if (cursorPos.x >= bounds.origin.x &&
+            cursorPos.x < bounds.origin.x + bounds.size.width &&
+            cursorPos.y >= bounds.origin.y &&
+            cursorPos.y < bounds.origin.y + bounds.size.height) {
+
+            // Calculate position relative to window (0,0 = top-left of window)
+            *out_x = cursorPos.x - bounds.origin.x;
+            *out_y = cursorPos.y - bounds.origin.y;
+        }
+    }
+}
+
 */
 import "C"
 
@@ -1118,6 +1205,33 @@ func GetFocusedWindow() *FocusedWindowInfo {
 			Width:  float64(w),
 			Height: float64(h),
 		},
+	}
+}
+
+// ============================================================================
+// Cursor Position - Get cursor position relative to a window
+// ============================================================================
+
+// CursorPosition holds cursor coordinates relative to a window
+type CursorPosition struct {
+	X            float64 // Cursor X in window coordinates (-1 if outside window)
+	Y            float64 // Cursor Y in window coordinates (-1 if outside window)
+	WindowWidth  float64 // Window content width
+	WindowHeight float64 // Window content height
+	InWindow     bool    // Whether cursor is inside the window
+}
+
+// GetCursorPosition returns the cursor position relative to a specific window
+func GetCursorPosition(windowID uint32) CursorPosition {
+	var x, y, w, h C.double
+	C.mc_get_cursor_position(C.uint32_t(windowID), &x, &y, &w, &h)
+
+	return CursorPosition{
+		X:            float64(x),
+		Y:            float64(y),
+		WindowWidth:  float64(w),
+		WindowHeight: float64(h),
+		InWindow:     float64(x) >= 0 && float64(y) >= 0,
 	}
 }
 

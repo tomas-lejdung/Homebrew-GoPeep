@@ -42,8 +42,9 @@ type osFocusChangedMsg struct {
 
 // roomCodeReceivedMsg indicates room code was received from server
 type roomCodeReceivedMsg struct {
-	roomCode string
-	err      error
+	roomCode   string
+	roomSecret string
+	err        error
 }
 
 // copyToClipboard copies text to the macOS clipboard using pbcopy
@@ -98,13 +99,14 @@ func requestRoomCodeFromServer(signalURL string) tea.Cmd {
 		}
 
 		var result struct {
-			Room string `json:"room"`
+			Room   string `json:"room"`
+			Secret string `json:"secret"`
 		}
 		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 			return roomCodeReceivedMsg{err: fmt.Errorf("failed to decode response: %w", err)}
 		}
 
-		return roomCodeReceivedMsg{roomCode: result.Room}
+		return roomCodeReceivedMsg{roomCode: result.Room, roomSecret: result.Secret}
 	}
 }
 
@@ -288,9 +290,10 @@ type model struct {
 	wsDisconnected   *bool // Pointer so goroutine can set it
 
 	// Components (persistent across source switches)
-	server   *sig.Server
-	wsConn   *websocket.Conn // Remote signal server connection
-	isRemote bool            // Using remote signal server
+	server     *sig.Server
+	wsConn     *websocket.Conn // Remote signal server connection
+	isRemote   bool            // Using remote signal server
+	roomSecret string          // Secret token for sharer authentication (remote mode)
 
 	// Server started flag
 	serverStarted bool
@@ -681,6 +684,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		} else {
 			m.roomCode = msg.roomCode
+			m.roomSecret = msg.roomSecret
 			log.Printf("Received room code from server: %s", m.roomCode)
 		}
 
@@ -1170,8 +1174,15 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.password = ""
 		}
 		// If server is already started, update the room password
-		if m.serverStarted && m.server != nil {
-			m.server.UpdateRoomPassword(m.roomCode, m.password)
+		if m.serverStarted {
+			if m.server != nil {
+				// Local mode - direct update
+				m.server.UpdateRoomPassword(m.roomCode, m.password)
+			} else if m.isRemote && m.wsConn != nil {
+				// Remote mode - send password-update message
+				pwMsg := sig.SignalMessage{Type: "password-update", Password: m.password, Secret: m.roomSecret}
+				m.wsConn.WriteJSON(pwMsg)
+			}
 		}
 		return m, nil
 
@@ -1540,8 +1551,8 @@ func (m model) attemptReconnect(attempt int, delay time.Duration) tea.Cmd {
 			return reconnectMsg{attempt: attempt + 1, delay: nextDelay}
 		}
 
-		// Join as sharer (with optional password)
-		joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password}
+		// Join as sharer (with optional password and secret for authentication)
+		joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password, Secret: m.roomSecret}
 		if err := conn.WriteJSON(joinMsg); err != nil {
 			conn.Close()
 			return reconnectMsg{attempt: attempt + 1, delay: delay * 2}
@@ -1584,8 +1595,8 @@ func (m *model) initRemoteSignaling() error {
 		return fmt.Errorf("failed to connect to signal server: %v", err)
 	}
 
-	// Join as sharer (with optional password)
-	joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password}
+	// Join as sharer (with optional password and secret for authentication)
+	joinMsg := sig.SignalMessage{Type: "join", Role: "sharer", Password: m.password, Secret: m.roomSecret}
 	if err := conn.WriteJSON(joinMsg); err != nil {
 		conn.Close()
 		return fmt.Errorf("failed to send join message: %v", err)

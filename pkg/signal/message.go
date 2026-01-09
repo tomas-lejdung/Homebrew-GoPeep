@@ -2,7 +2,7 @@ package signal
 
 // SignalMessage represents a WebSocket signaling message
 type SignalMessage struct {
-	Type      string `json:"type"`                // join, offer, answer, ice, error, streams-info, focus-change, stream-added, stream-removed, stream-activated, stream-deactivated, renegotiate-answer, size-change
+	Type      string `json:"type"`                // join, offer, answer, ice, error, streams-info, focus-change, stream-added, stream-removed, stream-activated, stream-deactivated, renegotiate-answer, size-change, cursor-position
 	Room      string `json:"room,omitempty"`      // room code
 	Role      string `json:"role,omitempty"`      // sharer or viewer
 	SDP       string `json:"sdp,omitempty"`       // SDP offer/answer
@@ -10,6 +10,7 @@ type SignalMessage struct {
 	Error     string `json:"error,omitempty"`     // error message
 	PeerID    string `json:"peerId,omitempty"`    // peer identifier for routing
 	Password  string `json:"password,omitempty"`  // room password (for joining protected rooms)
+	Secret    string `json:"secret,omitempty"`    // sharer authentication token
 	TrackID   string `json:"trackId,omitempty"`   // track identifier for multi-stream
 
 	// Multi-stream fields
@@ -25,6 +26,11 @@ type SignalMessage struct {
 	// Size change fields (for size-change message type)
 	Width  int `json:"width,omitempty"`  // new width after resize
 	Height int `json:"height,omitempty"` // new height after resize
+
+	// Cursor position fields (for cursor-position message type)
+	CursorX      float64 `json:"cursorX,omitempty"`      // Cursor X as percentage (0-100) of video width
+	CursorY      float64 `json:"cursorY,omitempty"`      // Cursor Y as percentage (0-100) of video height
+	CursorInView bool    `json:"cursorInView,omitempty"` // Whether cursor is within the focused window
 }
 
 // StreamInfo describes a single video stream (window)

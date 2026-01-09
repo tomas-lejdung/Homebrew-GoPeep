@@ -1,8 +1,10 @@
 package signal
 
 import (
+	"crypto/rand"
+	"encoding/hex"
 	"fmt"
-	"math/rand"
+	mathrand "math/rand"
 	"strings"
 	"time"
 )
@@ -62,10 +64,10 @@ var passwordWords = []string{
 	"coral", "frost", "bloom", "spark", "wave",
 }
 
-var rng *rand.Rand
+var rng *mathrand.Rand
 
 func init() {
-	rng = rand.New(rand.NewSource(time.Now().UnixNano()))
+	rng = mathrand.New(mathrand.NewSource(time.Now().UnixNano()))
 }
 
 // GenerateRoomCode creates a memorable room code in ADJECTIVE-NOUN-NNN format
@@ -108,4 +110,16 @@ func GeneratePassword() string {
 	word := passwordWords[rng.Intn(len(passwordWords))]
 	num := rng.Intn(100)
 	return fmt.Sprintf("%s-%02d", word, num)
+}
+
+// GenerateSecret creates a cryptographically secure random token for sharer authentication
+func GenerateSecret() string {
+	bytes := make([]byte, 16)
+	if _, err := rand.Read(bytes); err != nil {
+		// Fallback to math/rand if crypto/rand fails (shouldn't happen)
+		for i := range bytes {
+			bytes[i] = byte(rng.Intn(256))
+		}
+	}
+	return hex.EncodeToString(bytes)
 }

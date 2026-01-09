@@ -70,8 +70,9 @@ type PeerManager struct {
 	onICE         func(peerID string, candidate string)
 	onConnected   func(peerID string)
 	onDisconnect  func(peerID string)
-	onFocusChange func(trackID string)                    // Called when focus changes to a new track
-	onSizeChange  func(trackID string, width, height int) // Called when focused track dimensions change
+	onFocusChange  func(trackID string)                         // Called when focus changes to a new track
+	onSizeChange   func(trackID string, width, height int)      // Called when focused track dimensions change
+	onCursorUpdate func(trackID string, x, y float64, inView bool) // Called with cursor position updates
 
 	// Renegotiation callbacks
 	onRenegotiate   func(peerID string, offer string)
@@ -594,10 +595,7 @@ func (mpm *PeerManager) SetFocusChangeCallback(callback func(trackID string)) {
 // NotifyFocusChange notifies that focus has changed to a new track
 func (mpm *PeerManager) NotifyFocusChange(trackID string) {
 	if mpm.onFocusChange != nil {
-		log.Printf("NotifyFocusChange: callback exists, calling with trackID: %s", trackID)
 		mpm.onFocusChange(trackID)
-	} else {
-		log.Printf("NotifyFocusChange: callback is NIL! trackID: %s", trackID)
 	}
 }
 
@@ -610,6 +608,18 @@ func (mpm *PeerManager) SetSizeChangeCallback(callback func(trackID string, widt
 func (mpm *PeerManager) NotifySizeChange(trackID string, width, height int) {
 	if mpm.onSizeChange != nil {
 		mpm.onSizeChange(trackID, width, height)
+	}
+}
+
+// SetCursorCallback sets callback for cursor position updates
+func (mpm *PeerManager) SetCursorCallback(callback func(trackID string, x, y float64, inView bool)) {
+	mpm.onCursorUpdate = callback
+}
+
+// NotifyCursorUpdate notifies about cursor position changes
+func (mpm *PeerManager) NotifyCursorUpdate(trackID string, x, y float64, inView bool) {
+	if mpm.onCursorUpdate != nil {
+		mpm.onCursorUpdate(trackID, x, y, inView)
 	}
 }
 
@@ -1149,6 +1159,12 @@ type Streamer struct {
 	onFocusChange   func(trackID string)
 	onStreamsChange func(streams []sig.StreamInfo)
 	onSizeChange    func(trackID string, width, height int)
+	onCursorUpdate  func(trackID string, x, y float64, inView bool)
+
+	// Cursor tracking state
+	lastCursorX float64
+	lastCursorY float64
+	cursorMu    sync.Mutex
 }
 
 // NewStreamer creates a new multi-streamer
@@ -1213,6 +1229,11 @@ func (ms *Streamer) SetOnStreamsChange(callback func(streams []sig.StreamInfo)) 
 // SetOnSizeChange sets the callback for when focused track dimensions change
 func (ms *Streamer) SetOnSizeChange(callback func(trackID string, width, height int)) {
 	ms.onSizeChange = callback
+}
+
+// SetOnCursorUpdate sets the callback for cursor position updates
+func (ms *Streamer) SetOnCursorUpdate(callback func(trackID string, x, y float64, inView bool)) {
+	ms.onCursorUpdate = callback
 }
 
 // AddWindow adds a window to stream
@@ -1342,6 +1363,9 @@ func (ms *Streamer) Start() error {
 	// Start focus detection loop
 	go ms.focusDetectionLoop()
 
+	// Start cursor tracking loop
+	go ms.cursorTrackingLoop()
+
 	return nil
 }
 
@@ -1379,38 +1403,59 @@ func (ms *Streamer) focusDetectionLoop() {
 	defer ticker.Stop()
 
 	var lastTopmostWindow uint32
+	var fullscreenFocusSet bool // Track if we've set focus for fullscreen
 
-	// Log captured windows at start
 	ms.mu.RLock()
-	log.Printf("Focus detection loop started with %d pipelines:", len(ms.pipelines))
-	for trackID, pipeline := range ms.pipelines {
-		log.Printf("  - Track %s: windowID=%d, name=%s", trackID, pipeline.trackInfo.WindowID, pipeline.trackInfo.WindowName)
-	}
 	ms.mu.RUnlock()
 
 	for {
 		select {
 		case <-ms.stopChan:
-			log.Printf("Focus detection loop stopped")
 			return
 		case <-ticker.C:
-			// Collect all captured window IDs
+			// Collect all captured window IDs and check for fullscreen
 			ms.mu.RLock()
 			windowIDs := make([]uint32, 0, len(ms.pipelines))
-			for _, pipeline := range ms.pipelines {
+			var hasFullscreen bool
+			var fullscreenTrackID string
+			for trackID, pipeline := range ms.pipelines {
 				windowIDs = append(windowIDs, pipeline.trackInfo.WindowID)
+				if pipeline.trackInfo.WindowID == 0 {
+					hasFullscreen = true
+					fullscreenTrackID = trackID
+				}
 			}
+			pipelineCount := len(ms.pipelines)
 			ms.mu.RUnlock()
 
 			if len(windowIDs) == 0 {
 				continue
 			}
 
+			// Special handling for fullscreen capture (windowID=0)
+			// Fullscreen doesn't appear in z-order, so we handle it separately
+			if hasFullscreen && pipelineCount == 1 {
+				// Single fullscreen capture - always focused
+				if !fullscreenFocusSet {
+					ms.peerManager.SetFocusedWindow(0)
+					ms.peerManager.NotifyFocusChange(fullscreenTrackID)
+					if ms.onFocusChange != nil {
+						go ms.onFocusChange(fullscreenTrackID)
+					}
+					fullscreenFocusSet = true
+				}
+				continue // Skip z-order check for single fullscreen
+			}
+
+			// Reset fullscreen focus flag if we're no longer in single-fullscreen mode
+			if !hasFullscreen || pipelineCount > 1 {
+				fullscreenFocusSet = false
+			}
+
 			// Find which captured window is topmost in z-order
 			topmostWindow := GetTopmostWindow(windowIDs)
 
 			if topmostWindow != lastTopmostWindow && topmostWindow != 0 {
-				log.Printf("Topmost captured window changed to: %d (was %d)", topmostWindow, lastTopmostWindow)
 				lastTopmostWindow = topmostWindow
 
 				// Find the track for this window and update focus
@@ -1418,7 +1463,7 @@ func (ms *Streamer) focusDetectionLoop() {
 				for trackID, pipeline := range ms.pipelines {
 					if pipeline.trackInfo.WindowID == topmostWindow {
 						newTrackID := ms.peerManager.SetFocusedWindow(topmostWindow)
-						log.Printf("Focus set to track=%s, windowID=%d, name=%s", trackID, topmostWindow, pipeline.trackInfo.WindowName)
+						_ = trackID // unused after removing log
 
 						if newTrackID != "" {
 							// Notify via Streamer callback
@@ -1426,7 +1471,6 @@ func (ms *Streamer) focusDetectionLoop() {
 								go ms.onFocusChange(newTrackID)
 							}
 							// Also notify via PeerManager callback (for signaling)
-							log.Printf("Calling NotifyFocusChange for track: %s", newTrackID)
 							ms.peerManager.NotifyFocusChange(newTrackID)
 						}
 
@@ -1438,6 +1482,65 @@ func (ms *Streamer) focusDetectionLoop() {
 					}
 				}
 				ms.mu.RUnlock()
+			}
+		}
+	}
+}
+
+// cursorTrackingLoop sends cursor position updates at ~5fps to minimize message volume
+func (ms *Streamer) cursorTrackingLoop() {
+	ticker := time.NewTicker(200 * time.Millisecond) // ~5fps
+	defer ticker.Stop()
+
+	const threshold = 1.0 // Only send if cursor moved >1% of window
+
+	for {
+		select {
+		case <-ms.stopChan:
+			return
+		case <-ticker.C:
+			// Get focused track
+			focusedTrack := ms.peerManager.GetFocusedTrack()
+			if focusedTrack == nil {
+				continue
+			}
+
+			// Get cursor position relative to focused window
+			cursor := GetCursorPosition(focusedTrack.WindowID)
+
+			// Convert to percentage coordinates
+			var pctX, pctY float64
+			if cursor.InWindow && cursor.WindowWidth > 0 && cursor.WindowHeight > 0 {
+				pctX = (cursor.X / cursor.WindowWidth) * 100
+				pctY = (cursor.Y / cursor.WindowHeight) * 100
+			} else {
+				pctX = -1
+				pctY = -1
+			}
+
+			// Throttle: only send if moved significantly or cursor entered/left window
+			ms.cursorMu.Lock()
+			wasInWindow := ms.lastCursorX >= 0 && ms.lastCursorY >= 0
+			dx := pctX - ms.lastCursorX
+			dy := pctY - ms.lastCursorY
+			if dx < 0 {
+				dx = -dx
+			}
+			if dy < 0 {
+				dy = -dy
+			}
+			shouldSend := (dx > threshold || dy > threshold) ||
+				(cursor.InWindow != wasInWindow)
+
+			if shouldSend {
+				ms.lastCursorX = pctX
+				ms.lastCursorY = pctY
+				ms.cursorMu.Unlock()
+
+				// Notify via PeerManager callback (for signaling)
+				ms.peerManager.NotifyCursorUpdate(focusedTrack.TrackID, pctX, pctY, cursor.InWindow)
+			} else {
+				ms.cursorMu.Unlock()
 			}
 		}
 	}
@@ -2470,6 +2573,11 @@ func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
 // sendLoop runs in a separate goroutine, sending encoded frames to WebRTC
 func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 	frameCount := 0
+	// Track presentation timestamp to prevent drift
+	// Without explicit PTS, WebRTC uses arrival time which causes lag accumulation
+	startTime := time.Now()
+	var ptsOffset time.Duration = 0
+
 	for {
 		select {
 		case <-done:
@@ -2479,12 +2587,18 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 				return
 			}
 
-			// Write directly to track
+			// Write directly to track with explicit timestamp
 			if p.trackInfo.Track != nil {
+				// Calculate expected presentation time based on frame number
+				// This ensures consistent timing even if encoding delays vary
+				expectedTime := startTime.Add(ptsOffset)
+
 				p.trackInfo.Track.WriteSample(media.Sample{
-					Data:     ef.data,
-					Duration: ef.frameDuration,
+					Data:      ef.data,
+					Duration:  ef.frameDuration,
+					Timestamp: expectedTime, // Explicit PTS prevents timestamp drift
 				})
+				ptsOffset += ef.frameDuration // Advance PTS by frame duration
 				frameCount++
 				// Log every 100 frames to confirm which track is receiving data
 				if frameCount%100 == 1 {
