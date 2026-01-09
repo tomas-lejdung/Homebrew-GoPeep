@@ -37,6 +37,7 @@ type Server struct {
 	rooms    map[string]*Room
 	mu       sync.RWMutex
 	upgrader websocket.Upgrader
+	done     chan struct{} // signals shutdown to background goroutines
 }
 
 // NewServer creates a new signaling server
@@ -50,18 +51,29 @@ func NewServer() *Server {
 				return true // Allow all origins for development
 			},
 		},
+		done: make(chan struct{}),
 	}
 
 	// Start cleanup goroutine for expired room reservations
 	go func() {
 		ticker := time.NewTicker(1 * time.Minute)
 		defer ticker.Stop()
-		for range ticker.C {
-			s.CleanupReservedRooms(5 * time.Minute)
+		for {
+			select {
+			case <-ticker.C:
+				s.CleanupReservedRooms(5 * time.Minute)
+			case <-s.done:
+				return
+			}
 		}
 	}()
 
 	return s
+}
+
+// Close shuts down the server and stops background goroutines.
+func (s *Server) Close() {
+	close(s.done)
 }
 
 // getOrCreateRoom returns existing room or creates new one
