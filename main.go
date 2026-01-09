@@ -219,16 +219,26 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 
 	// Set up focus change callback to broadcast to all viewers
 	pm.SetFocusChangeCallback(func(trackID string) {
-		log.Printf("Focus change callback triggered for track: %s", trackID)
 		focusMsg := sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID}
 		localSharer.SendToAllViewers(focusMsg)
 	})
 
 	// Set up size change callback to broadcast dimension changes to all viewers
 	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
-		log.Printf("Size change callback triggered for track %s: %dx%d", trackID, width, height)
 		sizeMsg := sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height}
 		localSharer.SendToAllViewers(sizeMsg)
+	})
+
+	// Set up cursor position callback to broadcast cursor position to all viewers
+	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
+		cursorMsg := sig.SignalMessage{
+			Type:         "cursor-position",
+			TrackID:      trackID,
+			CursorX:      x,
+			CursorY:      y,
+			CursorInView: inView,
+		}
+		localSharer.SendToAllViewers(cursorMsg)
 	})
 
 	// Set up renegotiation callback to send new offers during track add/remove
@@ -372,6 +382,16 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 	var peerMu sync.Mutex
 	var connMu sync.Mutex // Protect WebSocket writes
 
+	// Async cursor channel - decouples cursor sampling from network I/O
+	cursorChan := make(chan sig.SignalMessage, 4)
+	go func() {
+		for msg := range cursorChan {
+			connMu.Lock()
+			conn.WriteJSON(msg)
+			connMu.Unlock()
+		}
+	}()
+
 	pm.SetICECallback(func(peerID string, candidate string) {
 		iceMsg := sig.SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
 		connMu.Lock()
@@ -381,27 +401,51 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 
 	// Set up focus change callback to broadcast to all viewers
 	pm.SetFocusChangeCallback(func(trackID string) {
-		log.Printf("Remote focus change callback triggered for track: %s", trackID)
 		focusMsg := sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID}
 		connMu.Lock()
-		err := conn.WriteJSON(focusMsg)
+		conn.WriteJSON(focusMsg)
 		connMu.Unlock()
-		if err != nil {
-			log.Printf("Failed to send focus-change: %v", err)
-		} else {
-			log.Printf("Sent focus-change message to signal server")
-		}
 	})
 
 	// Set up size change callback to broadcast dimension changes to all viewers
 	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
-		log.Printf("Remote size change callback triggered for track %s: %dx%d", trackID, width, height)
 		sizeMsg := sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height}
 		connMu.Lock()
 		err := conn.WriteJSON(sizeMsg)
 		connMu.Unlock()
 		if err != nil {
 			log.Printf("Failed to send size-change: %v", err)
+		}
+	})
+
+	// Set up cursor position callback to broadcast cursor position to all viewers
+	// Uses async channel to avoid blocking cursor sampling on network I/O
+	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
+		cursorMsg := sig.SignalMessage{
+			Type:         "cursor-position",
+			TrackID:      trackID,
+			CursorX:      x,
+			CursorY:      y,
+			CursorInView: inView,
+		}
+		select {
+		case cursorChan <- cursorMsg:
+			// Sent successfully
+		default:
+			// Channel full, drop oldest by receiving and try to resend
+			select {
+			case <-cursorChan:
+				// Dropped oldest message
+			default:
+				// Nothing to drop
+			}
+			// Try to send again, but don't block if still full
+			select {
+			case cursorChan <- cursorMsg:
+				// Resent successfully
+			default:
+				// Channel still full, drop this message
+			}
 		}
 	})
 
@@ -473,6 +517,7 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 	)
 
 	go func() {
+		defer close(cursorChan) // Close cursor channel when connection ends to prevent goroutine leak
 		for {
 			var msg sig.SignalMessage
 			if err := conn.ReadJSON(&msg); err != nil {
