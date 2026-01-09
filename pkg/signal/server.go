@@ -46,8 +46,8 @@ func NewServer() *Server {
 	s := &Server{
 		rooms: make(map[string]*Room),
 		upgrader: websocket.Upgrader{
-			ReadBufferSize:  1024,
-			WriteBufferSize: 1024,
+			ReadBufferSize:  4096,
+			WriteBufferSize: 4096,
 			CheckOrigin: func(r *http.Request) bool {
 				return true // Allow all origins for development
 			},

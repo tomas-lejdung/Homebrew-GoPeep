@@ -1198,8 +1198,8 @@ func (ms *Streamer) newPipeline(trackInfo *StreamTrackInfo, capture *CaptureInst
 		qualityMode:    ms.qualityMode,
 		stopChan:       make(chan struct{}),
 		fpsChanged:     make(chan int, 1),
-		capturedFrames: make(chan capturedFrame, 2),
-		encodedFrames:  make(chan encodedFrame, 2),
+		capturedFrames: make(chan capturedFrame, 4),
+		encodedFrames:  make(chan encodedFrame, 4),
 	}
 }
 
@@ -1487,9 +1487,9 @@ func (ms *Streamer) focusDetectionLoop() {
 	}
 }
 
-// cursorTrackingLoop sends cursor position updates at high frequency (~30fps)
+// cursorTrackingLoop sends cursor position updates at ~15fps to minimize message volume
 func (ms *Streamer) cursorTrackingLoop() {
-	ticker := time.NewTicker(33 * time.Millisecond) // ~30fps
+	ticker := time.NewTicker(66 * time.Millisecond) // ~15fps
 	defer ticker.Stop()
 
 	const threshold = 1.0 // Only send if cursor moved >1% of window
@@ -1816,8 +1816,8 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 				encoder:        encoder,
 				stopChan:       make(chan struct{}),
 				fpsChanged:     make(chan int, 1),
-				capturedFrames: make(chan capturedFrame, 2),
-				encodedFrames:  make(chan encodedFrame, 2),
+				capturedFrames: make(chan capturedFrame, 4),
+				encodedFrames:  make(chan encodedFrame, 4),
 				fps:            ms.fps,
 				bitrate:        bitrate,
 				focusBitrate:   ms.focusBitrate,
@@ -1885,8 +1885,8 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 				encoder:        encoder,
 				stopChan:       make(chan struct{}),
 				fpsChanged:     make(chan int, 1),
-				capturedFrames: make(chan capturedFrame, 2),
-				encodedFrames:  make(chan encodedFrame, 2),
+				capturedFrames: make(chan capturedFrame, 4),
+				encodedFrames:  make(chan encodedFrame, 4),
 				fps:            ms.fps,
 				bitrate:        bitrate,
 				focusBitrate:   ms.focusBitrate,

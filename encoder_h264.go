@@ -67,7 +67,7 @@ H264EncoderContext* create_h264_encoder_with_mode(int width, int height, int fps
     }
 
     // Keyframe interval
-    ctx->params.i_keyint_max = fps * 2;  // Keyframe every 2 seconds
+    ctx->params.i_keyint_max = fps * 1;  // Keyframe every 1 second (faster recovery)
     ctx->params.i_keyint_min = fps;
 
     // Apply profile (baseline for maximum compatibility)
