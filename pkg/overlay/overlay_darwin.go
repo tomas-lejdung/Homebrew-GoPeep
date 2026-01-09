@@ -21,6 +21,7 @@ int goIsManualMode(void);
 int goGetFocusedWindow(uint32_t *outWindowID, double *outX, double *outY, double *outW, double *outH);
 int goGetSelectedWindowCount(void);
 int goIsSharing(void);
+int goGetViewerCount(void);
 
 // Window state constants
 #define STATE_NOT_SELECTED 0
@@ -64,6 +65,7 @@ static CGRect g_lastWindowBounds = {0};
 static NSWindow *g_statusWindow = nil;
 static NSView *g_statusView = nil;
 static NSView *g_statusDots[4] = {nil, nil, nil, nil};
+static NSTextField *g_viewerLabel = nil;
 static int g_lastSelectedCount = -1;  // For animation on count change
 
 // Button dimensions
@@ -307,6 +309,13 @@ static void updateStatusWindow(void) {
 
     if (isSharing && selectedCount > 0) {
         updateStatusIndicator(selectedCount, YES);
+
+        // Update viewer count label
+        if (g_viewerLabel) {
+            int viewerCount = goGetViewerCount();
+            g_viewerLabel.stringValue = [NSString stringWithFormat:@"%d", viewerCount];
+        }
+
         if (!g_statusWindow.isVisible) {
             [g_statusWindow orderFrontRegardless];
         }
@@ -556,7 +565,10 @@ static void createOverlay(void) {
         [g_buttonView addSubview:g_arrowLabel];
 
         // Create status indicator window (top-right corner, shows when sharing)
-        CGFloat statusWidth = kStatusPadding * 2 + kStatusDotSize * 4 + kStatusDotSpacing * 3;
+        // Width: padding + 4 dots + spacing + divider space + viewer label + padding
+        CGFloat dotsWidth = kStatusDotSize * 4 + kStatusDotSpacing * 3;
+        CGFloat viewerLabelWidth = 24.0;  // Space for "99" (just number)
+        CGFloat statusWidth = kStatusPadding + dotsWidth + 8.0 + viewerLabelWidth + kStatusPadding;
         CGFloat statusHeight = kStatusPadding * 2 + kStatusDotSize;
         NSScreen *mainScreen = [NSScreen mainScreen];
         CGFloat statusX = mainScreen.frame.size.width - statusWidth - kStatusCornerMargin;
@@ -598,6 +610,20 @@ static void createOverlay(void) {
             g_statusDots[i].layer.borderWidth = 1.5;
             [g_statusView addSubview:g_statusDots[i]];
         }
+
+        // Create viewer count label (after dots)
+        CGFloat viewerX = kStatusPadding + dotsWidth + 8.0;
+        CGFloat viewerY = (statusHeight - 14.0) / 2.0;  // Center vertically
+        g_viewerLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(viewerX, viewerY, viewerLabelWidth, 14.0)];
+        g_viewerLabel.stringValue = @"0";
+        g_viewerLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
+        g_viewerLabel.textColor = [NSColor whiteColor];
+        g_viewerLabel.backgroundColor = [NSColor clearColor];
+        g_viewerLabel.bordered = NO;
+        g_viewerLabel.editable = NO;
+        g_viewerLabel.selectable = NO;
+        g_viewerLabel.alignment = NSTextAlignmentLeft;
+        [g_statusView addSubview:g_viewerLabel];
 
         CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown);
         g_eventTap = CGEventTapCreate(
@@ -678,6 +704,7 @@ static void destroyOverlay(void) {
     for (int i = 0; i < 4; i++) {
         g_statusDots[i] = nil;
     }
+    g_viewerLabel = nil;
     g_lastSelectedCount = -1;
 
     g_initialized = NO;
@@ -800,6 +827,19 @@ func goIsSharing() C.int {
 		return 1
 	}
 	return 0
+}
+
+//export goGetViewerCount
+func goGetViewerCount() C.int {
+	globalMu.RLock()
+	o := globalOverlay
+	globalMu.RUnlock()
+
+	if o == nil || o.controller == nil {
+		return 0
+	}
+
+	return C.int(o.controller.GetViewerCount())
 }
 
 // runLoop is the 60fps game loop for the overlay.

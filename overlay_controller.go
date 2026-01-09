@@ -15,6 +15,7 @@ type OverlayController struct {
 	selectedWindows map[uint32]bool
 	sharing         bool
 	autoShareMode   bool
+	viewerCount     int
 }
 
 // NewOverlayController creates a new overlay controller.
@@ -26,7 +27,7 @@ func NewOverlayController() *OverlayController {
 
 // Sync updates the controller state from the TUI model.
 // Call this whenever the TUI state changes.
-func (c *OverlayController) Sync(selectedWindows map[uint32]bool, sharing bool, autoShareMode bool) {
+func (c *OverlayController) Sync(selectedWindows map[uint32]bool, sharing bool, autoShareMode bool, viewerCount int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -37,6 +38,7 @@ func (c *OverlayController) Sync(selectedWindows map[uint32]bool, sharing bool, 
 	}
 	c.sharing = sharing
 	c.autoShareMode = autoShareMode
+	c.viewerCount = viewerCount
 }
 
 // GetWindowState implements overlay.Controller.
@@ -93,4 +95,11 @@ func (c *OverlayController) IsSharing() bool {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.sharing
+}
+
+// GetViewerCount implements overlay.Controller.
+func (c *OverlayController) GetViewerCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.viewerCount
 }

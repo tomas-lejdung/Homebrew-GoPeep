@@ -61,6 +61,9 @@ type Controller interface {
 
 	// IsSharing returns true if currently sharing windows.
 	IsSharing() bool
+
+	// GetViewerCount returns the number of connected viewers.
+	GetViewerCount() int
 }
 
 // Overlay manages the floating button that appears on focused windows.
