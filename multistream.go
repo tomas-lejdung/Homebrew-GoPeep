@@ -1406,6 +1406,7 @@ func (ms *Streamer) focusDetectionLoop() {
 	defer ticker.Stop()
 
 	var lastTopmostWindow uint32
+	var fullscreenFocusSet bool // Track if we've set focus for fullscreen
 
 	// Log captured windows at start
 	ms.mu.RLock()
@@ -1421,16 +1422,44 @@ func (ms *Streamer) focusDetectionLoop() {
 			log.Printf("Focus detection loop stopped")
 			return
 		case <-ticker.C:
-			// Collect all captured window IDs
+			// Collect all captured window IDs and check for fullscreen
 			ms.mu.RLock()
 			windowIDs := make([]uint32, 0, len(ms.pipelines))
-			for _, pipeline := range ms.pipelines {
+			var hasFullscreen bool
+			var fullscreenTrackID string
+			for trackID, pipeline := range ms.pipelines {
 				windowIDs = append(windowIDs, pipeline.trackInfo.WindowID)
+				if pipeline.trackInfo.WindowID == 0 {
+					hasFullscreen = true
+					fullscreenTrackID = trackID
+				}
 			}
+			pipelineCount := len(ms.pipelines)
 			ms.mu.RUnlock()
 
 			if len(windowIDs) == 0 {
 				continue
+			}
+
+			// Special handling for fullscreen capture (windowID=0)
+			// Fullscreen doesn't appear in z-order, so we handle it separately
+			if hasFullscreen && pipelineCount == 1 {
+				// Single fullscreen capture - always focused
+				if !fullscreenFocusSet {
+					log.Printf("Setting focus for fullscreen capture: track=%s", fullscreenTrackID)
+					ms.peerManager.SetFocusedWindow(0)
+					ms.peerManager.NotifyFocusChange(fullscreenTrackID)
+					if ms.onFocusChange != nil {
+						go ms.onFocusChange(fullscreenTrackID)
+					}
+					fullscreenFocusSet = true
+				}
+				continue // Skip z-order check for single fullscreen
+			}
+
+			// Reset fullscreen focus flag if we're no longer in single-fullscreen mode
+			if !hasFullscreen || pipelineCount > 1 {
+				fullscreenFocusSet = false
 			}
 
 			// Find which captured window is topmost in z-order

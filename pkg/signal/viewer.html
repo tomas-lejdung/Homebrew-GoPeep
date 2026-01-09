@@ -2186,17 +2186,12 @@
 
     // Cursor position handling for auto-follow
     function handleCursorPosition(trackId, cursorX, cursorY, cursorInView) {
-      // Only process if this is for the currently displayed stream
+      // Only process if follow mode is enabled
+      if (!followMode) return;
+
       const match = trackId.match(/video(\d+)/);
       if (!match) return;
-
       const streamIndex = parseInt(match[1], 10);
-      if (streamIndex !== viewerFocusedIndex) return;
-
-      // Only follow if: follow mode ON + native scale + can pan (minimap visible)
-      if (!followMode || currentScale !== 'native' || !canPan) {
-        return;
-      }
 
       cursorFollowState.cursorInView = cursorInView;
 
@@ -2206,32 +2201,72 @@
         return;
       }
 
-      // Calculate target pan position to center cursor in viewport
-      const containerRect = mainVideoContainer.getBoundingClientRect();
-      const videoWidth = mainVideo.videoWidth;
-      const videoHeight = mainVideo.videoHeight;
+      // Handle ROW layout - scroll the row container
+      if (currentLayout === 'row') {
+        const cell = rowCells[streamIndex];
+        if (!cell || !cell.video) return;
 
-      if (!videoWidth || !videoHeight) return;
+        const video = cell.video;
+        const videoWidth = video.videoWidth || parseInt(video.style.width) || 0;
+        const videoHeight = video.videoHeight || parseInt(video.style.height) || 0;
+        if (!videoWidth || !videoHeight) return;
 
-      // Convert percentage to pixel position in video
-      const cursorPixelX = (cursorX / 100) * videoWidth;
-      const cursorPixelY = (cursorY / 100) * videoHeight;
+        // Get row container and cell position
+        const rowRect = videoRow.getBoundingClientRect();
+        const cellRect = cell.cell.getBoundingClientRect();
 
-      // Calculate pan needed to center cursor in viewport
-      // Target: cursor should be at center of viewport
-      const targetX = containerRect.width / 2 - cursorPixelX;
-      const targetY = containerRect.height / 2 - cursorPixelY;
+        // Convert cursor percentage to pixel position within the video
+        const cursorPixelX = (cursorX / 100) * videoWidth;
+        const cursorPixelY = (cursorY / 100) * videoHeight;
 
-      // Clamp to valid pan bounds
-      const maxX = Math.max(0, videoWidth - containerRect.width);
-      const maxY = Math.max(0, videoHeight - containerRect.height);
+        // Calculate where cursor is relative to the row container
+        const cursorInRowX = (cellRect.left - rowRect.left) + videoRow.scrollLeft + cursorPixelX;
+        const cursorInRowY = (cellRect.top - rowRect.top) + videoRow.scrollTop + cursorPixelY;
 
-      cursorFollowState.targetX = Math.max(-maxX, Math.min(0, targetX));
-      cursorFollowState.targetY = Math.max(-maxY, Math.min(0, targetY));
+        // Target scroll position to center cursor in viewport
+        const targetScrollX = cursorInRowX - rowRect.width / 2;
+        const targetScrollY = cursorInRowY - rowRect.height / 2;
 
-      // Start smooth animation if not already running
-      if (!cursorFollowState.animating) {
-        startCursorAnimation();
+        // Smooth scroll to position
+        videoRow.scrollTo({
+          left: Math.max(0, targetScrollX),
+          top: Math.max(0, targetScrollY),
+          behavior: 'smooth'
+        });
+        return;
+      }
+
+      // Handle FOCUS layout with native scale - use pan/zoom
+      if (currentLayout === 'focus' && currentScale === 'native' && canPan) {
+        if (streamIndex !== viewerFocusedIndex) return;
+
+        // Calculate target pan position to center cursor in viewport
+        const containerRect = mainVideoContainer.getBoundingClientRect();
+        const videoWidth = mainVideo.videoWidth;
+        const videoHeight = mainVideo.videoHeight;
+
+        if (!videoWidth || !videoHeight) return;
+
+        // Convert percentage to pixel position in video
+        const cursorPixelX = (cursorX / 100) * videoWidth;
+        const cursorPixelY = (cursorY / 100) * videoHeight;
+
+        // Calculate pan needed to center cursor in viewport
+        // Target: cursor should be at center of viewport
+        const targetX = containerRect.width / 2 - cursorPixelX;
+        const targetY = containerRect.height / 2 - cursorPixelY;
+
+        // Clamp to valid pan bounds
+        const maxX = Math.max(0, videoWidth - containerRect.width);
+        const maxY = Math.max(0, videoHeight - containerRect.height);
+
+        cursorFollowState.targetX = Math.max(-maxX, Math.min(0, targetX));
+        cursorFollowState.targetY = Math.max(-maxY, Math.min(0, targetY));
+
+        // Start smooth animation if not already running
+        if (!cursorFollowState.animating) {
+          startCursorAnimation();
+        }
       }
     }
 
@@ -2565,6 +2600,10 @@
         showUI();
       } else {
         btn.classList.remove('active');
+      }
+      // Update pan/zoom state for new dimensions (cursor following depends on canPan)
+      if (currentScale === 'native') {
+        setTimeout(updatePanZoomState, 100);
       }
     });
     
@@ -3467,9 +3506,11 @@
       layoutSelector.classList.toggle('visible', showSelector);
       layoutDivider.style.display = (showSelector && currentLayout === 'grid') ? '' : 'none';
       proportionalToggle.classList.toggle('visible', showSelector && currentLayout === 'grid');
-      
-      // Show follow toggle when there are multiple streams
-      followToggle.classList.toggle('visible', showSelector);
+
+      // Show follow toggle when there are multiple streams OR when cursor following is possible
+      // (native scale + can pan in focus mode, or in row mode)
+      const showFollow = showSelector || (currentScale === 'native' && canPan) || currentLayout === 'row';
+      followToggle.classList.toggle('visible', showFollow);
       
       // If we only have 1 stream, force focus layout
       if (streamOrder.length <= 1 && (currentLayout === 'grid' || currentLayout === 'row')) {
@@ -3780,8 +3821,11 @@
         applyPanZoomTransform();
         minimap.classList.remove('visible');
       }
+
+      // Update follow toggle visibility (depends on canPan for cursor following)
+      updateLayoutSelectorVisibility();
     }
-    
+
     function applyPanZoomTransform() {
       if (currentScale === 'native' && mainVideo.videoWidth && mainVideo.videoHeight) {
         const containerRect = mainVideoContainer.getBoundingClientRect();

@@ -827,15 +827,27 @@ void mc_get_cursor_position(uint32_t window_id, double* out_x, double* out_y, do
         *out_window_width = 0;
         *out_window_height = 0;
 
-        // Get global cursor position (bottom-left origin coordinate system)
-        NSPoint mouseLocation = [NSEvent mouseLocation];
-        NSScreen *mainScreen = [NSScreen mainScreen];
-        CGFloat screenHeight = mainScreen.frame.size.height;
+        // Special handling for fullscreen capture (windowID=0)
+        // Fullscreen uses the main display bounds instead of window bounds
+        if (window_id == 0) {
+            CGEventRef event = CGEventCreate(NULL);
+            CGPoint cursorPos = CGEventGetLocation(event);
+            CFRelease(event);
 
-        // Convert to top-left origin coordinate system (matches CGWindow coordinates)
-        CGPoint cursorPos = CGPointMake(mouseLocation.x, screenHeight - mouseLocation.y);
+            // Get main display bounds
+            CGDirectDisplayID mainDisplay = CGMainDisplayID();
+            CGRect displayBounds = CGDisplayBounds(mainDisplay);
 
-        // Get window bounds using CGWindowList
+            *out_window_width = displayBounds.size.width;
+            *out_window_height = displayBounds.size.height;
+
+            // Cursor is always "in window" for fullscreen (it's the whole screen)
+            *out_x = cursorPos.x - displayBounds.origin.x;
+            *out_y = cursorPos.y - displayBounds.origin.y;
+            return;
+        }
+
+        // Get window bounds using CGWindowList first
         CFArrayRef windowList = CGWindowListCopyWindowInfo(
             kCGWindowListOptionIncludingWindow,
             window_id
@@ -865,11 +877,21 @@ void mc_get_cursor_position(uint32_t window_id, double* out_x, double* out_y, do
         *out_window_width = bounds.size.width;
         *out_window_height = bounds.size.height;
 
+        // Get global cursor position using CGEvent (more reliable for fullscreen)
+        CGEventRef event = CGEventCreate(NULL);
+        CGPoint cursorPos = CGEventGetLocation(event);
+        CFRelease(event);
+
+        // Debug logging for fullscreen issues
+        // NSLog(@"Cursor check: cursor=(%.0f,%.0f) bounds=(%.0f,%.0f,%.0f,%.0f)",
+        //       cursorPos.x, cursorPos.y, bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
+
+        // CGEvent coordinates are already in top-left origin (same as CGWindow)
         // Check if cursor is within window bounds
         if (cursorPos.x >= bounds.origin.x &&
-            cursorPos.x <= bounds.origin.x + bounds.size.width &&
+            cursorPos.x < bounds.origin.x + bounds.size.width &&
             cursorPos.y >= bounds.origin.y &&
-            cursorPos.y <= bounds.origin.y + bounds.size.height) {
+            cursorPos.y < bounds.origin.y + bounds.size.height) {
 
             // Calculate position relative to window (0,0 = top-left of window)
             *out_x = cursorPos.x - bounds.origin.x;
