@@ -274,6 +274,26 @@ func (s *Server) BroadcastToViewers(roomCode string, msg SignalMessage) {
 	}
 }
 
+// UpdateRoomPassword updates the password for an existing room
+func (s *Server) UpdateRoomPassword(roomCode string, password string) {
+	s.mu.RLock()
+	room, exists := s.rooms[NormalizeRoomCode(roomCode)]
+	s.mu.RUnlock()
+
+	if !exists {
+		return
+	}
+
+	room.mu.Lock()
+	room.password = password
+	if password != "" {
+		log.Printf("Room %s password updated", roomCode)
+	} else {
+		log.Printf("Room %s password removed", roomCode)
+	}
+	room.mu.Unlock()
+}
+
 // LocalSharer provides an interface for local (in-process) sharing
 // It registers as the sharer for a room and provides methods to interact with viewers
 type LocalSharer struct {

@@ -1001,14 +1001,16 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		return m, nil
 
 	case "p":
-		// Toggle password protection (only if not already sharing)
-		if !m.sharing && !m.serverStarted {
-			m.passwordEnabled = !m.passwordEnabled
-			if m.passwordEnabled {
-				m.password = sig.GeneratePassword()
-			} else {
-				m.password = ""
-			}
+		// Toggle password protection
+		m.passwordEnabled = !m.passwordEnabled
+		if m.passwordEnabled {
+			m.password = sig.GeneratePassword()
+		} else {
+			m.password = ""
+		}
+		// If server is already started, update the room password
+		if m.serverStarted && m.server != nil {
+			m.server.UpdateRoomPassword(m.roomCode, m.password)
 		}
 		return m, nil
 
@@ -2498,10 +2500,8 @@ func (m model) renderHelp() string {
 		toggles = append(toggles, m.renderToggle("q", "performance", false))
 	}
 
-	// Password toggle (only before sharing/server start)
-	if !m.sharing && !m.serverStarted {
-		toggles = append(toggles, m.renderToggle("p", "password", m.passwordEnabled))
-	}
+	// Password toggle
+	toggles = append(toggles, m.renderToggle("p", "password", m.passwordEnabled))
 
 	// Stats toggle (only while sharing)
 	if m.sharing {
