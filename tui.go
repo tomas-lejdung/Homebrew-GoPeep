@@ -206,6 +206,12 @@ type overlayToggleMsg struct {
 	windowID uint32
 }
 
+// overlayFullscreenToggleMsg indicates the fullscreen button was clicked
+type overlayFullscreenToggleMsg struct{}
+
+// overlayClearAllMsg indicates the clear all button was clicked
+type overlayClearAllMsg struct{}
+
 // SourceItem represents a selectable source (fullscreen or window)
 type SourceItem struct {
 	IsFullscreen bool
@@ -296,6 +302,182 @@ type model struct {
 	// Overlay components
 	overlay           *overlay.Overlay
 	overlayController *OverlayController
+
+	// Selection manager (centralizes all selection logic)
+	selection *SelectionManager
+}
+
+// SelectionManager handles all selection state changes centrally.
+// TUI and overlay should use these methods instead of manipulating state directly.
+// This is a stateless helper - methods receive model as parameter for bubbletea compatibility.
+type SelectionManager struct{}
+
+// --- Mutation Methods ---
+
+// ToggleFullscreen toggles fullscreen selection (F key / overlay button).
+// When enabling fullscreen, clears all window selections.
+func (SelectionManager) ToggleFullscreen(m *model) (tea.Model, tea.Cmd) {
+	if len(m.sources) == 0 || !m.sources[0].IsFullscreen {
+		return *m, nil
+	}
+
+	m.fullscreenSelected = !m.fullscreenSelected
+
+	if m.fullscreenSelected {
+		// Enabling fullscreen clears windows
+		m.selectedWindows = make(map[uint32]bool)
+	}
+
+	m.sourceCursor = 0
+	m.syncOverlay()
+
+	return selectionPostChange(m)
+}
+
+// ToggleWindow toggles a window's selection (Space key on window / overlay click).
+// Selecting a window always clears fullscreen mode.
+// Handles capacity limits with LRU eviction.
+func (SelectionManager) ToggleWindow(m *model, windowID uint32) (tea.Model, tea.Cmd) {
+	// Selecting/toggling a window always clears fullscreen
+	m.fullscreenSelected = false
+
+	if m.selectedWindows[windowID] {
+		// Deselect
+		delete(m.selectedWindows, windowID)
+		delete(m.autoShareFocusTimes, windowID)
+	} else {
+		// Select - enforce capacity with LRU eviction
+		if len(m.selectedWindows) >= MaxCaptureInstances {
+			lruID := m.getLRUWindow(windowID)
+			if lruID != 0 {
+				delete(m.selectedWindows, lruID)
+				delete(m.autoShareFocusTimes, lruID)
+				log.Printf("SelectionManager: Evicted LRU window %d to make room", lruID)
+			}
+		}
+		m.selectedWindows[windowID] = true
+		selectionTrackFocusTime(m, windowID)
+	}
+
+	m.syncOverlay()
+
+	return selectionPostChange(m)
+}
+
+// SelectWindow ensures a window is selected (doesn't toggle, for explicit selection).
+// Clears fullscreen mode and handles capacity limits.
+func (SelectionManager) SelectWindow(m *model, windowID uint32) (tea.Model, tea.Cmd) {
+	// Clear fullscreen when selecting a window
+	m.fullscreenSelected = false
+
+	if !m.selectedWindows[windowID] {
+		// Not already selected - add it
+		if len(m.selectedWindows) >= MaxCaptureInstances {
+			lruID := m.getLRUWindow(windowID)
+			if lruID != 0 {
+				delete(m.selectedWindows, lruID)
+				delete(m.autoShareFocusTimes, lruID)
+				log.Printf("SelectionManager: Evicted LRU window %d to make room", lruID)
+			}
+		}
+		m.selectedWindows[windowID] = true
+		selectionTrackFocusTime(m, windowID)
+	}
+
+	m.syncOverlay()
+
+	return selectionPostChange(m)
+}
+
+// DeselectWindow removes a window from selection.
+func (SelectionManager) DeselectWindow(m *model, windowID uint32) (tea.Model, tea.Cmd) {
+	if m.selectedWindows[windowID] {
+		delete(m.selectedWindows, windowID)
+		delete(m.autoShareFocusTimes, windowID)
+		m.syncOverlay()
+		return selectionPostChange(m)
+	}
+
+	return *m, nil
+}
+
+// ClearSelection clears all selections (windows and fullscreen).
+func (SelectionManager) ClearSelection(m *model) (tea.Model, tea.Cmd) {
+	m.fullscreenSelected = false
+	m.selectedWindows = make(map[uint32]bool)
+	m.syncOverlay()
+
+	return selectionPostChange(m)
+}
+
+// --- Getter Methods ---
+
+// IsFullscreenSelected returns true if fullscreen mode is selected.
+func (SelectionManager) IsFullscreenSelected(m *model) bool {
+	return m.fullscreenSelected
+}
+
+// IsWindowSelected returns true if the given window is selected.
+func (SelectionManager) IsWindowSelected(m *model, windowID uint32) bool {
+	return m.selectedWindows[windowID]
+}
+
+// GetSelectedWindows returns a slice of selected window IDs.
+func (SelectionManager) GetSelectedWindows(m *model) []uint32 {
+	result := make([]uint32, 0, len(m.selectedWindows))
+	for id := range m.selectedWindows {
+		result = append(result, id)
+	}
+	return result
+}
+
+// GetSelectedCount returns number of selected windows (0 if fullscreen).
+func (SelectionManager) GetSelectedCount(m *model) int {
+	return len(m.selectedWindows)
+}
+
+// HasSelection returns true if anything is selected (fullscreen or windows).
+func (SelectionManager) HasSelection(m *model) bool {
+	return m.fullscreenSelected || len(m.selectedWindows) > 0
+}
+
+// IsSharing returns true if currently streaming.
+func (SelectionManager) IsSharing(m *model) bool {
+	return m.sharing
+}
+
+// CanAddWindow returns true if another window can be added (capacity check).
+func (SelectionManager) CanAddWindow(m *model) bool {
+	return len(m.selectedWindows) < MaxCaptureInstances
+}
+
+// --- Internal Helper Functions ---
+
+// selectionPostChange handles stream updates after selection changes.
+// If sharing: updates stream dynamically.
+// If not sharing but has selection: starts sharing (Quick Share).
+func selectionPostChange(m *model) (tea.Model, tea.Cmd) {
+	if m.sharing && m.streamer != nil {
+		// Already sharing - dynamically update
+		return m.updateMultiStreamSelection()
+	}
+
+	// Not sharing - check if we should Quick Share
+	if m.fullscreenSelected || len(m.selectedWindows) > 0 {
+		log.Printf("Quick Share: Starting with %d windows, fullscreen=%v",
+			len(m.selectedWindows), m.fullscreenSelected)
+		return m.startMultiWindowSharing()
+	}
+
+	return *m, nil
+}
+
+// selectionTrackFocusTime records the focus time for LRU eviction.
+func selectionTrackFocusTime(m *model, windowID uint32) {
+	if m.autoShareFocusTimes == nil {
+		m.autoShareFocusTimes = make(map[uint32]time.Time)
+	}
+	m.autoShareFocusTimes[windowID] = time.Now()
 }
 
 // findSourceIndex returns the index of the source matching the current capture state.
@@ -370,6 +552,7 @@ func initialModel(config Config) model {
 		qualityMode:     savedSettings.QualityMode,
 		activeColumn:    columnSources,
 		maxReconnects:   10, // Max reconnection attempts
+		selection:       &SelectionManager{},
 	}
 }
 
@@ -549,6 +732,17 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Overlay button was clicked - toggle window selection
 		return m.handleOverlayToggle(msg.windowID)
 
+	case overlayFullscreenToggleMsg:
+		// Fullscreen button was clicked - toggle fullscreen mode
+		if m.autoShareEnabled {
+			return m, nil
+		}
+		return m.selection.ToggleFullscreen(&m)
+
+	case overlayClearAllMsg:
+		// Clear all button was clicked - stop sharing and clear selection
+		return m.selection.ClearSelection(&m)
+
 	case tickMsg:
 		// Periodic refresh (1 second)
 		var cmds []tea.Cmd
@@ -679,6 +873,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				}
 				// If window is already streaming, focus detection loop handles the focus change
 			}
+
+			// Sync overlay to update window count display
+			m.syncOverlay()
 
 			// Continue ticking while in auto-share mode
 			return m, fastTickCmd()
@@ -853,33 +1050,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if m.sourceCursor < len(m.sources) {
 				source := m.sources[m.sourceCursor]
 				if source.IsFullscreen {
-					// Toggle fullscreen selection (clears window selections)
-					m.fullscreenSelected = !m.fullscreenSelected
-					if m.fullscreenSelected {
-						m.selectedWindows = make(map[uint32]bool)
-					}
-
-					// If sharing, dynamically update
-					if m.sharing && m.streamer != nil {
-						return m.updateMultiStreamSelection()
-					}
+					return m.selection.ToggleFullscreen(&m)
 				} else if source.Window != nil {
-					// Clear fullscreen when selecting a window
-					m.fullscreenSelected = false
-					windowID := source.Window.ID
-
-					// Toggle selection
-					if m.selectedWindows[windowID] {
-						delete(m.selectedWindows, windowID)
-					} else if len(m.selectedWindows) < MaxCaptureInstances {
-						m.selectedWindows[windowID] = true
-					}
-					m.syncOverlay() // Update overlay state
-
-					// If sharing, dynamically update without full restart
-					if m.sharing && m.streamer != nil {
-						return m.updateMultiStreamSelection()
-					}
+					return m.selection.ToggleWindow(&m, source.Window.ID)
 				}
 			}
 			return m, nil
@@ -920,19 +1093,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.autoShareEnabled {
 			return m, nil
 		}
-		if len(m.sources) > 0 && m.sources[0].IsFullscreen {
-			m.fullscreenSelected = !m.fullscreenSelected
-			if m.fullscreenSelected {
-				m.selectedWindows = make(map[uint32]bool)
-			}
-			m.sourceCursor = 0 // Move cursor to fullscreen
-
-			// If sharing, dynamically update
-			if m.sharing && m.streamer != nil {
-				return m.updateMultiStreamSelection()
-			}
-		}
-		return m, nil
+		return m.selection.ToggleFullscreen(&m)
 
 	// Quick window selection with number keys (1-9 selects windows, skipping fullscreen)
 	// Disabled in auto-share mode
@@ -1081,9 +1242,6 @@ func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
 // selectWindowByNumber toggles window selection by its display number (1-9)
 // Windows are numbered starting from 1, excluding fullscreen
 func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
-	// Selecting a window clears fullscreen selection
-	m.fullscreenSelected = false
-
 	// Find the nth non-fullscreen source
 	windowCount := 0
 	for i, source := range m.sources {
@@ -1091,21 +1249,7 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 			windowCount++
 			if windowCount == num {
 				m.sourceCursor = i
-				windowID := source.Window.ID
-
-				// Toggle selection
-				if m.selectedWindows[windowID] {
-					delete(m.selectedWindows, windowID)
-				} else if len(m.selectedWindows) < MaxCaptureInstances {
-					m.selectedWindows[windowID] = true
-				}
-				m.syncOverlay() // Update overlay state
-
-				// If sharing, dynamically update without full restart
-				if m.sharing && m.streamer != nil {
-					return m.updateMultiStreamSelection()
-				}
-				return m, nil
+				return m.selection.ToggleWindow(&m, source.Window.ID)
 			}
 		}
 	}
@@ -1117,82 +1261,38 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 // sharing immediately (like pressing Enter in the TUI).
 // When already sharing, this toggles the window selection.
 func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
-	// Find the window in sources
-	var targetWindow *WindowInfo
+	// Check if window exists in sources
+	found := false
 	for _, source := range m.sources {
 		if !source.IsFullscreen && source.Window != nil && source.Window.ID == windowID {
-			targetWindow = source.Window
+			found = true
 			break
 		}
 	}
 
-	if targetWindow == nil {
-		// Window not found in sources, ignore
-		return m, nil
+	if !found {
+		// Window not in sources list - try to get its info directly via CGWindowList
+		// This handles the case where gopeep was started in a different Space
+		windowInfo := GetWindowInfoByID(windowID)
+		if windowInfo == nil {
+			// Window doesn't exist or is invalid
+			log.Printf("Overlay: Window %d not found via CGWindowList, ignoring", windowID)
+			return m, nil
+		}
+
+		// Add window to sources dynamically so it shows in the TUI
+		log.Printf("Overlay: Dynamically adding window %d (%s) to sources", windowID, windowInfo.DisplayName())
+		m.sources = append(m.sources, SourceItem{Window: windowInfo})
 	}
 
-	// If already sharing, toggle selection (existing behavior)
-	if m.sharing {
-		if m.selectedWindows[windowID] {
-			// Deselect
-			delete(m.selectedWindows, windowID)
-		} else {
-			// Select - check if we need to evict LRU window
-			if len(m.selectedWindows) >= MaxCaptureInstances {
-				lruID := m.getLRUWindow(windowID)
-				if lruID != 0 {
-					delete(m.selectedWindows, lruID)
-					delete(m.autoShareFocusTimes, lruID)
-					log.Printf("Overlay: Evicted LRU window %d to make room", lruID)
-				}
-			}
-			m.selectedWindows[windowID] = true
-			// Track focus time for LRU eviction
-			if m.autoShareFocusTimes == nil {
-				m.autoShareFocusTimes = make(map[uint32]time.Time)
-			}
-			m.autoShareFocusTimes[windowID] = time.Now()
-		}
-		m.syncOverlay()
-		if m.streamer != nil {
-			return m.updateMultiStreamSelection()
-		}
-		return m, nil
-	}
-
-	// Not sharing - Quick Share: select this window and start sharing
-	// Clear fullscreen selection (like pressing Space on a window in TUI)
-	m.fullscreenSelected = false
-
-	// Add window to selection if not already selected
-	if !m.selectedWindows[windowID] {
-		if len(m.selectedWindows) >= MaxCaptureInstances {
-			lruID := m.getLRUWindow(windowID)
-			if lruID != 0 {
-				delete(m.selectedWindows, lruID)
-				delete(m.autoShareFocusTimes, lruID)
-				log.Printf("Overlay: Evicted LRU window %d to make room", lruID)
-			}
-		}
-		m.selectedWindows[windowID] = true
-		// Track focus time for LRU eviction
-		if m.autoShareFocusTimes == nil {
-			m.autoShareFocusTimes = make(map[uint32]time.Time)
-		}
-		m.autoShareFocusTimes[windowID] = time.Now()
-	}
-
-	m.syncOverlay()
-
-	log.Printf("Quick Share: Starting with window %d (%s)", windowID, targetWindow.DisplayName())
-	return m.startMultiWindowSharing()
+	return m.selection.ToggleWindow(&m, windowID)
 }
 
 // syncOverlay updates the overlay controller with current state.
 // The overlay handles its own focus detection via a background thread.
 func (m *model) syncOverlay() {
 	if m.overlayController != nil {
-		m.overlayController.Sync(m.selectedWindows, m.sharing, m.autoShareEnabled, m.viewerCount)
+		m.overlayController.Sync(m.selectedWindows, m.sharing, m.autoShareEnabled, m.viewerCount, m.fullscreenSelected)
 	}
 	// Note: The overlay now runs its own update loop via background thread,
 	// so we don't need to call Refresh() here. The overlay queries state
@@ -2584,6 +2684,10 @@ func RunTUI(config Config) error {
 				switch evt.Type {
 				case overlay.EventToggleSelection:
 					p.Send(overlayToggleMsg{windowID: evt.WindowID})
+				case overlay.EventToggleFullscreen:
+					p.Send(overlayFullscreenToggleMsg{})
+				case overlay.EventClearAll:
+					p.Send(overlayClearAllMsg{})
 				}
 			}
 		}()

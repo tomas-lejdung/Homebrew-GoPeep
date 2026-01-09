@@ -16,12 +16,15 @@ package overlay
 
 // Forward declarations for Go callbacks
 void goOverlayButtonClicked(uint32_t windowID);
+void goFullscreenButtonClicked(void);
+void goClearButtonClicked(void);
 int goGetWindowState(uint32_t windowID);
 int goIsManualMode(void);
 int goGetFocusedWindow(uint32_t *outWindowID, double *outX, double *outY, double *outW, double *outH);
 int goGetSelectedWindowCount(void);
 int goIsSharing(void);
 int goGetViewerCount(void);
+int goIsFullscreenSelected(void);
 
 // Window state constants
 #define STATE_NOT_SELECTED 0
@@ -35,12 +38,15 @@ static NSTextField *g_label = nil;
 static NSView *g_indicator = nil;
 static NSTextField *g_arrowLabel = nil;
 static uint32_t g_currentWindowID = 0;
-static BOOL g_overlayEnabled = YES;
-static BOOL g_initialized = NO;
+static _Atomic BOOL g_overlayEnabled = YES;
+static _Atomic BOOL g_initialized = NO;
 static BOOL g_isHovered = NO;
 static BOOL g_isArrowHovered = NO;
 static BOOL g_positionedRight = NO;  // false = left corner, true = right corner
-static volatile BOOL g_shouldStop = NO;
+static _Atomic BOOL g_shouldStop = NO;
+
+// Frame counter for periodic health checks
+static int g_frameCounter = 0;
 
 // Animation state (updated every frame by game loop)
 // g_isAnimating is atomic to synchronize between event tap thread and game loop thread
@@ -68,6 +74,17 @@ static NSView *g_statusDots[4] = {nil, nil, nil, nil};
 static NSTextField *g_viewerLabel = nil;
 static int g_lastSelectedCount = -1;  // For animation on count change
 
+// Fullscreen button (in status indicator)
+static NSView *g_fullscreenButtonView = nil;
+static NSTextField *g_fullscreenLabel = nil;
+static BOOL g_fullscreenButtonHovered = NO;
+static BOOL g_lastFullscreenState = NO;  // For state change tracking
+
+// Clear all button (in status indicator, only visible when sharing)
+static NSView *g_clearButtonView = nil;
+static NSTextField *g_clearButtonLabel = nil;
+static BOOL g_clearButtonHovered = NO;
+
 // Button dimensions
 static const CGFloat kButtonWidth = 130.0;
 static const CGFloat kButtonHeight = 32.0;
@@ -81,6 +98,13 @@ static const CGFloat kStatusDotSize = 10.0;
 static const CGFloat kStatusDotSpacing = 4.0;
 static const CGFloat kStatusPadding = 8.0;
 static const CGFloat kStatusCornerMargin = 20.0;
+
+// Fullscreen button dimensions
+static const CGFloat kFullscreenButtonHeight = 26.0;
+static const CGFloat kFullscreenButtonSpacing = 6.0;  // Gap between status row and button
+
+// Clear button dimensions
+static const CGFloat kClearButtonHeight = 26.0;
 
 static NSColor* overlayBackgroundColor(BOOL hovered) {
     if (hovered) {
@@ -209,8 +233,10 @@ static void pulseOverlay(void) {
 static void updateStatusIndicator(int selectedCount, BOOL isSharing) {
     if (!g_statusWindow) return;
 
-    // Red color for sharing dots
-    NSColor *filledColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];
+    // Red color for sharing dots, blue for selected but not sharing
+    NSColor *sharingColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];
+    NSColor *selectedColor = [NSColor colorWithRed:0.0 green:0.48 blue:1.0 alpha:1.0];  // Blue
+    NSColor *filledColor = isSharing ? sharingColor : selectedColor;
     // Gray outline for empty slots
     NSColor *emptyBorderColor = [NSColor colorWithRed:0.4 green:0.4 blue:0.4 alpha:1.0];
 
@@ -218,7 +244,7 @@ static void updateStatusIndicator(int selectedCount, BOOL isSharing) {
         if (!g_statusDots[i]) continue;
 
         if (i < selectedCount) {
-            // Filled dot (sharing)
+            // Filled dot (selected or sharing)
             g_statusDots[i].layer.backgroundColor = filledColor.CGColor;
             g_statusDots[i].layer.borderWidth = 0;
         } else {
@@ -249,7 +275,7 @@ static void updateStatusIndicator(int selectedCount, BOOL isSharing) {
 
 // Start animation to opposite corner (called from click handler)
 static void startCornerAnimation(BOOL toRight) {
-    if (!g_overlayWindow || !g_initialized) return;
+    if (!g_overlayWindow || !atomic_load(&g_initialized)) return;
 
     // Get current X position
     g_animStartX = g_overlayWindow.frame.origin.x;
@@ -300,15 +326,117 @@ static BOOL isPointOverArrow(CGPoint cgPoint) {
     return NSPointInRect(cocoaPoint, arrowRect);
 }
 
+// Check if a point is over the fullscreen button in the status window
+static BOOL isPointOverFullscreenButton(CGPoint cgPoint) {
+    if (!g_statusWindow || !g_statusWindow.isVisible || !g_fullscreenButtonView) return NO;
+
+    NSScreen *mainScreen = [NSScreen mainScreen];
+    CGFloat screenHeight = mainScreen.frame.size.height;
+    NSPoint cocoaPoint = NSMakePoint(cgPoint.x, screenHeight - cgPoint.y);
+
+    // Get the fullscreen button's frame in screen coordinates
+    NSRect statusFrame = g_statusWindow.frame;
+    NSRect buttonFrame = g_fullscreenButtonView.frame;
+    NSRect buttonScreenRect = NSMakeRect(
+        statusFrame.origin.x + buttonFrame.origin.x,
+        statusFrame.origin.y + buttonFrame.origin.y,
+        buttonFrame.size.width,
+        buttonFrame.size.height
+    );
+
+    return NSPointInRect(cocoaPoint, buttonScreenRect);
+}
+
+// Update fullscreen button appearance based on state and hover
+static void updateFullscreenButton(BOOL isFullscreen, BOOL isHovered) {
+    if (!g_fullscreenButtonView || !g_fullscreenLabel) return;
+
+    // Update background color - clear hover effect with lighter background
+    if (isHovered) {
+        g_fullscreenButtonView.layer.backgroundColor = [NSColor colorWithRed:0.35 green:0.35 blue:0.38 alpha:1.0].CGColor;
+    } else {
+        g_fullscreenButtonView.layer.backgroundColor = [NSColor clearColor].CGColor;  // Transparent, container shows through
+    }
+
+    // Update text and color based on fullscreen state
+    if (isFullscreen) {
+        g_fullscreenLabel.stringValue = @"Fullscreen ✓";
+        g_fullscreenLabel.textColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];  // Red when active
+    } else {
+        g_fullscreenLabel.stringValue = @"Fullscreen";
+        if (isHovered) {
+            g_fullscreenLabel.textColor = [NSColor whiteColor];
+        } else {
+            g_fullscreenLabel.textColor = [NSColor colorWithRed:0.7 green:0.7 blue:0.7 alpha:1.0];
+        }
+    }
+}
+
+// Check if point is over clear button
+static BOOL isPointOverClearButton(CGPoint cgPoint) {
+    if (!g_statusWindow || !g_statusWindow.isVisible || !g_clearButtonView || g_clearButtonView.isHidden) return NO;
+
+    NSScreen *mainScreen = [NSScreen mainScreen];
+    CGFloat screenHeight = mainScreen.frame.size.height;
+    NSPoint cocoaPoint = NSMakePoint(cgPoint.x, screenHeight - cgPoint.y);
+
+    // Get the clear button's frame in screen coordinates
+    NSRect statusFrame = g_statusWindow.frame;
+    NSRect buttonFrame = g_clearButtonView.frame;
+    NSRect buttonScreenRect = NSMakeRect(
+        statusFrame.origin.x + buttonFrame.origin.x,
+        statusFrame.origin.y + buttonFrame.origin.y,
+        buttonFrame.size.width,
+        buttonFrame.size.height
+    );
+
+    return NSPointInRect(cocoaPoint, buttonScreenRect);
+}
+
+// Update clear button appearance based on hover state
+static void updateClearButton(BOOL isHovered) {
+    if (!g_clearButtonView || !g_clearButtonLabel) return;
+
+    if (isHovered) {
+        g_clearButtonView.layer.backgroundColor = [NSColor colorWithRed:0.35 green:0.35 blue:0.38 alpha:1.0].CGColor;
+        g_clearButtonLabel.textColor = [NSColor whiteColor];
+    } else {
+        g_clearButtonView.layer.backgroundColor = [NSColor clearColor].CGColor;
+        g_clearButtonLabel.textColor = [NSColor colorWithRed:0.7 green:0.7 blue:0.7 alpha:1.0];
+    }
+}
+
+// Track if clear button is currently visible (for resize detection)
+static BOOL g_clearButtonVisible = NO;
+
 // Update status indicator visibility and content
 static void updateStatusWindow(void) {
     if (!g_statusWindow) return;
 
+    int isManualMode = goIsManualMode();
     int isSharing = goIsSharing();
     int selectedCount = goGetSelectedWindowCount();
+    int isFullscreen = goIsFullscreenSelected();
 
-    if (isSharing && selectedCount > 0) {
-        updateStatusIndicator(selectedCount, YES);
+    // Show status window in manual mode OR when sharing (including auto mode)
+    if (isManualMode || isSharing) {
+        BOOL isAutoMode = !isManualMode;
+        // Update dots indicator based on current state
+        if (isSharing) {
+            if (isFullscreen) {
+                // Show fullscreen indicator in first dot (filled), rest empty
+                updateStatusIndicator(1, YES);
+            } else {
+                updateStatusIndicator(selectedCount, YES);
+            }
+        } else {
+            // Not sharing yet - show empty dots or selected count
+            if (isFullscreen) {
+                updateStatusIndicator(1, NO);  // Show as selected but not sharing
+            } else {
+                updateStatusIndicator(selectedCount, selectedCount > 0 ? NO : NO);
+            }
+        }
 
         // Update viewer count label
         if (g_viewerLabel) {
@@ -316,14 +444,117 @@ static void updateStatusWindow(void) {
             g_viewerLabel.stringValue = [NSString stringWithFormat:@"%d", viewerCount];
         }
 
+        // Update fullscreen button appearance
+        updateFullscreenButton(isFullscreen, g_fullscreenButtonHovered);
+
+        // Dynamically resize window when clear/auto button visibility changes
+        // In AUTO mode: show "AUTO" indicator when sharing
+        // In MANUAL mode: show "Clear All" when sharing with selections
+        BOOL shouldShowClear = isSharing && (isAutoMode || (selectedCount > 0 || isFullscreen));
+
+        // Update the button label based on mode
+        if (g_clearButtonLabel) {
+            if (isAutoMode) {
+                g_clearButtonLabel.stringValue = @"AUTO";
+            } else {
+                g_clearButtonLabel.stringValue = @"Clear All";
+            }
+        }
+        if (g_clearButtonView && g_clearButtonVisible != shouldShowClear) {
+            g_clearButtonVisible = shouldShowClear;
+            g_clearButtonView.hidden = !shouldShowClear;
+
+            // Calculate dimensions
+            CGFloat dotsWidth = kStatusDotSize * 4 + kStatusDotSpacing * 3;
+            CGFloat viewerLabelWidth = 24.0;
+            CGFloat statusWidth = kStatusPadding + dotsWidth + 8.0 + viewerLabelWidth + kStatusPadding;
+            CGFloat statusRowHeight = kStatusPadding * 2 + kStatusDotSize;
+            CGFloat dividerHeight = 1.0;
+
+            // Height depends on whether clear button is visible
+            CGFloat statusHeight;
+            CGFloat clearButtonY = 0;
+            CGFloat fullscreenY;
+            CGFloat dividerY;
+            CGFloat dotsRowY;
+
+            if (shouldShowClear) {
+                // Full height with clear button
+                statusHeight = statusRowHeight + dividerHeight + kFullscreenButtonHeight + kClearButtonHeight;
+                fullscreenY = kClearButtonHeight;
+                dividerY = kClearButtonHeight + kFullscreenButtonHeight;
+                dotsRowY = kClearButtonHeight + kFullscreenButtonHeight + dividerHeight;
+            } else {
+                // Shorter height without clear button
+                statusHeight = statusRowHeight + dividerHeight + kFullscreenButtonHeight;
+                fullscreenY = 0;
+                dividerY = kFullscreenButtonHeight;
+                dotsRowY = kFullscreenButtonHeight + dividerHeight;
+            }
+
+            // Resize window (keep top-right position fixed)
+            NSScreen *mainScreen = [NSScreen mainScreen];
+            CGFloat statusX = mainScreen.frame.size.width - statusWidth - kStatusCornerMargin;
+            CGFloat statusY = mainScreen.frame.size.height - statusHeight - kStatusCornerMargin - 25;
+            NSRect newFrame = NSMakeRect(statusX, statusY, statusWidth, statusHeight);
+            [g_statusWindow setFrame:newFrame display:YES animate:YES];
+
+            // Resize container view
+            g_statusView.frame = NSMakeRect(0, 0, statusWidth, statusHeight);
+
+            // Reposition fullscreen button
+            NSRect fsFrame = g_fullscreenButtonView.frame;
+            fsFrame.origin.y = fullscreenY;
+            g_fullscreenButtonView.frame = fsFrame;
+
+            // Reposition dots
+            for (int i = 0; i < 4; i++) {
+                if (g_statusDots[i]) {
+                    NSRect dotFrame = g_statusDots[i].frame;
+                    dotFrame.origin.y = dotsRowY + kStatusPadding;
+                    g_statusDots[i].frame = dotFrame;
+                }
+            }
+
+            // Reposition viewer label
+            if (g_viewerLabel) {
+                NSRect viewerFrame = g_viewerLabel.frame;
+                viewerFrame.origin.y = dotsRowY + (statusRowHeight - 14.0) / 2.0;
+                g_viewerLabel.frame = viewerFrame;
+            }
+
+            // Find and reposition divider (it's a subview of statusView)
+            for (NSView *subview in g_statusView.subviews) {
+                if (subview != g_fullscreenButtonView && subview != g_clearButtonView &&
+                    subview != g_viewerLabel && ![subview isKindOfClass:[NSTextField class]]) {
+                    // Check if it's the divider (small height)
+                    if (subview.frame.size.height <= 2.0) {
+                        NSRect divFrame = subview.frame;
+                        divFrame.origin.y = dividerY;
+                        subview.frame = divFrame;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // Update clear button appearance if visible
+        if (g_clearButtonView && !g_clearButtonView.isHidden) {
+            updateClearButton(g_clearButtonHovered);
+        }
+
         if (!g_statusWindow.isVisible) {
             [g_statusWindow orderFrontRegardless];
         }
     } else {
+        // Not in manual mode AND not sharing - hide status window
         if (g_statusWindow.isVisible) {
             [g_statusWindow orderOut:nil];
         }
         g_lastSelectedCount = -1;  // Reset for next time
+        g_lastFullscreenState = NO;
+        g_clearButtonHovered = NO;
+        g_clearButtonVisible = NO;
     }
 }
 
@@ -332,15 +563,23 @@ static void updateStatusWindow(void) {
 // called from other threads if done carefully. The game loop thread is
 // locked with runtime.LockOSThread() for consistency.
 static void doFrame(void) {
-    if (!g_overlayWindow || !g_initialized) {
+    if (!g_overlayWindow || !atomic_load(&g_initialized)) {
         return;
+    }
+
+    // Periodic event tap health check (every ~2 seconds at 60fps)
+    g_frameCounter++;
+    if (g_frameCounter % 120 == 0 && g_eventTap) {
+        if (!CGEventTapIsEnabled(g_eventTap)) {
+            CGEventTapEnable(g_eventTap, true);
+        }
     }
 
     // Always update status indicator (shows when sharing, independent of focus)
     updateStatusWindow();
 
     // Early exit if disabled
-    if (!g_overlayEnabled) {
+    if (!atomic_load(&g_overlayEnabled)) {
         if (g_overlayWindow.isVisible) {
             [g_overlayWindow orderOut:nil];
         }
@@ -423,24 +662,60 @@ static void doFrame(void) {
     [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.001]];
 }
 
-// Event tap callback for mouse clicks
+// Event tap callback for mouse clicks and movement
 static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
     if (type == kCGEventLeftMouseDown) {
-        if (!g_overlayWindow || !g_overlayWindow.isVisible || g_currentWindowID == 0) {
-            return event;
-        }
-
         CGPoint clickPoint = CGEventGetLocation(event);
 
-        if (isPointOverOverlay(clickPoint)) {
-            if (isPointOverArrow(clickPoint)) {
-                // Start animation to opposite corner
-                startCornerAnimation(!g_positionedRight);
-            } else {
-                // Toggle selection
-                goOverlayButtonClicked(g_currentWindowID);
-            }
+        // Check for fullscreen button click first (status window)
+        if (isPointOverFullscreenButton(clickPoint)) {
+            goFullscreenButtonClicked();
             return NULL; // Consume the click
+        }
+
+        // Check for clear all button click (status window)
+        // Only handle click in manual mode - in auto mode it's just an indicator
+        if (isPointOverClearButton(clickPoint)) {
+            if (goIsManualMode()) {
+                goClearButtonClicked();
+                return NULL; // Consume the click
+            }
+            // In AUTO mode, don't consume - let it pass through
+        }
+
+        // Check for overlay button click (window share button)
+        if (g_overlayWindow && g_overlayWindow.isVisible && g_currentWindowID != 0) {
+            if (isPointOverOverlay(clickPoint)) {
+                if (isPointOverArrow(clickPoint)) {
+                    // Start animation to opposite corner
+                    startCornerAnimation(!g_positionedRight);
+                } else {
+                    // Toggle selection
+                    goOverlayButtonClicked(g_currentWindowID);
+                }
+                return NULL; // Consume the click
+            }
+        }
+    } else if (type == kCGEventMouseMoved) {
+        // Track hover state for fullscreen button
+        CGPoint mousePoint = CGEventGetLocation(event);
+        BOOL wasHovered = g_fullscreenButtonHovered;
+        g_fullscreenButtonHovered = isPointOverFullscreenButton(mousePoint);
+
+        // Update button appearance if hover state changed
+        if (wasHovered != g_fullscreenButtonHovered) {
+            int isFullscreen = goIsFullscreenSelected();
+            updateFullscreenButton(isFullscreen, g_fullscreenButtonHovered);
+        }
+
+        // Track hover state for clear button (only in manual mode - it's clickable)
+        BOOL wasClearHovered = g_clearButtonHovered;
+        // Only show hover effect in manual mode where button is clickable
+        g_clearButtonHovered = goIsManualMode() && isPointOverClearButton(mousePoint);
+
+        // Update clear button appearance if hover state changed
+        if (wasClearHovered != g_clearButtonHovered) {
+            updateClearButton(g_clearButtonHovered);
         }
     } else if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
         if (g_eventTap) {
@@ -460,7 +735,7 @@ static void* eventTapThread(void* arg) {
             CFRunLoopAddSource(g_tapRunLoop, g_eventTapSource, kCFRunLoopCommonModes);
         }
 
-        while (!g_shouldStop) {
+        while (!atomic_load(&g_shouldStop)) {
             @autoreleasepool {
                 CFRunLoopRunInMode(kCFRunLoopDefaultMode, 0.1, false);
             }
@@ -476,7 +751,7 @@ static void* eventTapThread(void* arg) {
 }
 
 static void createOverlay(void) {
-    if (g_initialized) return;
+    if (atomic_load(&g_initialized)) return;
 
     @autoreleasepool {
         [NSApplication sharedApplication];
@@ -553,12 +828,15 @@ static void createOverlay(void) {
         g_arrowLabel.alignment = NSTextAlignmentCenter;
         [g_buttonView addSubview:g_arrowLabel];
 
-        // Create status indicator window (top-right corner, shows when sharing)
+        // Create status indicator window (top-right corner, shows status and fullscreen toggle)
         // Width: padding + 4 dots + spacing + divider space + viewer label + padding
         CGFloat dotsWidth = kStatusDotSize * 4 + kStatusDotSpacing * 3;
         CGFloat viewerLabelWidth = 24.0;  // Space for "99" (just number)
         CGFloat statusWidth = kStatusPadding + dotsWidth + 8.0 + viewerLabelWidth + kStatusPadding;
-        CGFloat statusHeight = kStatusPadding * 2 + kStatusDotSize;
+        CGFloat statusRowHeight = kStatusPadding * 2 + kStatusDotSize;
+        CGFloat dividerHeight = 1.0;
+        // Initial height: status row + divider + fullscreen button row (no clear button yet)
+        CGFloat statusHeight = statusRowHeight + dividerHeight + kFullscreenButtonHeight;
         NSScreen *mainScreen = [NSScreen mainScreen];
         CGFloat statusX = mainScreen.frame.size.width - statusWidth - kStatusCornerMargin;
         CGFloat statusY = mainScreen.frame.size.height - statusHeight - kStatusCornerMargin - 25; // Below menu bar
@@ -573,23 +851,25 @@ static void createOverlay(void) {
         g_statusWindow.backgroundColor = [NSColor clearColor];
         g_statusWindow.opaque = NO;
         g_statusWindow.hasShadow = YES;
-        g_statusWindow.ignoresMouseEvents = YES;  // Non-interactive
+        g_statusWindow.ignoresMouseEvents = NO;  // Interactive (for fullscreen button)
         g_statusWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
                                             NSWindowCollectionBehaviorStationary |
                                             NSWindowCollectionBehaviorFullScreenAuxiliary |
                                             NSWindowCollectionBehaviorIgnoresCycle;
         g_statusWindow.alphaValue = 1.0;
 
+        // Single container with rounded corners
         g_statusView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, statusWidth, statusHeight)];
         g_statusView.wantsLayer = YES;
-        g_statusView.layer.cornerRadius = statusHeight / 2.0;  // Pill shape
-        g_statusView.layer.backgroundColor = [NSColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.7].CGColor;
+        g_statusView.layer.cornerRadius = 10.0;  // Rounded rectangle
+        g_statusView.layer.backgroundColor = [NSColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.75].CGColor;
         g_statusWindow.contentView = g_statusView;
 
-        // Create 4 dots
+        // Top row: dots + viewer count (initially without clear button)
+        CGFloat dotsRowY = kFullscreenButtonHeight + dividerHeight;
         for (int i = 0; i < 4; i++) {
             CGFloat dotX = kStatusPadding + i * (kStatusDotSize + kStatusDotSpacing);
-            CGFloat dotY = kStatusPadding;
+            CGFloat dotY = dotsRowY + kStatusPadding;
             g_statusDots[i] = [[NSView alloc] initWithFrame:NSMakeRect(dotX, dotY, kStatusDotSize, kStatusDotSize)];
             g_statusDots[i].wantsLayer = YES;
             g_statusDots[i].layer.cornerRadius = kStatusDotSize / 2.0;
@@ -600,9 +880,9 @@ static void createOverlay(void) {
             [g_statusView addSubview:g_statusDots[i]];
         }
 
-        // Create viewer count label (after dots)
+        // Viewer count label (after dots)
         CGFloat viewerX = kStatusPadding + dotsWidth + 8.0;
-        CGFloat viewerY = (statusHeight - 14.0) / 2.0;  // Center vertically
+        CGFloat viewerY = dotsRowY + (statusRowHeight - 14.0) / 2.0;
         g_viewerLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(viewerX, viewerY, viewerLabelWidth, 14.0)];
         g_viewerLabel.stringValue = @"0";
         g_viewerLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
@@ -614,7 +894,59 @@ static void createOverlay(void) {
         g_viewerLabel.alignment = NSTextAlignmentLeft;
         [g_statusView addSubview:g_viewerLabel];
 
-        CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown);
+        // Divider line between rows (initially without clear button)
+        NSView *divider = [[NSView alloc] initWithFrame:NSMakeRect(kStatusPadding, kFullscreenButtonHeight, statusWidth - 2 * kStatusPadding, dividerHeight)];
+        divider.wantsLayer = YES;
+        divider.layer.backgroundColor = [NSColor colorWithRed:0.3 green:0.3 blue:0.3 alpha:1.0].CGColor;
+        [g_statusView addSubview:divider];
+
+        // Middle row: Fullscreen toggle button (clickable area, initially at bottom)
+        g_fullscreenButtonView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, statusWidth, kFullscreenButtonHeight)];
+        g_fullscreenButtonView.wantsLayer = YES;
+        g_fullscreenButtonView.layer.cornerRadius = 0;  // Part of container, no separate rounding
+        g_fullscreenButtonView.layer.backgroundColor = [NSColor clearColor].CGColor;  // Transparent by default
+        [g_statusView addSubview:g_fullscreenButtonView];
+
+        // Fullscreen button label - properly centered
+        CGFloat fsLabelHeight = 14.0;
+        CGFloat fsLabelY = (kFullscreenButtonHeight - fsLabelHeight) / 2.0;
+        g_fullscreenLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(0, fsLabelY, statusWidth, fsLabelHeight)];
+        g_fullscreenLabel.stringValue = @"Fullscreen";
+        g_fullscreenLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
+        g_fullscreenLabel.textColor = [NSColor colorWithRed:0.7 green:0.7 blue:0.7 alpha:1.0];
+        g_fullscreenLabel.backgroundColor = [NSColor clearColor];
+        g_fullscreenLabel.bordered = NO;
+        g_fullscreenLabel.editable = NO;
+        g_fullscreenLabel.selectable = NO;
+        g_fullscreenLabel.alignment = NSTextAlignmentCenter;
+        [g_fullscreenButtonView addSubview:g_fullscreenLabel];
+
+        // Bottom row: Clear All button (only visible when sharing)
+        g_clearButtonView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, statusWidth, kClearButtonHeight)];
+        g_clearButtonView.wantsLayer = YES;
+        g_clearButtonView.layer.cornerRadius = 0;
+        g_clearButtonView.layer.backgroundColor = [NSColor clearColor].CGColor;
+        // Round only the bottom corners
+        g_clearButtonView.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
+        g_clearButtonView.hidden = YES;  // Initially hidden (only shown when sharing)
+        [g_statusView addSubview:g_clearButtonView];
+
+        // Clear button label
+        CGFloat clearLabelHeight = 14.0;
+        CGFloat clearLabelY = (kClearButtonHeight - clearLabelHeight) / 2.0;
+        g_clearButtonLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(0, clearLabelY, statusWidth, clearLabelHeight)];
+        g_clearButtonLabel.stringValue = @"Clear All";
+        g_clearButtonLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
+        g_clearButtonLabel.textColor = [NSColor colorWithRed:0.7 green:0.7 blue:0.7 alpha:1.0];
+        g_clearButtonLabel.backgroundColor = [NSColor clearColor];
+        g_clearButtonLabel.bordered = NO;
+        g_clearButtonLabel.editable = NO;
+        g_clearButtonLabel.selectable = NO;
+        g_clearButtonLabel.alignment = NSTextAlignmentCenter;
+        [g_clearButtonView addSubview:g_clearButtonLabel];
+
+        // Event tap for clicks AND mouse movement (for hover)
+        CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown) | CGEventMaskBit(kCGEventMouseMoved);
         g_eventTap = CGEventTapCreate(
             kCGSessionEventTap,
             kCGHeadInsertEventTap,
@@ -640,7 +972,7 @@ static void createOverlay(void) {
             if (g_eventTapSource) {
                 CGEventTapEnable(g_eventTap, true);
 
-                g_shouldStop = NO;
+                atomic_store(&g_shouldStop, NO);
                 pthread_t tapThread;
                 pthread_create(&tapThread, NULL, eventTapThread, NULL);
                 pthread_detach(tapThread);
@@ -650,14 +982,14 @@ static void createOverlay(void) {
             }
         }
 
-        g_initialized = YES;
+        atomic_store(&g_initialized, YES);
         [g_overlayWindow display];
     }
 }
 
 static void destroyOverlay(void) {
-    g_shouldStop = YES;
-    g_isAnimating = NO;
+    atomic_store(&g_shouldStop, YES);
+    atomic_store(&g_isAnimating, NO);
 
     usleep(200000);
 
@@ -696,11 +1028,11 @@ static void destroyOverlay(void) {
     g_viewerLabel = nil;
     g_lastSelectedCount = -1;
 
-    g_initialized = NO;
+    atomic_store(&g_initialized, NO);
 }
 
 static void setOverlayEnabled(BOOL enabled) {
-    g_overlayEnabled = enabled;
+    atomic_store(&g_overlayEnabled, enabled);
 }
 
 */
@@ -829,6 +1161,58 @@ func goGetViewerCount() C.int {
 	}
 
 	return C.int(o.controller.GetViewerCount())
+}
+
+//export goIsFullscreenSelected
+func goIsFullscreenSelected() C.int {
+	globalMu.RLock()
+	o := globalOverlay
+	globalMu.RUnlock()
+
+	if o == nil || o.controller == nil {
+		return 0
+	}
+
+	if o.controller.IsFullscreenSelected() {
+		return 1
+	}
+	return 0
+}
+
+//export goFullscreenButtonClicked
+func goFullscreenButtonClicked() {
+	if time.Since(lastClickTime) < 300*time.Millisecond {
+		return
+	}
+	lastClickTime = time.Now()
+
+	globalMu.RLock()
+	o := globalOverlay
+	globalMu.RUnlock()
+
+	if o != nil {
+		o.sendEvent(Event{
+			Type: EventToggleFullscreen,
+		})
+	}
+}
+
+//export goClearButtonClicked
+func goClearButtonClicked() {
+	if time.Since(lastClickTime) < 300*time.Millisecond {
+		return
+	}
+	lastClickTime = time.Now()
+
+	globalMu.RLock()
+	o := globalOverlay
+	globalMu.RUnlock()
+
+	if o != nil {
+		o.sendEvent(Event{
+			Type: EventClearAll,
+		})
+	}
 }
 
 // runLoop is the 60fps game loop for the overlay.

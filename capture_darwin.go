@@ -149,6 +149,84 @@ int has_screen_recording_permission() {
     }
     return 0;
 }
+
+// Get window info by ID using CGWindowList (fast, works across Spaces)
+// Returns 1 if found, 0 if not found
+int get_window_by_id(uint32_t window_id, WindowInfo* out_info) {
+    @autoreleasepool {
+        // Query the specific window by ID
+        CFArrayRef windowList = CGWindowListCopyWindowInfo(
+            kCGWindowListOptionIncludingWindow,
+            window_id
+        );
+
+        if (windowList == NULL || CFArrayGetCount(windowList) == 0) {
+            if (windowList) CFRelease(windowList);
+            return 0;
+        }
+
+        NSDictionary *info = (__bridge NSDictionary *)CFArrayGetValueAtIndex(windowList, 0);
+
+        // Get window ID (verify it matches)
+        NSNumber *windowIDNum = info[(NSString *)kCGWindowNumber];
+        if (!windowIDNum || windowIDNum.unsignedIntValue != window_id) {
+            CFRelease(windowList);
+            return 0;
+        }
+
+        // Get owner name
+        NSString *ownerName = info[(NSString *)kCGWindowOwnerName];
+        if (!ownerName || ownerName.length == 0) {
+            ownerName = @"Unknown";
+        }
+
+        // Get window name (title)
+        NSString *windowName = info[(NSString *)kCGWindowName];
+        if (!windowName) {
+            windowName = @"";
+        }
+
+        // Get bounds
+        NSDictionary *boundsDict = info[(NSString *)kCGWindowBounds];
+        if (!boundsDict) {
+            CFRelease(windowList);
+            return 0;
+        }
+
+        CGRect bounds;
+        if (!CGRectMakeWithDictionaryRepresentation((__bridge CFDictionaryRef)boundsDict, &bounds)) {
+            CFRelease(windowList);
+            return 0;
+        }
+
+        // Skip tiny windows
+        if (bounds.size.width < 100 || bounds.size.height < 100) {
+            CFRelease(windowList);
+            return 0;
+        }
+
+        // Fill out the result
+        out_info->window_id = window_id;
+        out_info->owner_name = strdup([ownerName UTF8String]);
+        out_info->window_name = strdup([windowName UTF8String]);
+        out_info->x = (int32_t)bounds.origin.x;
+        out_info->y = (int32_t)bounds.origin.y;
+        out_info->width = (int32_t)bounds.size.width;
+        out_info->height = (int32_t)bounds.size.height;
+        out_info->on_screen = 1; // If we can query it, it's on screen
+
+        CFRelease(windowList);
+        return 1;
+    }
+}
+
+// Free a single WindowInfo
+void free_window_info(WindowInfo* info) {
+    if (info != NULL) {
+        free(info->owner_name);
+        free(info->window_name);
+    }
+}
 */
 import "C"
 
@@ -203,6 +281,28 @@ func ListWindows() ([]WindowInfo, error) {
 	}
 
 	return windows, nil
+}
+
+// GetWindowInfoByID returns window info for a specific window ID.
+// Uses CGWindowList which works across Spaces, unlike ScreenCaptureKit.
+// Returns nil if the window doesn't exist or is invalid.
+func GetWindowInfoByID(windowID uint32) *WindowInfo {
+	var cInfo C.WindowInfo
+	if C.get_window_by_id(C.uint32_t(windowID), &cInfo) == 0 {
+		return nil
+	}
+	defer C.free_window_info(&cInfo)
+
+	return &WindowInfo{
+		ID:         uint32(cInfo.window_id),
+		OwnerName:  C.GoString(cInfo.owner_name),
+		WindowName: C.GoString(cInfo.window_name),
+		X:          int32(cInfo.x),
+		Y:          int32(cInfo.y),
+		Width:      int32(cInfo.width),
+		Height:     int32(cInfo.height),
+		OnScreen:   cInfo.on_screen != 0,
+	}
 }
 
 // BGRAFrame holds raw BGRA frame data without conversion
