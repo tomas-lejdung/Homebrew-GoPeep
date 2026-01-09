@@ -80,3 +80,17 @@ func (c *OverlayController) GetFocusedWindow() *overlay.FocusedWindowInfo {
 		Height:   info.Bounds.Height,
 	}
 }
+
+// GetSelectedWindowCount implements overlay.Controller.
+func (c *OverlayController) GetSelectedWindowCount() int {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return len(c.selectedWindows)
+}
+
+// IsSharing implements overlay.Controller.
+func (c *OverlayController) IsSharing() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.sharing
+}

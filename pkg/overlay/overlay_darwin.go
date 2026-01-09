@@ -19,6 +19,8 @@ void goOverlayButtonClicked(uint32_t windowID);
 int goGetWindowState(uint32_t windowID);
 int goIsManualMode(void);
 int goGetFocusedWindow(uint32_t *outWindowID, double *outX, double *outY, double *outW, double *outH);
+int goGetSelectedWindowCount(void);
+int goIsSharing(void);
 
 // Window state constants
 #define STATE_NOT_SELECTED 0
@@ -58,6 +60,12 @@ static CFRunLoopRef g_tapRunLoop = NULL;
 // Cached window bounds for positioning
 static CGRect g_lastWindowBounds = {0};
 
+// Corner status indicator (shows when sharing, regardless of focus)
+static NSWindow *g_statusWindow = nil;
+static NSView *g_statusView = nil;
+static NSView *g_statusDots[4] = {nil, nil, nil, nil};
+static int g_lastSelectedCount = -1;  // For animation on count change
+
 // Button dimensions
 static const CGFloat kButtonWidth = 130.0;
 static const CGFloat kButtonHeight = 32.0;
@@ -65,6 +73,12 @@ static const CGFloat kCornerRadius = 8.0;
 static const CGFloat kMargin = 16.0;
 static const CGFloat kIndicatorSize = 8.0;
 static const CGFloat kArrowWidth = 20.0;
+
+// Status indicator dimensions
+static const CGFloat kStatusDotSize = 10.0;
+static const CGFloat kStatusDotSpacing = 4.0;
+static const CGFloat kStatusPadding = 8.0;
+static const CGFloat kStatusCornerMargin = 20.0;
 
 static NSColor* overlayBackgroundColor(BOOL hovered) {
     if (hovered) {
@@ -189,6 +203,48 @@ static void pulseOverlay(void) {
     [g_indicator.layer addAnimation:pulse forKey:@"pulse"];
 }
 
+// Update status indicator dots based on selected count
+static void updateStatusIndicator(int selectedCount, BOOL isSharing) {
+    if (!g_statusWindow) return;
+
+    // Red color for sharing dots
+    NSColor *filledColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];
+    // Gray outline for empty slots
+    NSColor *emptyBorderColor = [NSColor colorWithRed:0.4 green:0.4 blue:0.4 alpha:1.0];
+
+    for (int i = 0; i < 4; i++) {
+        if (!g_statusDots[i]) continue;
+
+        if (i < selectedCount) {
+            // Filled dot (sharing)
+            g_statusDots[i].layer.backgroundColor = filledColor.CGColor;
+            g_statusDots[i].layer.borderWidth = 0;
+        } else {
+            // Empty slot (outline only)
+            g_statusDots[i].layer.backgroundColor = [NSColor clearColor].CGColor;
+            g_statusDots[i].layer.borderColor = emptyBorderColor.CGColor;
+            g_statusDots[i].layer.borderWidth = 1.5;
+        }
+    }
+
+    // Pulse animation when count changes
+    if (g_lastSelectedCount != -1 && selectedCount != g_lastSelectedCount && selectedCount > 0) {
+        // Animate the dot that just changed (either new or removed)
+        int changedDot = (selectedCount > g_lastSelectedCount) ? (selectedCount - 1) : g_lastSelectedCount - 1;
+        if (changedDot >= 0 && changedDot < 4 && g_statusDots[changedDot]) {
+            CAKeyframeAnimation *pulse = [CAKeyframeAnimation animationWithKeyPath:@"transform.scale"];
+            pulse.values = @[@1.0, @1.3, @1.0];
+            pulse.duration = 0.2;
+            pulse.timingFunctions = @[
+                [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseOut],
+                [CAMediaTimingFunction functionWithName:kCAMediaTimingFunctionEaseIn]
+            ];
+            [g_statusDots[changedDot].layer addAnimation:pulse forKey:@"pulse"];
+        }
+    }
+    g_lastSelectedCount = selectedCount;
+}
+
 // Start animation to opposite corner (called from click handler)
 static void startCornerAnimation(BOOL toRight) {
     if (!g_overlayWindow || !g_initialized) return;
@@ -242,6 +298,26 @@ static BOOL isPointOverArrow(CGPoint cgPoint) {
     return NSPointInRect(cocoaPoint, arrowRect);
 }
 
+// Update status indicator visibility and content
+static void updateStatusWindow(void) {
+    if (!g_statusWindow) return;
+
+    int isSharing = goIsSharing();
+    int selectedCount = goGetSelectedWindowCount();
+
+    if (isSharing && selectedCount > 0) {
+        updateStatusIndicator(selectedCount, YES);
+        if (!g_statusWindow.isVisible) {
+            [g_statusWindow orderFrontRegardless];
+        }
+    } else {
+        if (g_statusWindow.isVisible) {
+            [g_statusWindow orderOut:nil];
+        }
+        g_lastSelectedCount = -1;  // Reset for next time
+    }
+}
+
 // Main frame update - called by game loop at 60fps
 // Note: NSWindow was created on main thread, but most operations can be
 // called from other threads if done carefully. The game loop thread is
@@ -250,6 +326,9 @@ static void doFrame(void) {
     if (!g_overlayWindow || !g_initialized) {
         return;
     }
+
+    // Always update status indicator (shows when sharing, independent of focus)
+    updateStatusWindow();
 
     // Early exit if disabled
     if (!g_overlayEnabled) {
@@ -476,6 +555,50 @@ static void createOverlay(void) {
         g_arrowLabel.alignment = NSTextAlignmentCenter;
         [g_buttonView addSubview:g_arrowLabel];
 
+        // Create status indicator window (top-right corner, shows when sharing)
+        CGFloat statusWidth = kStatusPadding * 2 + kStatusDotSize * 4 + kStatusDotSpacing * 3;
+        CGFloat statusHeight = kStatusPadding * 2 + kStatusDotSize;
+        NSScreen *mainScreen = [NSScreen mainScreen];
+        CGFloat statusX = mainScreen.frame.size.width - statusWidth - kStatusCornerMargin;
+        CGFloat statusY = mainScreen.frame.size.height - statusHeight - kStatusCornerMargin - 25; // Below menu bar
+
+        NSRect statusFrame = NSMakeRect(statusX, statusY, statusWidth, statusHeight);
+        g_statusWindow = [[NSWindow alloc] initWithContentRect:statusFrame
+                                                      styleMask:NSWindowStyleMaskBorderless
+                                                        backing:NSBackingStoreBuffered
+                                                          defer:NO];
+
+        g_statusWindow.level = NSFloatingWindowLevel;
+        g_statusWindow.backgroundColor = [NSColor clearColor];
+        g_statusWindow.opaque = NO;
+        g_statusWindow.hasShadow = YES;
+        g_statusWindow.ignoresMouseEvents = YES;  // Non-interactive
+        g_statusWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
+                                            NSWindowCollectionBehaviorStationary |
+                                            NSWindowCollectionBehaviorFullScreenAuxiliary |
+                                            NSWindowCollectionBehaviorIgnoresCycle;
+        g_statusWindow.alphaValue = 1.0;
+
+        g_statusView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, statusWidth, statusHeight)];
+        g_statusView.wantsLayer = YES;
+        g_statusView.layer.cornerRadius = statusHeight / 2.0;  // Pill shape
+        g_statusView.layer.backgroundColor = [NSColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.7].CGColor;
+        g_statusWindow.contentView = g_statusView;
+
+        // Create 4 dots
+        for (int i = 0; i < 4; i++) {
+            CGFloat dotX = kStatusPadding + i * (kStatusDotSize + kStatusDotSpacing);
+            CGFloat dotY = kStatusPadding;
+            g_statusDots[i] = [[NSView alloc] initWithFrame:NSMakeRect(dotX, dotY, kStatusDotSize, kStatusDotSize)];
+            g_statusDots[i].wantsLayer = YES;
+            g_statusDots[i].layer.cornerRadius = kStatusDotSize / 2.0;
+            // Initial state: empty outline
+            g_statusDots[i].layer.backgroundColor = [NSColor clearColor].CGColor;
+            g_statusDots[i].layer.borderColor = [NSColor colorWithRed:0.4 green:0.4 blue:0.4 alpha:1.0].CGColor;
+            g_statusDots[i].layer.borderWidth = 1.5;
+            [g_statusView addSubview:g_statusDots[i]];
+        }
+
         CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown);
         g_eventTap = CGEventTapCreate(
             kCGSessionEventTap,
@@ -545,6 +668,18 @@ static void destroyOverlay(void) {
     g_label = nil;
     g_indicator = nil;
     g_arrowLabel = nil;
+
+    // Clean up status indicator
+    if (g_statusWindow) {
+        [g_statusWindow orderOut:nil];
+        g_statusWindow = nil;
+    }
+    g_statusView = nil;
+    for (int i = 0; i < 4; i++) {
+        g_statusDots[i] = nil;
+    }
+    g_lastSelectedCount = -1;
+
     g_initialized = NO;
 }
 
@@ -636,6 +771,35 @@ func goGetFocusedWindow(outWindowID *C.uint32_t, outX, outY, outW, outH *C.doubl
 	*outW = C.double(info.Width)
 	*outH = C.double(info.Height)
 	return 1
+}
+
+//export goGetSelectedWindowCount
+func goGetSelectedWindowCount() C.int {
+	globalMu.RLock()
+	o := globalOverlay
+	globalMu.RUnlock()
+
+	if o == nil || o.controller == nil {
+		return 0
+	}
+
+	return C.int(o.controller.GetSelectedWindowCount())
+}
+
+//export goIsSharing
+func goIsSharing() C.int {
+	globalMu.RLock()
+	o := globalOverlay
+	globalMu.RUnlock()
+
+	if o == nil || o.controller == nil {
+		return 0
+	}
+
+	if o.controller.IsSharing() {
+		return 1
+	}
+	return 0
 }
 
 // runLoop is the 60fps game loop for the overlay.
