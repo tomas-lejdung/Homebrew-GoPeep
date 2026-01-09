@@ -1198,8 +1198,8 @@ func (ms *Streamer) newPipeline(trackInfo *StreamTrackInfo, capture *CaptureInst
 		qualityMode:    ms.qualityMode,
 		stopChan:       make(chan struct{}),
 		fpsChanged:     make(chan int, 1),
-		capturedFrames: make(chan capturedFrame, 4),
-		encodedFrames:  make(chan encodedFrame, 4),
+		capturedFrames: make(chan capturedFrame, 2),
+		encodedFrames:  make(chan encodedFrame, 2),
 	}
 }
 
@@ -1816,8 +1816,8 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 				encoder:        encoder,
 				stopChan:       make(chan struct{}),
 				fpsChanged:     make(chan int, 1),
-				capturedFrames: make(chan capturedFrame, 4),
-				encodedFrames:  make(chan encodedFrame, 4),
+				capturedFrames: make(chan capturedFrame, 2),
+				encodedFrames:  make(chan encodedFrame, 2),
 				fps:            ms.fps,
 				bitrate:        bitrate,
 				focusBitrate:   ms.focusBitrate,
@@ -1885,8 +1885,8 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 				encoder:        encoder,
 				stopChan:       make(chan struct{}),
 				fpsChanged:     make(chan int, 1),
-				capturedFrames: make(chan capturedFrame, 4),
-				encodedFrames:  make(chan encodedFrame, 4),
+				capturedFrames: make(chan capturedFrame, 2),
+				encodedFrames:  make(chan encodedFrame, 2),
 				fps:            ms.fps,
 				bitrate:        bitrate,
 				focusBitrate:   ms.focusBitrate,

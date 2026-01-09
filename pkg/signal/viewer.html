@@ -2803,8 +2803,8 @@
               if (!Number.isFinite(bufferDelay) || bufferDelay <= 0 || bufferDelay > 10) {
                 console.debug('Ignoring invalid jitter buffer delay:', bufferDelay,
                   '(delay:', videoStats.jitterBufferDelay, 'emittedCount:', videoStats.jitterBufferEmittedCount, ')');
-              } else if (bufferDelay > 0.5) {
-                // If buffer delay exceeds 500ms, we're falling behind - trigger skip-to-live
+              } else if (bufferDelay > 1.0) {
+                // If buffer delay exceeds 1 second, we're falling behind - trigger skip-to-live
                 console.warn('High buffer delay detected:', (bufferDelay * 1000).toFixed(0), 'ms - triggering skip-to-live');
                 skipToLive();
               }
@@ -3097,13 +3097,6 @@
       pc.ontrack = (event) => {
         const track = event.track;
         let stream = event.streams[0];
-
-        // Minimize jitter buffer for low latency
-        // playoutDelayHint tells the browser to minimize buffering
-        const receiver = event.receiver;
-        if (receiver && receiver.playoutDelayHint !== undefined) {
-          receiver.playoutDelayHint = 0; // Request minimal playout delay
-        }
 
         // If no stream provided, create one from the track
         if (!stream) {
