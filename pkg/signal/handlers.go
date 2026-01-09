@@ -103,6 +103,9 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 			close(oldSharer.send)
 		}
 		room.sharer = c
+		// Clear reservation since sharer has now joined
+		room.reserved = false
+
 		// Set room password if provided by sharer
 		if msg.Password != "" {
 			room.password = msg.Password

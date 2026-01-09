@@ -1,9 +1,11 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"os/exec"
 	"strings"
@@ -38,6 +40,12 @@ type osFocusChangedMsg struct {
 	windowID uint32
 }
 
+// roomCodeReceivedMsg indicates room code was received from server
+type roomCodeReceivedMsg struct {
+	roomCode string
+	err      error
+}
+
 // copyToClipboard copies text to the macOS clipboard using pbcopy
 func copyToClipboard(text string) error {
 	cmd := exec.Command("pbcopy")
@@ -67,6 +75,37 @@ func normalizeSignalURL(url string) string {
 		return "wss://" + url
 	}
 	return url
+}
+
+// requestRoomCodeFromServer requests a unique room code from the signal server
+func requestRoomCodeFromServer(signalURL string) tea.Cmd {
+	return func() tea.Msg {
+		// Convert WebSocket URL to HTTP URL for the API call
+		apiURL := signalURL
+		apiURL = strings.Replace(apiURL, "wss://", "https://", 1)
+		apiURL = strings.Replace(apiURL, "ws://", "http://", 1)
+		apiURL = strings.TrimSuffix(apiURL, "/") + "/api/reserve"
+
+		client := &http.Client{Timeout: 5 * time.Second}
+		resp, err := client.Post(apiURL, "application/json", nil)
+		if err != nil {
+			return roomCodeReceivedMsg{err: fmt.Errorf("failed to request room code: %w", err)}
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return roomCodeReceivedMsg{err: fmt.Errorf("server returned status %d", resp.StatusCode)}
+		}
+
+		var result struct {
+			Room string `json:"room"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+			return roomCodeReceivedMsg{err: fmt.Errorf("failed to decode response: %w", err)}
+		}
+
+		return roomCodeReceivedMsg{roomCode: result.Room}
+	}
 }
 
 // Column indices
@@ -335,10 +374,25 @@ func initialModel(config Config) model {
 }
 
 func (m model) Init() tea.Cmd {
-	return tea.Batch(
+	cmds := []tea.Cmd{
 		refreshWindows,
 		tea.SetWindowTitle("GoPeep - Screen Sharing"),
-	)
+	}
+
+	// Generate room code on startup
+	if !m.config.LocalMode && m.config.SignalURL != "" {
+		// Remote mode: request from server
+		signalURL := normalizeSignalURL(m.config.SignalURL)
+		cmds = append(cmds, requestRoomCodeFromServer(signalURL))
+	} else {
+		// Local mode: generate immediately
+		cmds = append(cmds, func() tea.Msg {
+			code := sig.GenerateRoomCode()
+			return roomCodeReceivedMsg{roomCode: code}
+		})
+	}
+
+	return tea.Batch(cmds...)
 }
 
 func refreshWindows() tea.Msg {
@@ -428,6 +482,30 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case viewerCountMsg:
 		m.viewerCount = int(msg)
+		return m, nil
+
+	case roomCodeReceivedMsg:
+		if msg.err != nil {
+			if m.config.LocalMode {
+				// Local mode: generate locally
+				m.roomCode = sig.GenerateRoomCode()
+				log.Printf("Generated local room code: %s", m.roomCode)
+			} else {
+				// Remote mode: server MUST provide the room code - show error
+				log.Printf("Failed to get room code from server: %v", msg.err)
+				m.lastError = fmt.Sprintf("Server error: %v (is the server updated?)", msg.err)
+				return m, nil
+			}
+		} else {
+			m.roomCode = msg.roomCode
+			log.Printf("Received room code from server: %s", m.roomCode)
+		}
+
+		// Initialize server synchronously (not in a Cmd - Bubbletea model changes don't persist in goroutines)
+		if err := m.initMultiServer(); err != nil {
+			log.Printf("Failed to initialize server: %v", err)
+			m.lastError = err.Error()
+		}
 		return m, nil
 
 	case captureStartedMsg:
@@ -1475,6 +1553,12 @@ func (m model) startSharing(index int) (tea.Model, tea.Cmd) {
 
 // startMultiWindowSharing starts sharing selected windows or fullscreen display
 func (m model) startMultiWindowSharing() (tea.Model, tea.Cmd) {
+	// Block streaming if no room code (server connection failed)
+	if m.roomCode == "" {
+		m.lastError = "Cannot start: no room code (server connection failed)"
+		return m, nil
+	}
+
 	if !m.fullscreenSelected && len(m.selectedWindows) == 0 {
 		m.lastError = "No windows or fullscreen selected. Use SPACE to select."
 		return m, nil
@@ -1636,9 +1720,9 @@ func (m *model) initMultiServer() error {
 		return nil
 	}
 
-	// Generate room code if not set
+	// Room code must be set before initializing server
 	if m.roomCode == "" {
-		m.roomCode = sig.GenerateRoomCode()
+		return fmt.Errorf("no room code set")
 	}
 
 	// Create multi peer manager
@@ -1812,6 +1896,23 @@ func (m model) View() string {
 	if m.serverStarted {
 		b.WriteString(m.renderSharingStatus())
 		b.WriteString("\n")
+	} else if m.roomCode != "" {
+		// Show room code even before streaming starts
+		if m.config.LocalMode {
+			b.WriteString(dimStyle.Render("[LOCAL]"))
+		} else {
+			b.WriteString(selectedStyle.Render("[INTERNET]"))
+		}
+		b.WriteString("  ")
+		b.WriteString(statusStyle.Render("Room: "))
+		b.WriteString(normalStyle.Render(m.roomCode))
+		b.WriteString("  ")
+		if m.serverStarted {
+			b.WriteString(dimStyle.Render("(ready, select source to start)"))
+		} else {
+			b.WriteString(dimStyle.Render("(connecting...)"))
+		}
+		b.WriteString("\n\n")
 	}
 
 	// Column layout (Sources, Settings, and Viewers when sharing)
