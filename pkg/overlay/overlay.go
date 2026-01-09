@@ -55,6 +55,15 @@ type Controller interface {
 	// GetFocusedWindow returns the currently focused window (excluding terminals).
 	// Returns nil if no valid focused window or a terminal is focused.
 	GetFocusedWindow() *FocusedWindowInfo
+
+	// GetSelectedWindowCount returns the number of currently selected windows.
+	GetSelectedWindowCount() int
+
+	// IsSharing returns true if currently sharing windows.
+	IsSharing() bool
+
+	// GetViewerCount returns the number of connected viewers.
+	GetViewerCount() int
 }
 
 // Overlay manages the floating button that appears on focused windows.
