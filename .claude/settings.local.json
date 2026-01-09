@@ -4,7 +4,8 @@
       "Bash(go build:*)",
       "Bash(go vet:*)",
       "Bash(go test:*)",
-      "Bash(go fmt:*)"
+      "Bash(go fmt:*)",
+      "Bash(grep:*)"
     ]
   }
 }

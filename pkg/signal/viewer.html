@@ -1841,14 +1841,19 @@
 
     // Cursor following state
     let cursorFollowState = {
-      targetX: 0,           // Target pan X position
-      targetY: 0,           // Target pan Y position
       cursorInView: false,
+      // Focus mode
+      targetX: 0,
+      targetY: 0,
       animating: false,
-      animationId: null
+      animationId: null,
+      // Row mode
+      rowTargetX: 0,
+      rowTargetY: 0,
+      rowAnimating: false,
+      rowAnimationId: null
     };
-    const CURSOR_SMOOTH_FACTOR = 0.15;  // Lerp factor (higher = faster)
-    const CURSOR_SNAP_THRESHOLD = 0.5;  // Stop animating below this distance
+    const CURSOR_LERP_FACTOR = 0.12;  // Smooth factor (0-1, higher = faster)
     
     // Password dialog elements
     const passwordDialog = document.getElementById('password-dialog');
@@ -2197,8 +2202,6 @@
       cursorFollowState.cursorInView = cursorInView;
 
       if (!cursorInView) {
-        // Cursor left the window - stop following
-        stopCursorAnimation();
         return;
       }
 
@@ -2216,29 +2219,39 @@
         const rowRect = videoRow.getBoundingClientRect();
         const cellRect = cell.cell.getBoundingClientRect();
 
-        // Only pan if the video is larger than the viewport
-        const needsHorizontalPan = videoWidth > rowRect.width;
-        const needsVerticalPan = videoHeight > rowRect.height;
-        if (!needsHorizontalPan && !needsVerticalPan) return;
+        // Check if video is larger than viewport (needs internal panning)
+        const needsInternalHorizontalPan = videoWidth > rowRect.width;
+        const needsInternalVerticalPan = videoHeight > rowRect.height;
 
         // Convert cursor percentage to pixel position within the video
         const cursorPixelX = (cursorX / 100) * videoWidth;
         const cursorPixelY = (cursorY / 100) * videoHeight;
 
-        // Calculate where cursor is relative to the row container
+        // Calculate cursor position relative to the row's scroll area
         const cursorInRowX = (cellRect.left - rowRect.left) + videoRow.scrollLeft + cursorPixelX;
         const cursorInRowY = (cellRect.top - rowRect.top) + videoRow.scrollTop + cursorPixelY;
 
-        // Target scroll position to center cursor in viewport (only for axes that need panning)
-        const targetScrollX = needsHorizontalPan ? cursorInRowX - rowRect.width / 2 : videoRow.scrollLeft;
-        const targetScrollY = needsVerticalPan ? cursorInRowY - rowRect.height / 2 : videoRow.scrollTop;
+        // Calculate cell center position for centering
+        const cellCenterX = (cellRect.left - rowRect.left) + videoRow.scrollLeft + cellRect.width / 2;
+        const cellCenterY = (cellRect.top - rowRect.top) + videoRow.scrollTop + cellRect.height / 2;
 
-        // Smooth scroll to position
-        videoRow.scrollTo({
-          left: Math.max(0, targetScrollX),
-          top: Math.max(0, targetScrollY),
-          behavior: 'smooth'
-        });
+        // Target scroll position:
+        // - Horizontal: center cursor if video is wide, otherwise center the cell
+        // - Vertical: center cursor if video is tall, otherwise center the cell
+        const targetScrollX = needsInternalHorizontalPan
+          ? cursorInRowX - rowRect.width / 2
+          : cellCenterX - rowRect.width / 2;
+        const targetScrollY = needsInternalVerticalPan
+          ? cursorInRowY - rowRect.height / 2
+          : cellCenterY - rowRect.height / 2;
+
+        // Set target and start smooth animation
+        cursorFollowState.rowTargetX = Math.max(0, targetScrollX);
+        cursorFollowState.rowTargetY = Math.max(0, targetScrollY);
+        if (!cursorFollowState.rowAnimating) {
+          cursorFollowState.rowAnimating = true;
+          animateRowScroll();
+        }
         return;
       }
 
@@ -2266,55 +2279,64 @@
         const maxX = Math.max(0, videoWidth - containerRect.width);
         const maxY = Math.max(0, videoHeight - containerRect.height);
 
+        // Set target and start smooth animation
         cursorFollowState.targetX = Math.max(-maxX, Math.min(0, targetX));
         cursorFollowState.targetY = Math.max(-maxY, Math.min(0, targetY));
-
-        // Start smooth animation if not already running
         if (!cursorFollowState.animating) {
-          startCursorAnimation();
+          cursorFollowState.animating = true;
+          animateFocusPan();
         }
       }
     }
 
-    function startCursorAnimation() {
-      if (cursorFollowState.animating) return;
-      cursorFollowState.animating = true;
-      animateCursorFollow();
-    }
-
-    function stopCursorAnimation() {
-      cursorFollowState.animating = false;
-      if (cursorFollowState.animationId) {
-        cancelAnimationFrame(cursorFollowState.animationId);
-        cursorFollowState.animationId = null;
-      }
-    }
-
-    function animateCursorFollow() {
+    // Lerp animation for focus mode panning
+    function animateFocusPan() {
       if (!cursorFollowState.animating) return;
 
-      // Lerp current position towards target
       const dx = cursorFollowState.targetX - panZoomState.translateX;
       const dy = cursorFollowState.targetY - panZoomState.translateY;
 
-      // Check if close enough to stop
-      if (Math.abs(dx) < CURSOR_SNAP_THRESHOLD && Math.abs(dy) < CURSOR_SNAP_THRESHOLD) {
+      // Check if close enough to snap
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
         panZoomState.translateX = cursorFollowState.targetX;
         panZoomState.translateY = cursorFollowState.targetY;
         applyPanZoomTransform();
         updateMinimap();
-        stopCursorAnimation();
+        cursorFollowState.animating = false;
         return;
       }
 
-      // Apply smooth interpolation
-      panZoomState.translateX += dx * CURSOR_SMOOTH_FACTOR;
-      panZoomState.translateY += dy * CURSOR_SMOOTH_FACTOR;
-
+      // Lerp towards target
+      panZoomState.translateX += dx * CURSOR_LERP_FACTOR;
+      panZoomState.translateY += dy * CURSOR_LERP_FACTOR;
       applyPanZoomTransform();
       updateMinimap();
 
-      cursorFollowState.animationId = requestAnimationFrame(animateCursorFollow);
+      cursorFollowState.animationId = requestAnimationFrame(animateFocusPan);
+    }
+
+    // Lerp animation for row mode scrolling
+    function animateRowScroll() {
+      if (!cursorFollowState.rowAnimating) return;
+
+      const currentX = videoRow.scrollLeft;
+      const currentY = videoRow.scrollTop;
+      const dx = cursorFollowState.rowTargetX - currentX;
+      const dy = cursorFollowState.rowTargetY - currentY;
+
+      // Check if close enough to snap
+      if (Math.abs(dx) < 0.5 && Math.abs(dy) < 0.5) {
+        videoRow.scrollLeft = cursorFollowState.rowTargetX;
+        videoRow.scrollTop = cursorFollowState.rowTargetY;
+        cursorFollowState.rowAnimating = false;
+        return;
+      }
+
+      // Lerp towards target
+      videoRow.scrollLeft = currentX + dx * CURSOR_LERP_FACTOR;
+      videoRow.scrollTop = currentY + dy * CURSOR_LERP_FACTOR;
+
+      cursorFollowState.rowAnimationId = requestAnimationFrame(animateRowScroll);
     }
 
     function handleSizeChange(trackId, width, height) {
@@ -3318,9 +3340,18 @@
       followSwitch.classList.toggle('active', followMode);
       console.log('Follow mode:', followMode ? 'ON' : 'OFF');
 
-      // Stop cursor animation if follow mode disabled
+      // Stop animations when follow mode is disabled
       if (!followMode) {
-        stopCursorAnimation();
+        cursorFollowState.animating = false;
+        cursorFollowState.rowAnimating = false;
+        if (cursorFollowState.animationId) {
+          cancelAnimationFrame(cursorFollowState.animationId);
+          cursorFollowState.animationId = null;
+        }
+        if (cursorFollowState.rowAnimationId) {
+          cancelAnimationFrame(cursorFollowState.rowAnimationId);
+          cursorFollowState.rowAnimationId = null;
+        }
       }
     }
     
@@ -3912,9 +3943,6 @@
     // Pan/zoom event handlers
     function handlePanStart(e) {
       if (!canPan) return;
-
-      // Stop auto-follow animation when user manually pans
-      stopCursorAnimation();
 
       panZoomState.isPanning = true;
       panZoomContainer.classList.add('panning');
