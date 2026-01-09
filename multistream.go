@@ -70,8 +70,9 @@ type PeerManager struct {
 	onICE         func(peerID string, candidate string)
 	onConnected   func(peerID string)
 	onDisconnect  func(peerID string)
-	onFocusChange func(trackID string)                    // Called when focus changes to a new track
-	onSizeChange  func(trackID string, width, height int) // Called when focused track dimensions change
+	onFocusChange  func(trackID string)                         // Called when focus changes to a new track
+	onSizeChange   func(trackID string, width, height int)      // Called when focused track dimensions change
+	onCursorUpdate func(trackID string, x, y float64, inView bool) // Called with cursor position updates
 
 	// Renegotiation callbacks
 	onRenegotiate   func(peerID string, offer string)
@@ -613,6 +614,18 @@ func (mpm *PeerManager) NotifySizeChange(trackID string, width, height int) {
 	}
 }
 
+// SetCursorCallback sets callback for cursor position updates
+func (mpm *PeerManager) SetCursorCallback(callback func(trackID string, x, y float64, inView bool)) {
+	mpm.onCursorUpdate = callback
+}
+
+// NotifyCursorUpdate notifies about cursor position changes
+func (mpm *PeerManager) NotifyCursorUpdate(trackID string, x, y float64, inView bool) {
+	if mpm.onCursorUpdate != nil {
+		mpm.onCursorUpdate(trackID, x, y, inView)
+	}
+}
+
 // CreateOffer creates an SDP offer for a new viewer with all tracks
 func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 	mpm.mu.Lock()
@@ -1149,6 +1162,12 @@ type Streamer struct {
 	onFocusChange   func(trackID string)
 	onStreamsChange func(streams []sig.StreamInfo)
 	onSizeChange    func(trackID string, width, height int)
+	onCursorUpdate  func(trackID string, x, y float64, inView bool)
+
+	// Cursor tracking state
+	lastCursorX float64
+	lastCursorY float64
+	cursorMu    sync.Mutex
 }
 
 // NewStreamer creates a new multi-streamer
@@ -1213,6 +1232,11 @@ func (ms *Streamer) SetOnStreamsChange(callback func(streams []sig.StreamInfo)) 
 // SetOnSizeChange sets the callback for when focused track dimensions change
 func (ms *Streamer) SetOnSizeChange(callback func(trackID string, width, height int)) {
 	ms.onSizeChange = callback
+}
+
+// SetOnCursorUpdate sets the callback for cursor position updates
+func (ms *Streamer) SetOnCursorUpdate(callback func(trackID string, x, y float64, inView bool)) {
+	ms.onCursorUpdate = callback
 }
 
 // AddWindow adds a window to stream
@@ -1342,6 +1366,9 @@ func (ms *Streamer) Start() error {
 	// Start focus detection loop
 	go ms.focusDetectionLoop()
 
+	// Start cursor tracking loop
+	go ms.cursorTrackingLoop()
+
 	return nil
 }
 
@@ -1438,6 +1465,65 @@ func (ms *Streamer) focusDetectionLoop() {
 					}
 				}
 				ms.mu.RUnlock()
+			}
+		}
+	}
+}
+
+// cursorTrackingLoop sends cursor position updates at high frequency (~30fps)
+func (ms *Streamer) cursorTrackingLoop() {
+	ticker := time.NewTicker(33 * time.Millisecond) // ~30fps
+	defer ticker.Stop()
+
+	const threshold = 1.0 // Only send if cursor moved >1% of window
+
+	for {
+		select {
+		case <-ms.stopChan:
+			return
+		case <-ticker.C:
+			// Get focused track
+			focusedTrack := ms.peerManager.GetFocusedTrack()
+			if focusedTrack == nil {
+				continue
+			}
+
+			// Get cursor position relative to focused window
+			cursor := GetCursorPosition(focusedTrack.WindowID)
+
+			// Convert to percentage coordinates
+			var pctX, pctY float64
+			if cursor.InWindow && cursor.WindowWidth > 0 && cursor.WindowHeight > 0 {
+				pctX = (cursor.X / cursor.WindowWidth) * 100
+				pctY = (cursor.Y / cursor.WindowHeight) * 100
+			} else {
+				pctX = -1
+				pctY = -1
+			}
+
+			// Throttle: only send if moved significantly or cursor entered/left window
+			ms.cursorMu.Lock()
+			wasInWindow := ms.lastCursorX >= 0 && ms.lastCursorY >= 0
+			dx := pctX - ms.lastCursorX
+			dy := pctY - ms.lastCursorY
+			if dx < 0 {
+				dx = -dx
+			}
+			if dy < 0 {
+				dy = -dy
+			}
+			shouldSend := (dx > threshold || dy > threshold) ||
+				(cursor.InWindow != wasInWindow)
+
+			if shouldSend {
+				ms.lastCursorX = pctX
+				ms.lastCursorY = pctY
+				ms.cursorMu.Unlock()
+
+				// Notify via PeerManager callback (for signaling)
+				ms.peerManager.NotifyCursorUpdate(focusedTrack.TrackID, pctX, pctY, cursor.InWindow)
+			} else {
+				ms.cursorMu.Unlock()
 			}
 		}
 	}

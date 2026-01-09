@@ -1837,6 +1837,17 @@
     };
     let canPan = false; // True when content is larger than viewport
     let minimapUpdateInterval = null;
+
+    // Cursor following state
+    let cursorFollowState = {
+      targetX: 0,           // Target pan X position
+      targetY: 0,           // Target pan Y position
+      cursorInView: false,
+      animating: false,
+      animationId: null
+    };
+    const CURSOR_SMOOTH_FACTOR = 0.15;  // Lerp factor (higher = faster)
+    const CURSOR_SNAP_THRESHOLD = 0.5;  // Stop animating below this distance
     
     // Password dialog elements
     const passwordDialog = document.getElementById('password-dialog');
@@ -2172,7 +2183,99 @@
       
       updateMultiStreamUI();
     }
-    
+
+    // Cursor position handling for auto-follow
+    function handleCursorPosition(trackId, cursorX, cursorY, cursorInView) {
+      // Only process if this is for the currently displayed stream
+      const match = trackId.match(/video(\d+)/);
+      if (!match) return;
+
+      const streamIndex = parseInt(match[1], 10);
+      if (streamIndex !== viewerFocusedIndex) return;
+
+      // Only follow if: follow mode ON + native scale + can pan (minimap visible)
+      if (!followMode || currentScale !== 'native' || !canPan) {
+        return;
+      }
+
+      cursorFollowState.cursorInView = cursorInView;
+
+      if (!cursorInView) {
+        // Cursor left the window - stop following
+        stopCursorAnimation();
+        return;
+      }
+
+      // Calculate target pan position to center cursor in viewport
+      const containerRect = mainVideoContainer.getBoundingClientRect();
+      const videoWidth = mainVideo.videoWidth;
+      const videoHeight = mainVideo.videoHeight;
+
+      if (!videoWidth || !videoHeight) return;
+
+      // Convert percentage to pixel position in video
+      const cursorPixelX = (cursorX / 100) * videoWidth;
+      const cursorPixelY = (cursorY / 100) * videoHeight;
+
+      // Calculate pan needed to center cursor in viewport
+      // Target: cursor should be at center of viewport
+      const targetX = containerRect.width / 2 - cursorPixelX;
+      const targetY = containerRect.height / 2 - cursorPixelY;
+
+      // Clamp to valid pan bounds
+      const maxX = Math.max(0, videoWidth - containerRect.width);
+      const maxY = Math.max(0, videoHeight - containerRect.height);
+
+      cursorFollowState.targetX = Math.max(-maxX, Math.min(0, targetX));
+      cursorFollowState.targetY = Math.max(-maxY, Math.min(0, targetY));
+
+      // Start smooth animation if not already running
+      if (!cursorFollowState.animating) {
+        startCursorAnimation();
+      }
+    }
+
+    function startCursorAnimation() {
+      if (cursorFollowState.animating) return;
+      cursorFollowState.animating = true;
+      animateCursorFollow();
+    }
+
+    function stopCursorAnimation() {
+      cursorFollowState.animating = false;
+      if (cursorFollowState.animationId) {
+        cancelAnimationFrame(cursorFollowState.animationId);
+        cursorFollowState.animationId = null;
+      }
+    }
+
+    function animateCursorFollow() {
+      if (!cursorFollowState.animating) return;
+
+      // Lerp current position towards target
+      const dx = cursorFollowState.targetX - panZoomState.translateX;
+      const dy = cursorFollowState.targetY - panZoomState.translateY;
+
+      // Check if close enough to stop
+      if (Math.abs(dx) < CURSOR_SNAP_THRESHOLD && Math.abs(dy) < CURSOR_SNAP_THRESHOLD) {
+        panZoomState.translateX = cursorFollowState.targetX;
+        panZoomState.translateY = cursorFollowState.targetY;
+        applyPanZoomTransform();
+        updateMinimap();
+        stopCursorAnimation();
+        return;
+      }
+
+      // Apply smooth interpolation
+      panZoomState.translateX += dx * CURSOR_SMOOTH_FACTOR;
+      panZoomState.translateY += dy * CURSOR_SMOOTH_FACTOR;
+
+      applyPanZoomTransform();
+      updateMinimap();
+
+      cursorFollowState.animationId = requestAnimationFrame(animateCursorFollow);
+    }
+
     function handleSizeChange(trackId, width, height) {
       console.log('Size change received:', trackId, width, height);
       
@@ -2692,7 +2795,11 @@
           case 'size-change':
             handleSizeChange(msg.trackId, msg.width, msg.height);
             break;
-            
+
+          case 'cursor-position':
+            handleCursorPosition(msg.trackId, msg.cursorX, msg.cursorY, msg.cursorInView);
+            break;
+
           case 'stream-added':
             console.log('Stream added:', msg.streamAdded);
             if (msg.streamAdded) {
@@ -3165,6 +3272,11 @@
       followMode = !followMode;
       followSwitch.classList.toggle('active', followMode);
       console.log('Follow mode:', followMode ? 'ON' : 'OFF');
+
+      // Stop cursor animation if follow mode disabled
+      if (!followMode) {
+        stopCursorAnimation();
+      }
     }
     
     function calculateProportionalSizes() {
@@ -3750,7 +3862,10 @@
     // Pan/zoom event handlers
     function handlePanStart(e) {
       if (!canPan) return;
-      
+
+      // Stop auto-follow animation when user manually pans
+      stopCursorAnimation();
+
       panZoomState.isPanning = true;
       panZoomContainer.classList.add('panning');
       

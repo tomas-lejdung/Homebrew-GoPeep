@@ -231,6 +231,18 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 		localSharer.SendToAllViewers(sizeMsg)
 	})
 
+	// Set up cursor position callback to broadcast cursor position to all viewers
+	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
+		cursorMsg := sig.SignalMessage{
+			Type:         "cursor-position",
+			TrackID:      trackID,
+			CursorX:      x,
+			CursorY:      y,
+			CursorInView: inView,
+		}
+		localSharer.SendToAllViewers(cursorMsg)
+	})
+
 	// Set up renegotiation callback to send new offers during track add/remove
 	pm.SetRenegotiateCallback(func(peerID string, offer string) {
 		log.Printf("Renegotiation: sending offer to peer %s", peerID)
@@ -403,6 +415,20 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 		if err != nil {
 			log.Printf("Failed to send size-change: %v", err)
 		}
+	})
+
+	// Set up cursor position callback to broadcast cursor position to all viewers
+	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
+		cursorMsg := sig.SignalMessage{
+			Type:         "cursor-position",
+			TrackID:      trackID,
+			CursorX:      x,
+			CursorY:      y,
+			CursorInView: inView,
+		}
+		connMu.Lock()
+		conn.WriteJSON(cursorMsg)
+		connMu.Unlock()
 	})
 
 	// Set up renegotiation callback for dynamic track add/remove
