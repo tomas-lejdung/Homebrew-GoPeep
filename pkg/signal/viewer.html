@@ -96,6 +96,7 @@
     }
     
     #pan-zoom-container {
+      position: relative;
       width: 100%;
       height: 100%;
       display: flex;
@@ -103,11 +104,25 @@
       justify-content: center;
       overflow: hidden;
     }
-    
+
     #pan-zoom-content {
+      /* Default (Fit/Fill): fill the viewport */
+      width: 100%;
+      height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+    }
+
+    /* Native mode: absolute positioning for pan/zoom */
+    #pan-zoom-content.native-mode {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: auto;
+      height: auto;
+      display: block;
+      /* All positioning handled via JS transform */
     }
     
     .main-video {
@@ -138,6 +153,9 @@
       height: auto;
       max-width: none;
       max-height: none;
+      display: block;
+      margin: 0;
+      padding: 0;
     }
     
     /* Thumbnails bar */
@@ -713,7 +731,7 @@
     }
     
     .pan-zoom-content {
-      position: absolute;
+      /* Base styles - positioning controlled by ID selectors */
       transform-origin: 0 0;
       transition: none;
     }
@@ -3560,6 +3578,10 @@
       if (currentLayout === 'row') {
         updateRowLayout();
       }
+      // Update native mode centering on resize
+      if (currentScale === 'native') {
+        updatePanZoomState();
+      }
     });
     
     // Start row minimap updates
@@ -3579,24 +3601,25 @@
       }
       
       const containerRect = mainVideoContainer.getBoundingClientRect();
+      // Use intrinsic video dimensions (what native mode renders at)
       const videoWidth = video.videoWidth;
       const videoHeight = video.videoHeight;
-      
+
       // Check if content exceeds viewport in native mode
-      canPan = currentScale === 'native' && 
+      canPan = currentScale === 'native' &&
                (videoWidth > containerRect.width || videoHeight > containerRect.height);
-      
+
       panZoomContainer.classList.toggle('can-pan', canPan);
-      
+
       if (canPan) {
-        // Calculate bounds
+        // Calculate bounds - 0 is top-left, negative values pan to see more content
         const maxX = Math.max(0, videoWidth - containerRect.width);
         const maxY = Math.max(0, videoHeight - containerRect.height);
-        
-        // Clamp current position
+
+        // Clamp to bounds (0 = top-left, -maxX/Y = bottom-right)
         panZoomState.translateX = Math.max(-maxX, Math.min(0, panZoomState.translateX));
         panZoomState.translateY = Math.max(-maxY, Math.min(0, panZoomState.translateY));
-        
+
         applyPanZoomTransform();
         updateMinimap();
         minimap.classList.add('visible');
@@ -3610,34 +3633,57 @@
     }
     
     function applyPanZoomTransform() {
-      panZoomContent.style.transform = `translate(${panZoomState.translateX}px, ${panZoomState.translateY}px)`;
+      if (currentScale === 'native' && mainVideo.videoWidth && mainVideo.videoHeight) {
+        const containerRect = mainVideoContainer.getBoundingClientRect();
+        const videoWidth = mainVideo.videoWidth;
+        const videoHeight = mainVideo.videoHeight;
+
+        // Only center if video is SMALLER than viewport
+        // For large videos, start at (0,0) and allow panning
+        const fitsX = videoWidth <= containerRect.width;
+        const fitsY = videoHeight <= containerRect.height;
+
+        const centerX = fitsX ? (containerRect.width - videoWidth) / 2 : 0;
+        const centerY = fitsY ? (containerRect.height - videoHeight) / 2 : 0;
+
+        // Apply centering (for small) + pan offset (for large)
+        const x = centerX + panZoomState.translateX;
+        const y = centerY + panZoomState.translateY;
+        panZoomContent.style.transform = `translate(${x}px, ${y}px)`;
+      } else {
+        panZoomContent.style.transform = '';
+      }
     }
     
     function updateMinimap() {
       if (!canPan || !mainVideo.videoWidth) return;
-      
+
       const video = mainVideo;
       const containerRect = mainVideoContainer.getBoundingClientRect();
-      
+      // Use intrinsic video dimensions
+      const videoWidth = video.videoWidth;
+      const videoHeight = video.videoHeight;
+
       // Update minimap canvas size to match video aspect ratio
-      const aspectRatio = video.videoWidth / video.videoHeight;
+      const aspectRatio = videoWidth / videoHeight;
       const minimapWidth = 120;
       const minimapHeight = minimapWidth / aspectRatio;
-      
+
       minimapCanvas.width = minimapWidth;
       minimapCanvas.height = minimapHeight;
       minimapCanvas.style.height = minimapHeight + 'px';
-      
+
       // Draw video frame to minimap
       const ctx = minimapCanvas.getContext('2d');
       ctx.drawImage(video, 0, 0, minimapWidth, minimapHeight);
-      
-      // Calculate viewport rectangle
-      const scaleX = minimapWidth / video.videoWidth;
-      const scaleY = minimapHeight / video.videoHeight;
-      
-      const viewportX = -panZoomState.translateX * scaleX;
-      const viewportY = -panZoomState.translateY * scaleY;
+
+      // Calculate viewport rectangle using intrinsic dimensions
+      const scaleX = minimapWidth / videoWidth;
+      const scaleY = minimapHeight / videoHeight;
+
+      // Viewport position on video: 0 = top-left, negative pan shows more content
+      const viewportX = Math.max(0, -panZoomState.translateX) * scaleX;
+      const viewportY = Math.max(0, -panZoomState.translateY) * scaleY;
       const viewportW = containerRect.width * scaleX;
       const viewportH = containerRect.height * scaleY;
       
@@ -3810,17 +3856,20 @@
     function setScaleMode(mode) {
       currentScale = mode;
       mainVideo.className = `main-video scale-${mode}`;
-      
+
+      // Toggle native-mode class for absolute positioning
+      panZoomContent.classList.toggle('native-mode', mode === 'native');
+
       // Update scale buttons
       document.querySelectorAll('.scale-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.scale === mode);
       });
-      
+
       // Update grid cell videos too
       for (const idx in gridCells) {
         gridCells[idx].video.style.objectFit = mode === 'fill' ? 'cover' : 'contain';
       }
-      
+
       // Update pan/zoom state
       setTimeout(updatePanZoomState, 50);
     }
