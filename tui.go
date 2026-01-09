@@ -209,6 +209,9 @@ type overlayToggleMsg struct {
 // overlayFullscreenToggleMsg indicates the fullscreen button was clicked
 type overlayFullscreenToggleMsg struct{}
 
+// overlayClearAllMsg indicates the clear all button was clicked
+type overlayClearAllMsg struct{}
+
 // SourceItem represents a selectable source (fullscreen or window)
 type SourceItem struct {
 	IsFullscreen bool
@@ -735,6 +738,10 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 		}
 		return m.selection.ToggleFullscreen(&m)
+
+	case overlayClearAllMsg:
+		// Clear all button was clicked - stop sharing and clear selection
+		return m.selection.ClearSelection(&m)
 
 	case tickMsg:
 		// Periodic refresh (1 second)
@@ -2676,6 +2683,8 @@ func RunTUI(config Config) error {
 					p.Send(overlayToggleMsg{windowID: evt.WindowID})
 				case overlay.EventToggleFullscreen:
 					p.Send(overlayFullscreenToggleMsg{})
+				case overlay.EventClearAll:
+					p.Send(overlayClearAllMsg{})
 				}
 			}
 		}()

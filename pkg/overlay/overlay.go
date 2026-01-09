@@ -33,6 +33,8 @@ const (
 	EventToggleSelection EventType = iota
 	// EventToggleFullscreen - user clicked the fullscreen button
 	EventToggleFullscreen
+	// EventClearAll - user clicked the clear all button to stop sharing
+	EventClearAll
 )
 
 // FocusedWindowInfo contains information about the currently focused window
