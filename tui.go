@@ -12,6 +12,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gorilla/websocket"
+	"github.com/tomaslejdung/gopeep/pkg/overlay"
 	sig "github.com/tomaslejdung/gopeep/pkg/signal"
 )
 
@@ -160,6 +161,11 @@ type captureErrorMsg struct {
 	err string
 }
 
+// overlayToggleMsg indicates the overlay button was clicked
+type overlayToggleMsg struct {
+	windowID uint32
+}
+
 // SourceItem represents a selectable source (fullscreen or window)
 type SourceItem struct {
 	IsFullscreen bool
@@ -246,6 +252,10 @@ type model struct {
 	// Terminal dimensions
 	width  int
 	height int
+
+	// Overlay components
+	overlay           *overlay.Overlay
+	overlayController *OverlayController
 }
 
 // findSourceIndex returns the index of the source matching the current capture state.
@@ -352,6 +362,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			})
 		}
 
+		// Sync overlay state on window updates
+		m.syncOverlay()
+
 		// If we're actively streaming and got an empty window list, keep existing sources
 		// (ScreenCaptureKit can sometimes return empty transiently)
 		if (m.sharing || m.starting) && len(msg.windows) == 0 && len(m.sources) > 1 {
@@ -401,6 +414,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.peerManager = msg.peerManager
 		m.startTime = time.Now()
 		m.showStats = true // Show stats by default when sharing starts
+		m.syncOverlay()    // Update overlay state (now sharing)
 		// Notify viewers that sharer has started (so they can rejoin)
 		if m.server != nil && m.roomCode != "" {
 			log.Printf("Broadcasting sharer-started to room %s", m.roomCode)
@@ -429,8 +443,12 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.osFocusedWindowID = msg.windowID
 		return m, nil
 
+	case overlayToggleMsg:
+		// Overlay button was clicked - toggle window selection
+		return m.handleOverlayToggle(msg.windowID)
+
 	case tickMsg:
-		// Periodic refresh
+		// Periodic refresh (1 second)
 		var cmds []tea.Cmd
 		cmds = append(cmds, tickCmd())
 
@@ -451,6 +469,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.osFocusedWindowID = topmostWindow
 			}
 		}
+
+		// Update overlay state
+		m.syncOverlay()
 
 		// Update viewer count and stats if sharing
 		if m.sharing && m.peerManager != nil {
@@ -751,6 +772,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					} else if len(m.selectedWindows) < MaxCaptureInstances {
 						m.selectedWindows[windowID] = true
 					}
+					m.syncOverlay() // Update overlay state
 
 					// If sharing, dynamically update without full restart
 					if m.sharing && m.streamer != nil {
@@ -974,6 +996,7 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 				} else if len(m.selectedWindows) < MaxCaptureInstances {
 					m.selectedWindows[windowID] = true
 				}
+				m.syncOverlay() // Update overlay state
 
 				// If sharing, dynamically update without full restart
 				if m.sharing && m.streamer != nil {
@@ -984,6 +1007,93 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, nil
+}
+
+// handleOverlayToggle handles the overlay button click to toggle window selection.
+// When not sharing, this acts as "Quick Share" - selecting the window and starting
+// sharing immediately (like pressing Enter in the TUI).
+// When already sharing, this toggles the window selection.
+func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
+	// Find the window in sources
+	var targetWindow *WindowInfo
+	for _, source := range m.sources {
+		if !source.IsFullscreen && source.Window != nil && source.Window.ID == windowID {
+			targetWindow = source.Window
+			break
+		}
+	}
+
+	if targetWindow == nil {
+		// Window not found in sources, ignore
+		return m, nil
+	}
+
+	// If already sharing, toggle selection (existing behavior)
+	if m.sharing {
+		if m.selectedWindows[windowID] {
+			// Deselect
+			delete(m.selectedWindows, windowID)
+		} else {
+			// Select - check if we need to evict LRU window
+			if len(m.selectedWindows) >= MaxCaptureInstances {
+				lruID := m.getLRUWindow(windowID)
+				if lruID != 0 {
+					delete(m.selectedWindows, lruID)
+					delete(m.autoShareFocusTimes, lruID)
+					log.Printf("Overlay: Evicted LRU window %d to make room", lruID)
+				}
+			}
+			m.selectedWindows[windowID] = true
+			// Track focus time for LRU eviction
+			if m.autoShareFocusTimes == nil {
+				m.autoShareFocusTimes = make(map[uint32]time.Time)
+			}
+			m.autoShareFocusTimes[windowID] = time.Now()
+		}
+		m.syncOverlay()
+		if m.streamer != nil {
+			return m.updateMultiStreamSelection()
+		}
+		return m, nil
+	}
+
+	// Not sharing - Quick Share: select this window and start sharing
+	// Clear fullscreen selection (like pressing Space on a window in TUI)
+	m.fullscreenSelected = false
+
+	// Add window to selection if not already selected
+	if !m.selectedWindows[windowID] {
+		if len(m.selectedWindows) >= MaxCaptureInstances {
+			lruID := m.getLRUWindow(windowID)
+			if lruID != 0 {
+				delete(m.selectedWindows, lruID)
+				delete(m.autoShareFocusTimes, lruID)
+				log.Printf("Overlay: Evicted LRU window %d to make room", lruID)
+			}
+		}
+		m.selectedWindows[windowID] = true
+		// Track focus time for LRU eviction
+		if m.autoShareFocusTimes == nil {
+			m.autoShareFocusTimes = make(map[uint32]time.Time)
+		}
+		m.autoShareFocusTimes[windowID] = time.Now()
+	}
+
+	m.syncOverlay()
+
+	log.Printf("Quick Share: Starting with window %d (%s)", windowID, targetWindow.DisplayName())
+	return m.startMultiWindowSharing()
+}
+
+// syncOverlay updates the overlay controller with current state.
+// The overlay handles its own focus detection via a background thread.
+func (m *model) syncOverlay() {
+	if m.overlayController != nil {
+		m.overlayController.Sync(m.selectedWindows, m.sharing, m.autoShareEnabled, m.viewerCount)
+	}
+	// Note: The overlay now runs its own update loop via background thread,
+	// so we don't need to call Refresh() here. The overlay queries state
+	// through the controller callbacks (goGetWindowState, goIsManualMode).
 }
 
 // getSelectedCodecType returns the currently selected codec type
@@ -1074,6 +1184,7 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 		m.autoShareEnabled = false
 		m.autoShareFocusTimes = nil
 		// DON'T stop streaming - windows stay selected for manual management
+		m.syncOverlay() // Show overlay in manual mode
 		return m, nil
 	}
 
@@ -1083,6 +1194,7 @@ func (m model) toggleAutoShareMode() (tea.Model, tea.Cmd) {
 	m.autoShareEnabled = true
 	m.autoShareFocusTimes = make(map[uint32]time.Time)
 	m.fullscreenSelected = false // Disable fullscreen in auto mode
+	m.syncOverlay()              // Hide overlay in auto mode
 
 	// If already sharing, keep existing windows and initialize LRU times
 	if m.sharing && m.streamer != nil {
@@ -1625,6 +1737,7 @@ func (m *model) stopCapture(preserveState bool) {
 
 	m.sharing = false
 	m.streamStats = nil
+	m.syncOverlay() // Update overlay state (no longer sharing)
 
 	if !preserveState {
 		m.selectedSource = -1
@@ -2311,12 +2424,40 @@ func RunTUI(config Config) error {
 	// Restore logging on exit
 	defer log.SetOutput(os.Stderr)
 
+	// Create overlay controller and overlay
+	overlayCtrl := NewOverlayController()
+	overlayInstance := overlay.New(overlayCtrl)
+
+	// Create the initial model with overlay
+	m := initialModel(config)
+	m.overlay = overlayInstance
+	m.overlayController = overlayCtrl
+
 	p := tea.NewProgram(
-		initialModel(config),
+		m,
 		tea.WithAltScreen(),
 	)
 
+	// Start overlay and listen for events
+	if err := overlayInstance.Start(); err != nil {
+		log.Printf("Failed to start overlay: %v", err)
+	} else {
+		// Goroutine to forward overlay events to the TUI
+		go func() {
+			for evt := range overlayInstance.Events() {
+				switch evt.Type {
+				case overlay.EventToggleSelection:
+					p.Send(overlayToggleMsg{windowID: evt.WindowID})
+				}
+			}
+		}()
+	}
+
 	_, runErr := p.Run()
+
+	// Cleanup overlay
+	overlayInstance.Stop()
+
 	return runErr
 }
 
