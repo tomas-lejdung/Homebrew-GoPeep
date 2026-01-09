@@ -53,7 +53,7 @@ VPXEncoderContext* create_vpx_encoder_with_mode(int width, int height, int fps, 
     cfg.g_error_resilient = VPX_ERROR_RESILIENT_DEFAULT;
     cfg.g_lag_in_frames = 0;         // Real-time mode
     cfg.kf_mode = VPX_KF_AUTO;
-    cfg.kf_max_dist = fps * 2;       // Keyframe every 2 seconds
+    cfg.kf_max_dist = fps * 1;       // Keyframe every 1 second (faster recovery)
 
     // Rate control mode
     if (quality_mode) {

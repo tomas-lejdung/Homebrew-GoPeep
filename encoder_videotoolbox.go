@@ -452,7 +452,7 @@ VideoToolboxContext* create_videotoolbox_encoder_with_mode(int width, int height
     }
 
     // Keyframe interval
-    int keyframeInterval = fps * 2;  // Every 2 seconds
+    int keyframeInterval = fps * 1;  // Every 1 second (faster recovery)
     CFNumberRef keyframeNum = CFNumberCreate(kCFAllocatorDefault, kCFNumberIntType, &keyframeInterval);
     VTSessionSetProperty(ctx->session, kVTCompressionPropertyKey_MaxKeyFrameInterval, keyframeNum);
     CFRelease(keyframeNum);

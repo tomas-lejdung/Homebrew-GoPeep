@@ -1923,7 +1923,47 @@
     // Multi-stream functions
     let updateUITimeout = null;
     let thumbnailElements = {}; // idx -> { container, video, label }
-    
+    let lastSkipToLive = 0; // Throttle skip-to-live to avoid rapid resets
+
+    // Skip to live - reset video element to flush accumulated buffer
+    // Called when jitter buffer delay exceeds threshold (500ms)
+    function skipToLive() {
+      const now = Date.now();
+      // Throttle to max once every 5 seconds to avoid reset loops
+      if (now - lastSkipToLive < 5000) return;
+      lastSkipToLive = now;
+
+      console.log('Skipping to live - resetting video streams');
+
+      // Reset main video
+      if (mainVideo && mainVideo.srcObject) {
+        const src = mainVideo.srcObject;
+        mainVideo.srcObject = null;
+        mainVideo.srcObject = src;
+        mainVideo.play().catch(e => console.log('Skip-to-live play error:', e));
+      }
+
+      // Reset grid videos
+      Object.values(gridCells).forEach(cell => {
+        if (cell.video && cell.video.srcObject) {
+          const src = cell.video.srcObject;
+          cell.video.srcObject = null;
+          cell.video.srcObject = src;
+          cell.video.play().catch(e => console.log('Skip-to-live grid play error:', e));
+        }
+      });
+
+      // Reset row videos
+      Object.values(rowCells).forEach(cell => {
+        if (cell.video && cell.video.srcObject) {
+          const src = cell.video.srcObject;
+          cell.video.srcObject = null;
+          cell.video.srcObject = src;
+          cell.video.play().catch(e => console.log('Skip-to-live row play error:', e));
+        }
+      });
+    }
+
     function updateMultiStreamUI() {
       // Debounce rapid updates
       if (updateUITimeout) {
@@ -2752,6 +2792,23 @@
             
             const jitter = videoStats.jitter ? (videoStats.jitter * 1000).toFixed(1) + ' ms' : '--';
             document.getElementById('stats-jitter').textContent = jitter;
+
+            // Monitor jitter buffer delay for latency accumulation detection
+            // jitterBufferDelay is cumulative delay in seconds; divide by jitterBufferEmittedCount
+            // to get average per-frame buffer delay. Values above ~0.5s indicate we're behind live.
+            if (videoStats.jitterBufferDelay !== undefined && videoStats.jitterBufferEmittedCount > 0) {
+              const bufferDelay = videoStats.jitterBufferDelay / videoStats.jitterBufferEmittedCount;
+
+              // Validate: ignore non-finite, non-positive, or unrealistically large values (>10s)
+              if (!Number.isFinite(bufferDelay) || bufferDelay <= 0 || bufferDelay > 10) {
+                console.debug('Ignoring invalid jitter buffer delay:', bufferDelay,
+                  '(delay:', videoStats.jitterBufferDelay, 'emittedCount:', videoStats.jitterBufferEmittedCount, ')');
+              } else if (bufferDelay > 0.5) {
+                // If buffer delay exceeds 500ms, we're falling behind - trigger skip-to-live
+                console.warn('High buffer delay detected:', (bufferDelay * 1000).toFixed(0), 'ms - triggering skip-to-live');
+                skipToLive();
+              }
+            }
           }
           
           if (candidatePairStats) {
@@ -3040,7 +3097,14 @@
       pc.ontrack = (event) => {
         const track = event.track;
         let stream = event.streams[0];
-        
+
+        // Minimize jitter buffer for low latency
+        // playoutDelayHint tells the browser to minimize buffering
+        const receiver = event.receiver;
+        if (receiver && receiver.playoutDelayHint !== undefined) {
+          receiver.playoutDelayHint = 0; // Request minimal playout delay
+        }
+
         // If no stream provided, create one from the track
         if (!stream) {
           console.log('No stream in event, creating new MediaStream for track');

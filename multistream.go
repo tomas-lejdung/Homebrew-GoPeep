@@ -1198,8 +1198,8 @@ func (ms *Streamer) newPipeline(trackInfo *StreamTrackInfo, capture *CaptureInst
 		qualityMode:    ms.qualityMode,
 		stopChan:       make(chan struct{}),
 		fpsChanged:     make(chan int, 1),
-		capturedFrames: make(chan capturedFrame, 2),
-		encodedFrames:  make(chan encodedFrame, 2),
+		capturedFrames: make(chan capturedFrame, 4),
+		encodedFrames:  make(chan encodedFrame, 4),
 	}
 }
 
@@ -1487,9 +1487,9 @@ func (ms *Streamer) focusDetectionLoop() {
 	}
 }
 
-// cursorTrackingLoop sends cursor position updates at high frequency (~30fps)
+// cursorTrackingLoop sends cursor position updates at ~5fps to minimize message volume
 func (ms *Streamer) cursorTrackingLoop() {
-	ticker := time.NewTicker(33 * time.Millisecond) // ~30fps
+	ticker := time.NewTicker(200 * time.Millisecond) // ~5fps
 	defer ticker.Stop()
 
 	const threshold = 1.0 // Only send if cursor moved >1% of window
@@ -1816,8 +1816,8 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 				encoder:        encoder,
 				stopChan:       make(chan struct{}),
 				fpsChanged:     make(chan int, 1),
-				capturedFrames: make(chan capturedFrame, 2),
-				encodedFrames:  make(chan encodedFrame, 2),
+				capturedFrames: make(chan capturedFrame, 4),
+				encodedFrames:  make(chan encodedFrame, 4),
 				fps:            ms.fps,
 				bitrate:        bitrate,
 				focusBitrate:   ms.focusBitrate,
@@ -1885,8 +1885,8 @@ func (ms *Streamer) SetCodec(newCodec CodecType) error {
 				encoder:        encoder,
 				stopChan:       make(chan struct{}),
 				fpsChanged:     make(chan int, 1),
-				capturedFrames: make(chan capturedFrame, 2),
-				encodedFrames:  make(chan encodedFrame, 2),
+				capturedFrames: make(chan capturedFrame, 4),
+				encodedFrames:  make(chan encodedFrame, 4),
 				fps:            ms.fps,
 				bitrate:        bitrate,
 				focusBitrate:   ms.focusBitrate,
@@ -2573,6 +2573,11 @@ func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
 // sendLoop runs in a separate goroutine, sending encoded frames to WebRTC
 func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 	frameCount := 0
+	// Track presentation timestamp to prevent drift
+	// Without explicit PTS, WebRTC uses arrival time which causes lag accumulation
+	startTime := time.Now()
+	var ptsOffset time.Duration = 0
+
 	for {
 		select {
 		case <-done:
@@ -2582,12 +2587,18 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 				return
 			}
 
-			// Write directly to track
+			// Write directly to track with explicit timestamp
 			if p.trackInfo.Track != nil {
+				// Calculate expected presentation time based on frame number
+				// This ensures consistent timing even if encoding delays vary
+				expectedTime := startTime.Add(ptsOffset)
+
 				p.trackInfo.Track.WriteSample(media.Sample{
-					Data:     ef.data,
-					Duration: ef.frameDuration,
+					Data:      ef.data,
+					Duration:  ef.frameDuration,
+					Timestamp: expectedTime, // Explicit PTS prevents timestamp drift
 				})
+				ptsOffset += ef.frameDuration // Advance PTS by frame duration
 				frameCount++
 				// Log every 100 frames to confirm which track is receiving data
 				if frameCount%100 == 1 {

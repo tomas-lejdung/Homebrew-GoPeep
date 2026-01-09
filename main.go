@@ -382,6 +382,16 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 	var peerMu sync.Mutex
 	var connMu sync.Mutex // Protect WebSocket writes
 
+	// Async cursor channel - decouples cursor sampling from network I/O
+	cursorChan := make(chan sig.SignalMessage, 4)
+	go func() {
+		for msg := range cursorChan {
+			connMu.Lock()
+			conn.WriteJSON(msg)
+			connMu.Unlock()
+		}
+	}()
+
 	pm.SetICECallback(func(peerID string, candidate string) {
 		iceMsg := sig.SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
 		connMu.Lock()
@@ -409,6 +419,7 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 	})
 
 	// Set up cursor position callback to broadcast cursor position to all viewers
+	// Uses async channel to avoid blocking cursor sampling on network I/O
 	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
 		cursorMsg := sig.SignalMessage{
 			Type:         "cursor-position",
@@ -417,9 +428,25 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 			CursorY:      y,
 			CursorInView: inView,
 		}
-		connMu.Lock()
-		conn.WriteJSON(cursorMsg)
-		connMu.Unlock()
+		select {
+		case cursorChan <- cursorMsg:
+			// Sent successfully
+		default:
+			// Channel full, drop oldest by receiving and try to resend
+			select {
+			case <-cursorChan:
+				// Dropped oldest message
+			default:
+				// Nothing to drop
+			}
+			// Try to send again, but don't block if still full
+			select {
+			case cursorChan <- cursorMsg:
+				// Resent successfully
+			default:
+				// Channel still full, drop this message
+			}
+		}
 	})
 
 	// Set up renegotiation callback for dynamic track add/remove
@@ -490,6 +517,7 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 	)
 
 	go func() {
+		defer close(cursorChan) // Close cursor channel when connection ends to prevent goroutine leak
 		for {
 			var msg sig.SignalMessage
 			if err := conn.ReadJSON(&msg); err != nil {
