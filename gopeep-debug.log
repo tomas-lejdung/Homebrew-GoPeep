@@ -1,192 +1,156 @@
-2026/01/09 10:46:23 === GoPeep started at 2026-01-09T10:46:23+01:00 ===
-2026/01/09 10:46:24 Quick Share: Starting with window 333934 (Ghostty - ./gopeep --local)
-2026/01/09 10:46:24 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
-2026/01/09 10:46:24 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/09 10:46:24 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/09 10:46:24 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/09 10:46:24 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/09 10:46:24 InitializeTrackSlots: All 4 track slots ready
-2026/01/09 10:46:24 Signal server starting on :8080
-2026/01/09 10:46:24 ActivateSlot: Activated video0 for window 333934 (Ghostty - ./gopeep --local)
-2026/01/09 10:46:25 Broadcasting sharer-started to room PROUD-MIST-75
-2026/01/09 10:46:25 Focus detection loop started with 1 pipelines:
-2026/01/09 10:46:25   - Track video0: windowID=333934, name=./gopeep --local
-2026/01/09 10:46:25 Renegotiating with 0 peers
-2026/01/09 10:46:25 sendLoop: Writing frame 1 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:25 Topmost captured window changed to: 333934 (was 0)
-2026/01/09 10:46:25 Focus set to track=video0, windowID=333934, name=./gopeep --local
-2026/01/09 10:46:25 Calling NotifyFocusChange for track: video0
-2026/01/09 10:46:25 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/09 10:46:25 Focus change callback triggered for track: video0
-2026/01/09 10:46:25 Size change callback triggered for track video0: 836x807
-2026/01/09 10:46:27 Viewer joined room PROUD-MIST-75 (total viewers: 1)
-2026/01/09 10:46:27 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:27 Peer viewer-1 connection state: connecting
-2026/01/09 10:46:28 Peer viewer-1 connection state: connected
-2026/01/09 10:46:29 sendLoop: Writing frame 101 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:30 Viewer joined room PROUD-MIST-75 (total viewers: 2)
-2026/01/09 10:46:30 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:30 Peer viewer-2 connection state: connecting
-2026/01/09 10:46:31 Peer viewer-2 connection state: connected
-2026/01/09 10:46:32 sendLoop: Writing frame 201 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:33 Viewer joined room PROUD-MIST-75 (total viewers: 3)
-2026/01/09 10:46:33 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:33 Peer viewer-3 connection state: connecting
-2026/01/09 10:46:34 Viewer joined room PROUD-MIST-75 (total viewers: 4)
-2026/01/09 10:46:34 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:34 Peer viewer-4 connection state: connecting
-2026/01/09 10:46:34 Peer viewer-3 connection state: connected
-2026/01/09 10:46:35 Peer viewer-4 connection state: connected
-2026/01/09 10:46:35 Viewer joined room PROUD-MIST-75 (total viewers: 5)
-2026/01/09 10:46:35 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:35 Peer viewer-5 connection state: connecting
-2026/01/09 10:46:36 sendLoop: Writing frame 301 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:36 Peer viewer-5 connection state: connected
-2026/01/09 10:46:38 Viewer joined room PROUD-MIST-75 (total viewers: 6)
-2026/01/09 10:46:38 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:38 Peer viewer-6 connection state: connecting
-2026/01/09 10:46:39 Peer viewer-6 connection state: connected
-2026/01/09 10:46:39 sendLoop: Writing frame 401 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:40 Viewer joined room PROUD-MIST-75 (total viewers: 7)
-2026/01/09 10:46:40 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:40 Peer viewer-7 connection state: connecting
-2026/01/09 10:46:41 Peer viewer-7 connection state: connected
-2026/01/09 10:46:42 Viewer joined room PROUD-MIST-75 (total viewers: 8)
-2026/01/09 10:46:42 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:42 Peer viewer-8 connection state: connecting
-2026/01/09 10:46:43 sendLoop: Writing frame 501 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:43 Peer viewer-8 connection state: connected
-2026/01/09 10:46:46 Viewer joined room PROUD-MIST-75 (total viewers: 8)
-2026/01/09 10:46:46 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:46 Peer viewer-9 connection state: connecting
-2026/01/09 10:46:46 sendLoop: Writing frame 601 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:47 Viewer joined room PROUD-MIST-75 (total viewers: 8)
-2026/01/09 10:46:47 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:47 Peer viewer-10 connection state: connecting
-2026/01/09 10:46:47 Viewer joined room PROUD-MIST-75 (total viewers: 8)
-2026/01/09 10:46:47 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:47 Peer viewer-11 connection state: connecting
-2026/01/09 10:46:48 Viewer joined room PROUD-MIST-75 (total viewers: 8)
-2026/01/09 10:46:48 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:48 Peer viewer-12 connection state: connecting
-2026/01/09 10:46:49 Viewer joined room PROUD-MIST-75 (total viewers: 8)
-2026/01/09 10:46:49 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 10:46:49 Peer viewer-13 connection state: connecting
-2026/01/09 10:46:50 sendLoop: Writing frame 701 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:50 Peer viewer-13 connection state: connected
-2026/01/09 10:46:52 Peer viewer-8 connection state: disconnected
-2026/01/09 10:46:52 Peer viewer-8 connection state: closed
-2026/01/09 10:46:53 sendLoop: Writing frame 801 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:56 Peer viewer-7 connection state: disconnected
-2026/01/09 10:46:56 Peer viewer-7 connection state: closed
-2026/01/09 10:46:56 Peer viewer-13 connection state: disconnected
-2026/01/09 10:46:56 Peer viewer-13 connection state: closed
-2026/01/09 10:46:57 Peer viewer-5 connection state: disconnected
-2026/01/09 10:46:57 Peer viewer-5 connection state: closed
-2026/01/09 10:46:57 Peer viewer-6 connection state: disconnected
-2026/01/09 10:46:57 Peer viewer-6 connection state: closed
-2026/01/09 10:46:57 Peer viewer-4 connection state: disconnected
-2026/01/09 10:46:57 Peer viewer-4 connection state: closed
-2026/01/09 10:46:57 Peer viewer-2 connection state: disconnected
-2026/01/09 10:46:57 Peer viewer-2 connection state: closed
-2026/01/09 10:46:57 sendLoop: Writing frame 901 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:46:58 Peer viewer-1 connection state: disconnected
-2026/01/09 10:46:58 Peer viewer-1 connection state: closed
-2026/01/09 10:46:58 Peer viewer-3 connection state: disconnected
-2026/01/09 10:46:58 Peer viewer-3 connection state: closed
-2026/01/09 10:47:04 sendLoop: Writing frame 1001 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:47:08 Auto-share: Enabling mode, starting focus observer
-2026/01/09 10:47:08 Auto-share: Already sharing, keeping existing 1 windows
-2026/01/09 10:47:09 Auto-share: Adding window 312846 (Home / X)
-2026/01/09 10:47:09 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/09 10:47:09 ActivateSlot: Activated video1 for window 312846 (Arc - Home / X)
-2026/01/09 10:47:09 sendLoop: Writing frame 1101 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:47:10 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
-2026/01/09 10:47:10 Broadcasting stream-activated: video1 (fast path)
-2026/01/09 10:47:10 Added window dynamically: video1 (windowID=312846, fastPath=true)
-2026/01/09 10:47:10 Auto-share: Successfully added Home / X
-2026/01/09 10:47:10 Topmost captured window changed to: 312846 (was 333934)
-2026/01/09 10:47:10 Focus set to track=video1, windowID=312846, name=Home / X
-2026/01/09 10:47:10 Calling NotifyFocusChange for track: video1
-2026/01/09 10:47:10 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/09 10:47:10 Focus change callback triggered for track: video1
-2026/01/09 10:47:11 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 10:47:11 Size change callback triggered for track video1: 2560x1409
-2026/01/09 10:47:14 sendLoop: Writing frame 1201 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:47:14 sendLoop: Writing frame 101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 10:47:16 Peer viewer-9 connection state: failed
-2026/01/09 10:47:16 Peer viewer-9 connection state: closed
-2026/01/09 10:47:16 Auto-share: Adding window 332705 (overlay-enhancements.md)
-2026/01/09 10:47:16 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/09 10:47:16 ActivateSlot: Activated video2 for window 332705 (Code - overlay-enhancements.md)
-2026/01/09 10:47:17 Peer viewer-10 connection state: failed
-2026/01/09 10:47:17 Peer viewer-10 connection state: closed
-2026/01/09 10:47:17 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
-2026/01/09 10:47:17 Broadcasting stream-activated: video2 (fast path)
-2026/01/09 10:47:17 Added window dynamically: video2 (windowID=332705, fastPath=true)
-2026/01/09 10:47:17 Auto-share: Successfully added overlay-enhancements.md
-2026/01/09 10:47:17 Topmost captured window changed to: 332705 (was 312846)
-2026/01/09 10:47:17 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
-2026/01/09 10:47:17 Calling NotifyFocusChange for track: video2
-2026/01/09 10:47:17 NotifyFocusChange: callback exists, calling with trackID: video2
-2026/01/09 10:47:17 Focus change callback triggered for track: video2
-2026/01/09 10:47:17 sendLoop: Writing frame 1 to track video2 (windowID=332705, streamID=gopeep-stream-2)
-2026/01/09 10:47:17 Size change callback triggered for track video2: 1498x1107
-2026/01/09 10:47:17 Peer viewer-11 connection state: failed
-2026/01/09 10:47:17 Peer viewer-11 connection state: closed
-2026/01/09 10:47:17 sendLoop: Writing frame 1301 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:47:18 sendLoop: Writing frame 201 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 10:47:18 Peer viewer-12 connection state: failed
-2026/01/09 10:47:18 Peer viewer-12 connection state: closed
-2026/01/09 10:47:19 Topmost captured window changed to: 312846 (was 332705)
-2026/01/09 10:47:19 Focus set to track=video1, windowID=312846, name=Home / X
-2026/01/09 10:47:19 Calling NotifyFocusChange for track: video1
-2026/01/09 10:47:19 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/09 10:47:19 Focus change callback triggered for track: video1
-2026/01/09 10:47:20 sendLoop: Writing frame 101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
-2026/01/09 10:47:21 sendLoop: Writing frame 1401 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:47:21 sendLoop: Writing frame 301 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 10:47:23 Topmost captured window changed to: 333934 (was 312846)
-2026/01/09 10:47:23 Focus set to track=video0, windowID=333934, name=./gopeep --local
-2026/01/09 10:47:23 Calling NotifyFocusChange for track: video0
-2026/01/09 10:47:23 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/09 10:47:23 Focus change callback triggered for track: video0
-2026/01/09 10:47:23 Auto-share: Disabling mode, switching to manual management
-2026/01/09 10:47:24 sendLoop: Writing frame 201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
-2026/01/09 10:47:24 TUI: Removing window dynamically: 333934
-2026/01/09 10:47:24 Removing window dynamically: video0 (windowID=333934, fastPath=true)
-2026/01/09 10:47:24 Topmost captured window changed to: 312846 (was 333934)
-2026/01/09 10:47:24 Focus set to track=video1, windowID=312846, name=Home / X
-2026/01/09 10:47:24 Calling NotifyFocusChange for track: video1
-2026/01/09 10:47:24 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/09 10:47:24 Focus change callback triggered for track: video1
-2026/01/09 10:47:24 DeactivateSlot: Deactivated video0
-2026/01/09 10:47:24 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
-2026/01/09 10:47:24 Broadcasting stream-deactivated: video0 (fast path)
-2026/01/09 10:47:25 sendLoop: Writing frame 401 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 10:47:25 TUI: Adding window dynamically: 333934 (GoPeep - Screen Sharing)
-2026/01/09 10:47:25 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/09 10:47:25 ActivateSlot: Activated video0 for window 333934 (Ghostty - GoPeep - Screen Sharing)
-2026/01/09 10:47:26 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
-2026/01/09 10:47:26 Broadcasting stream-activated: video0 (fast path)
-2026/01/09 10:47:26 Added window dynamically: video0 (windowID=333934, fastPath=true)
-2026/01/09 10:47:26 Topmost captured window changed to: 333934 (was 312846)
-2026/01/09 10:47:26 Focus set to track=video0, windowID=333934, name=GoPeep - Screen Sharing
-2026/01/09 10:47:26 Calling NotifyFocusChange for track: video0
-2026/01/09 10:47:26 NotifyFocusChange: callback exists, calling with trackID: video0
-2026/01/09 10:47:26 Focus change callback triggered for track: video0
-2026/01/09 10:47:26 TUI: Removing window dynamically: 333934
-2026/01/09 10:47:26 Removing window dynamically: video0 (windowID=333934, fastPath=true)
-2026/01/09 10:47:26 sendLoop: Writing frame 1 to track video0 (windowID=333934, streamID=gopeep-stream-0)
-2026/01/09 10:47:26 Topmost captured window changed to: 312846 (was 333934)
-2026/01/09 10:47:26 Focus set to track=video1, windowID=312846, name=Home / X
-2026/01/09 10:47:26 Calling NotifyFocusChange for track: video1
-2026/01/09 10:47:26 NotifyFocusChange: callback exists, calling with trackID: video1
-2026/01/09 10:47:26 Focus change callback triggered for track: video1
-2026/01/09 10:47:26 Size change callback triggered for track video0: 836x807
-2026/01/09 10:47:27 DeactivateSlot: Deactivated video0
-2026/01/09 10:47:27 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
-2026/01/09 10:47:27 Broadcasting stream-deactivated: video0 (fast path)
-2026/01/09 10:47:28 Focus detection loop stopped
-2026/01/09 10:47:28 Broadcasting stream-removed: video1
-2026/01/09 10:47:28 Broadcasting stream-removed: video2
+2026/01/09 11:15:33 === GoPeep started at 2026-01-09T11:15:33+01:00 ===
+2026/01/09 11:15:35 Auto-share: Enabling mode, starting focus observer
+2026/01/09 11:15:36 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/09 11:15:36 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/09 11:15:36 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/09 11:15:36 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/09 11:15:36 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/09 11:15:36 InitializeTrackSlots: All 4 track slots ready
+2026/01/09 11:15:36 Signal server starting on :8080
+2026/01/09 11:15:36 ActivateSlot: Activated video0 for window 333934 (Ghostty - GoPeep - Screen Sharing)
+2026/01/09 11:15:37 Broadcasting sharer-started to room GRAND-HILL-90
+2026/01/09 11:15:37 Focus detection loop started with 1 pipelines:
+2026/01/09 11:15:37   - Track video0: windowID=333934, name=GoPeep - Screen Sharing
+2026/01/09 11:15:37 Renegotiating with 0 peers
+2026/01/09 11:15:37 sendLoop: Writing frame 1 to track video0 (windowID=333934, streamID=gopeep-stream-0)
+2026/01/09 11:15:37 Topmost captured window changed to: 333934 (was 0)
+2026/01/09 11:15:37 Focus set to track=video0, windowID=333934, name=GoPeep - Screen Sharing
+2026/01/09 11:15:37 Calling NotifyFocusChange for track: video0
+2026/01/09 11:15:37 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 11:15:37 Focus change callback triggered for track: video0
+2026/01/09 11:15:37 Size change callback triggered for track video0: 836x807
+2026/01/09 11:15:38 Auto-share: Focus change detected via OS notification
+2026/01/09 11:15:38 Auto-share: Adding window 312846 (Home / X)
+2026/01/09 11:15:38 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 11:15:38 ActivateSlot: Activated video1 for window 312846 (Arc - Home / X)
+2026/01/09 11:15:38 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/09 11:15:38 Broadcasting stream-activated: video1 (fast path)
+2026/01/09 11:15:38 Added window dynamically: video1 (windowID=312846, fastPath=true)
+2026/01/09 11:15:38 Auto-share: Successfully added Home / X
+2026/01/09 11:15:38 Topmost captured window changed to: 312846 (was 333934)
+2026/01/09 11:15:38 Focus set to track=video1, windowID=312846, name=Home / X
+2026/01/09 11:15:38 Calling NotifyFocusChange for track: video1
+2026/01/09 11:15:38 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 11:15:38 Focus change callback triggered for track: video1
+2026/01/09 11:15:39 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/09 11:15:39 Size change callback triggered for track video1: 2560x1409
+2026/01/09 11:15:41 sendLoop: Writing frame 101 to track video0 (windowID=333934, streamID=gopeep-stream-0)
+2026/01/09 11:15:41 TUI: Removing window dynamically: 312846
+2026/01/09 11:15:41 Removing window dynamically: video1 (windowID=312846, fastPath=true)
+2026/01/09 11:15:41 DeactivateSlot: Deactivated video1
+2026/01/09 11:15:41 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/09 11:15:41 Broadcasting stream-deactivated: video1 (fast path)
+2026/01/09 11:15:41 Topmost captured window changed to: 333934 (was 312846)
+2026/01/09 11:15:41 Focus set to track=video0, windowID=333934, name=GoPeep - Screen Sharing
+2026/01/09 11:15:41 Calling NotifyFocusChange for track: video0
+2026/01/09 11:15:41 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 11:15:41 Focus change callback triggered for track: video0
+2026/01/09 11:15:41 Auto-share: Adding window 312846 (Home / X)
+2026/01/09 11:15:41 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 11:15:41 ActivateSlot: Activated video1 for window 312846 (Arc - Home / X)
+2026/01/09 11:15:43 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/09 11:15:43 Broadcasting stream-activated: video1 (fast path)
+2026/01/09 11:15:43 Added window dynamically: video1 (windowID=312846, fastPath=true)
+2026/01/09 11:15:43 Auto-share: Successfully added Home / X
+2026/01/09 11:15:43 Topmost captured window changed to: 312846 (was 333934)
+2026/01/09 11:15:43 Focus set to track=video1, windowID=312846, name=Home / X
+2026/01/09 11:15:43 Calling NotifyFocusChange for track: video1
+2026/01/09 11:15:43 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 11:15:43 Focus change callback triggered for track: video1
+2026/01/09 11:15:43 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/09 11:15:44 Auto-share: Focus change detected via OS notification
+2026/01/09 11:15:44 Auto-share: Adding window 332705 (overlay-enhancements.md)
+2026/01/09 11:15:44 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 11:15:44 ActivateSlot: Activated video2 for window 332705 (Code - overlay-enhancements.md)
+2026/01/09 11:15:44 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 11:15:44 Broadcasting stream-activated: video2 (fast path)
+2026/01/09 11:15:44 Added window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 11:15:44 Auto-share: Successfully added overlay-enhancements.md
+2026/01/09 11:15:44 Topmost captured window changed to: 332705 (was 312846)
+2026/01/09 11:15:44 Focus set to track=video2, windowID=332705, name=overlay-enhancements.md
+2026/01/09 11:15:44 Calling NotifyFocusChange for track: video2
+2026/01/09 11:15:44 NotifyFocusChange: callback exists, calling with trackID: video2
+2026/01/09 11:15:44 Focus change callback triggered for track: video2
+2026/01/09 11:15:44 sendLoop: Writing frame 1 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 11:15:45 sendLoop: Writing frame 201 to track video0 (windowID=333934, streamID=gopeep-stream-0)
+2026/01/09 11:15:46 Topmost captured window changed to: 312846 (was 332705)
+2026/01/09 11:15:46 Focus set to track=video1, windowID=312846, name=Home / X
+2026/01/09 11:15:46 Calling NotifyFocusChange for track: video1
+2026/01/09 11:15:46 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 11:15:46 Focus change callback triggered for track: video1
+2026/01/09 11:15:46 Auto-share: Focus change detected via OS notification
+2026/01/09 11:15:47 sendLoop: Writing frame 101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/09 11:15:48 sendLoop: Writing frame 101 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 11:15:49 sendLoop: Writing frame 301 to track video0 (windowID=333934, streamID=gopeep-stream-0)
+2026/01/09 11:15:50 Viewer joined room GRAND-HILL-90 (total viewers: 1)
+2026/01/09 11:15:50 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 11:15:50 Peer viewer-1 connection state: connecting
+2026/01/09 11:15:50 sendLoop: Writing frame 201 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/09 11:15:51 Peer viewer-1 connection state: connected
+2026/01/09 11:15:52 Auto-share: Adding window 335775 (GoPeep - Viewing)
+2026/01/09 11:15:52 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 11:15:52 ActivateSlot: Activated video3 for window 335775 (Arc - GoPeep - Viewing)
+2026/01/09 11:15:52 sendLoop: Writing frame 201 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 11:15:53 sendLoop: Writing frame 401 to track video0 (windowID=333934, streamID=gopeep-stream-0)
+2026/01/09 11:15:53 AddWindowDynamic: Notifying stream activated video3 (NO renegotiation)
+2026/01/09 11:15:53 Broadcasting stream-activated: video3 (fast path)
+2026/01/09 11:15:53 Added window dynamically: video3 (windowID=335775, fastPath=true)
+2026/01/09 11:15:53 Auto-share: Successfully added GoPeep - Viewing
+2026/01/09 11:15:53 Topmost captured window changed to: 335775 (was 312846)
+2026/01/09 11:15:53 Focus set to track=video3, windowID=335775, name=GoPeep - Viewing
+2026/01/09 11:15:53 Calling NotifyFocusChange for track: video3
+2026/01/09 11:15:53 NotifyFocusChange: callback exists, calling with trackID: video3
+2026/01/09 11:15:53 Focus change callback triggered for track: video3
+2026/01/09 11:15:53 sendLoop: Writing frame 1 to track video3 (windowID=335775, streamID=gopeep-stream-3)
+2026/01/09 11:15:53 Size change callback triggered for track video3: 1484x1117
+2026/01/09 11:15:53 Auto-share: Focus change detected via OS notification
+2026/01/09 11:15:53 Auto-share: Pool full, removing LRU window 333934
+2026/01/09 11:15:53 Removing window dynamically: video0 (windowID=333934, fastPath=true)
+2026/01/09 11:15:53 DeactivateSlot: Deactivated video0
+2026/01/09 11:15:53 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/09 11:15:53 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/09 11:15:53 Auto-share: Adding window 325008 (Alex Henningsson)
+2026/01/09 11:15:53 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 11:15:53 ActivateSlot: Activated video0 for window 325008 (Messages - Alex Henningsson)
+2026/01/09 11:15:54 sendLoop: Writing frame 301 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/09 11:15:54 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/09 11:15:54 Broadcasting stream-activated: video0 (fast path)
+2026/01/09 11:15:54 Added window dynamically: video0 (windowID=325008, fastPath=true)
+2026/01/09 11:15:54 Auto-share: Successfully added Alex Henningsson
+2026/01/09 11:15:54 Topmost captured window changed to: 325008 (was 335775)
+2026/01/09 11:15:54 Focus set to track=video0, windowID=325008, name=Alex Henningsson
+2026/01/09 11:15:54 Calling NotifyFocusChange for track: video0
+2026/01/09 11:15:54 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 11:15:54 Focus change callback triggered for track: video0
+2026/01/09 11:15:54 sendLoop: Writing frame 1 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 11:15:54 Size change callback triggered for track video0: 1281x862
+2026/01/09 11:15:55 sendLoop: Writing frame 301 to track video2 (windowID=332705, streamID=gopeep-stream-2)
+2026/01/09 11:15:56 Topmost captured window changed to: 312846 (was 325008)
+2026/01/09 11:15:56 Focus set to track=video1, windowID=312846, name=Home / X
+2026/01/09 11:15:56 Calling NotifyFocusChange for track: video1
+2026/01/09 11:15:56 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 11:15:56 Focus change callback triggered for track: video1
+2026/01/09 11:15:56 Auto-share: Focus change detected via OS notification
+2026/01/09 11:15:56 sendLoop: Writing frame 101 to track video3 (windowID=335775, streamID=gopeep-stream-3)
+2026/01/09 11:15:57 sendLoop: Writing frame 401 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/09 11:15:58 sendLoop: Writing frame 101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 11:15:58 Auto-share: Focus change detected via OS notification
+2026/01/09 11:15:58 Auto-share: Pool full, removing LRU window 332705
+2026/01/09 11:15:58 Removing window dynamically: video2 (windowID=332705, fastPath=true)
+2026/01/09 11:15:59 DeactivateSlot: Deactivated video2
+2026/01/09 11:15:59 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/09 11:15:59 Broadcasting stream-deactivated: video2 (fast path)
+2026/01/09 11:15:59 Auto-share: Adding window 333934 (GoPeep - Screen Sharing)
+2026/01/09 11:15:59 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 11:15:59 ActivateSlot: Activated video2 for window 333934 (Ghostty - GoPeep - Screen Sharing)
+2026/01/09 11:16:00 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 11:16:00 Broadcasting stream-activated: video2 (fast path)
+2026/01/09 11:16:00 Added window dynamically: video2 (windowID=333934, fastPath=true)
+2026/01/09 11:16:00 Auto-share: Successfully added GoPeep - Screen Sharing
+2026/01/09 11:16:00 Focus detection loop stopped
+2026/01/09 11:16:00 encodeLoop: Encode failed for track video3 (error #1): encoder not initialized
+2026/01/09 11:16:00 Broadcasting stream-removed: video0
+2026/01/09 11:16:00 Broadcasting stream-removed: video1
+2026/01/09 11:16:00 Broadcasting stream-removed: video2
+2026/01/09 11:16:00 Broadcasting stream-removed: video3
+2026/01/09 11:16:00 Peer viewer-1 connection state: closed

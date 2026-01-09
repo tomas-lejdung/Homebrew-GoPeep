@@ -347,15 +347,6 @@ static void doFrame(void) {
         return;
     }
 
-    // Early exit if not in manual mode
-    int manualMode = goIsManualMode();
-    if (!manualMode) {
-        if (g_overlayWindow.isVisible) {
-            [g_overlayWindow orderOut:nil];
-        }
-        return;
-    }
-
     // Get focused window via Go callback (uses same detection as TUI)
     uint32_t windowID = 0;
     CGRect windowBounds = CGRectZero;
