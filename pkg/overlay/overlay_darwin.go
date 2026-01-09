@@ -362,13 +362,13 @@ static void doFrame(void) {
     g_currentWindowID = windowID;
     g_lastWindowBounds = windowBounds;
 
-    // Check hover state (must release the CGEventRef to avoid memory leak)
-    CGEventRef mouseEvent = CGEventCreate(NULL);
-    CGPoint mousePos = CGPointZero;
-    if (mouseEvent) {
-        mousePos = CGEventGetLocation(mouseEvent);
-        CFRelease(mouseEvent);
-    }
+    // Get screen info (needed for coordinate conversion and positioning)
+    NSScreen *mainScreen = [NSScreen mainScreen];
+    CGFloat screenHeight = mainScreen.frame.size.height;
+
+    // Check hover state using NSEvent mouseLocation (more efficient than CGEventCreate)
+    NSPoint mouseLocation = [NSEvent mouseLocation];
+    CGPoint mousePos = CGPointMake(mouseLocation.x, screenHeight - mouseLocation.y);
     BOOL nowHovered = isPointOverOverlay(mousePos);
     BOOL arrowHovered = isPointOverArrow(mousePos);
 
@@ -386,8 +386,6 @@ static void doFrame(void) {
     g_isArrowHovered = arrowHovered;
 
     // Calculate position
-    NSScreen *mainScreen = [NSScreen mainScreen];
-    CGFloat screenHeight = mainScreen.frame.size.height;
     CGFloat windowBottom = screenHeight - (windowBounds.origin.y + windowBounds.size.height);
     CGFloat overlayY = windowBottom + kMargin;
 
