@@ -418,8 +418,9 @@ static void updateStatusWindow(void) {
     int selectedCount = goGetSelectedWindowCount();
     int isFullscreen = goIsFullscreenSelected();
 
-    // Always show status window in manual mode (so user can click fullscreen without sharing first)
-    if (isManualMode) {
+    // Show status window in manual mode OR when sharing (including auto mode)
+    if (isManualMode || isSharing) {
+        BOOL isAutoMode = !isManualMode;
         // Update dots indicator based on current state
         if (isSharing) {
             if (isFullscreen) {
@@ -446,9 +447,19 @@ static void updateStatusWindow(void) {
         // Update fullscreen button appearance
         updateFullscreenButton(isFullscreen, g_fullscreenButtonHovered);
 
-        // Dynamically resize window when clear button visibility changes
-        // Only show clear button when sharing AND have something selected to clear
-        BOOL shouldShowClear = isSharing && (selectedCount > 0 || isFullscreen);
+        // Dynamically resize window when clear/auto button visibility changes
+        // In AUTO mode: show "AUTO" indicator when sharing
+        // In MANUAL mode: show "Clear All" when sharing with selections
+        BOOL shouldShowClear = isSharing && (isAutoMode || (selectedCount > 0 || isFullscreen));
+
+        // Update the button label based on mode
+        if (g_clearButtonLabel) {
+            if (isAutoMode) {
+                g_clearButtonLabel.stringValue = @"AUTO";
+            } else {
+                g_clearButtonLabel.stringValue = @"Clear All";
+            }
+        }
         if (g_clearButtonView && g_clearButtonVisible != shouldShowClear) {
             g_clearButtonVisible = shouldShowClear;
             g_clearButtonView.hidden = !shouldShowClear;
@@ -536,7 +547,7 @@ static void updateStatusWindow(void) {
             [g_statusWindow orderFrontRegardless];
         }
     } else {
-        // Auto mode - hide status window
+        // Not in manual mode AND not sharing - hide status window
         if (g_statusWindow.isVisible) {
             [g_statusWindow orderOut:nil];
         }
@@ -663,9 +674,13 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
         }
 
         // Check for clear all button click (status window)
+        // Only handle click in manual mode - in auto mode it's just an indicator
         if (isPointOverClearButton(clickPoint)) {
-            goClearButtonClicked();
-            return NULL; // Consume the click
+            if (goIsManualMode()) {
+                goClearButtonClicked();
+                return NULL; // Consume the click
+            }
+            // In AUTO mode, don't consume - let it pass through
         }
 
         // Check for overlay button click (window share button)
@@ -693,9 +708,10 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
             updateFullscreenButton(isFullscreen, g_fullscreenButtonHovered);
         }
 
-        // Track hover state for clear button
+        // Track hover state for clear button (only in manual mode - it's clickable)
         BOOL wasClearHovered = g_clearButtonHovered;
-        g_clearButtonHovered = isPointOverClearButton(mousePoint);
+        // Only show hover effect in manual mode where button is clickable
+        g_clearButtonHovered = goIsManualMode() && isPointOverClearButton(mousePoint);
 
         // Update clear button appearance if hover state changed
         if (wasClearHovered != g_clearButtonHovered) {

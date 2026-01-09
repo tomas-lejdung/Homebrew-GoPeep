@@ -874,6 +874,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// If window is already streaming, focus detection loop handles the focus change
 			}
 
+			// Sync overlay to update window count display
+			m.syncOverlay()
+
 			// Continue ticking while in auto-share mode
 			return m, fastTickCmd()
 		}
