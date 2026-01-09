@@ -595,10 +595,7 @@ func (mpm *PeerManager) SetFocusChangeCallback(callback func(trackID string)) {
 // NotifyFocusChange notifies that focus has changed to a new track
 func (mpm *PeerManager) NotifyFocusChange(trackID string) {
 	if mpm.onFocusChange != nil {
-		log.Printf("NotifyFocusChange: callback exists, calling with trackID: %s", trackID)
 		mpm.onFocusChange(trackID)
-	} else {
-		log.Printf("NotifyFocusChange: callback is NIL! trackID: %s", trackID)
 	}
 }
 
@@ -1408,18 +1405,12 @@ func (ms *Streamer) focusDetectionLoop() {
 	var lastTopmostWindow uint32
 	var fullscreenFocusSet bool // Track if we've set focus for fullscreen
 
-	// Log captured windows at start
 	ms.mu.RLock()
-	log.Printf("Focus detection loop started with %d pipelines:", len(ms.pipelines))
-	for trackID, pipeline := range ms.pipelines {
-		log.Printf("  - Track %s: windowID=%d, name=%s", trackID, pipeline.trackInfo.WindowID, pipeline.trackInfo.WindowName)
-	}
 	ms.mu.RUnlock()
 
 	for {
 		select {
 		case <-ms.stopChan:
-			log.Printf("Focus detection loop stopped")
 			return
 		case <-ticker.C:
 			// Collect all captured window IDs and check for fullscreen
@@ -1446,7 +1437,6 @@ func (ms *Streamer) focusDetectionLoop() {
 			if hasFullscreen && pipelineCount == 1 {
 				// Single fullscreen capture - always focused
 				if !fullscreenFocusSet {
-					log.Printf("Setting focus for fullscreen capture: track=%s", fullscreenTrackID)
 					ms.peerManager.SetFocusedWindow(0)
 					ms.peerManager.NotifyFocusChange(fullscreenTrackID)
 					if ms.onFocusChange != nil {
@@ -1466,7 +1456,6 @@ func (ms *Streamer) focusDetectionLoop() {
 			topmostWindow := GetTopmostWindow(windowIDs)
 
 			if topmostWindow != lastTopmostWindow && topmostWindow != 0 {
-				log.Printf("Topmost captured window changed to: %d (was %d)", topmostWindow, lastTopmostWindow)
 				lastTopmostWindow = topmostWindow
 
 				// Find the track for this window and update focus
@@ -1474,7 +1463,7 @@ func (ms *Streamer) focusDetectionLoop() {
 				for trackID, pipeline := range ms.pipelines {
 					if pipeline.trackInfo.WindowID == topmostWindow {
 						newTrackID := ms.peerManager.SetFocusedWindow(topmostWindow)
-						log.Printf("Focus set to track=%s, windowID=%d, name=%s", trackID, topmostWindow, pipeline.trackInfo.WindowName)
+						_ = trackID // unused after removing log
 
 						if newTrackID != "" {
 							// Notify via Streamer callback
@@ -1482,7 +1471,6 @@ func (ms *Streamer) focusDetectionLoop() {
 								go ms.onFocusChange(newTrackID)
 							}
 							// Also notify via PeerManager callback (for signaling)
-							log.Printf("Calling NotifyFocusChange for track: %s", newTrackID)
 							ms.peerManager.NotifyFocusChange(newTrackID)
 						}
 

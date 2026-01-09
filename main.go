@@ -219,14 +219,12 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 
 	// Set up focus change callback to broadcast to all viewers
 	pm.SetFocusChangeCallback(func(trackID string) {
-		log.Printf("Focus change callback triggered for track: %s", trackID)
 		focusMsg := sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID}
 		localSharer.SendToAllViewers(focusMsg)
 	})
 
 	// Set up size change callback to broadcast dimension changes to all viewers
 	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
-		log.Printf("Size change callback triggered for track %s: %dx%d", trackID, width, height)
 		sizeMsg := sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height}
 		localSharer.SendToAllViewers(sizeMsg)
 	})
@@ -393,21 +391,14 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 
 	// Set up focus change callback to broadcast to all viewers
 	pm.SetFocusChangeCallback(func(trackID string) {
-		log.Printf("Remote focus change callback triggered for track: %s", trackID)
 		focusMsg := sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID}
 		connMu.Lock()
-		err := conn.WriteJSON(focusMsg)
+		conn.WriteJSON(focusMsg)
 		connMu.Unlock()
-		if err != nil {
-			log.Printf("Failed to send focus-change: %v", err)
-		} else {
-			log.Printf("Sent focus-change message to signal server")
-		}
 	})
 
 	// Set up size change callback to broadcast dimension changes to all viewers
 	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
-		log.Printf("Remote size change callback triggered for track %s: %dx%d", trackID, width, height)
 		sizeMsg := sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height}
 		connMu.Lock()
 		err := conn.WriteJSON(sizeMsg)
