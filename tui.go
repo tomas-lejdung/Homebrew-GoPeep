@@ -470,10 +470,8 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 		}
 
-		// Update overlay position (manual mode only - auto mode hides it)
-		if !m.autoShareEnabled {
-			m.syncOverlay()
-		}
+		// Update overlay state
+		m.syncOverlay()
 
 		// Update viewer count and stats if sharing
 		if m.sharing && m.peerManager != nil {
