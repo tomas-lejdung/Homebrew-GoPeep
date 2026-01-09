@@ -3146,13 +3146,8 @@
         // Build the row
         updateRowLayout();
       }
-      
-      // Save preference
-      try {
-        localStorage.setItem('gopeep-layout', layout);
-      } catch (e) {}
     }
-    
+
     function toggleLayout() {
       // Cycle through: focus -> grid -> row -> focus
       const layouts = ['focus', 'grid', 'row'];
@@ -3171,15 +3166,10 @@
     function toggleProportionalSizing() {
       proportionalSizing = !proportionalSizing;
       proportionalSwitch.classList.toggle('active', proportionalSizing);
-      
+
       if (currentLayout === 'grid') {
         updateGridLayout();
       }
-      
-      // Save preference
-      try {
-        localStorage.setItem('gopeep-proportional', proportionalSizing ? '1' : '0');
-      } catch (e) {}
     }
     
     function toggleFollowMode() {
@@ -3954,20 +3944,7 @@
     
     // Double-click to fullscreen
     mainVideoContainer.addEventListener('dblclick', toggleFullscreen);
-    
-    // Load saved preferences
-    try {
-      const savedLayout = localStorage.getItem('gopeep-layout');
-      if (savedLayout === 'grid' || savedLayout === 'row') {
-        currentLayout = savedLayout;
-      }
-      const savedProportional = localStorage.getItem('gopeep-proportional');
-      if (savedProportional === '0') {
-        proportionalSizing = false;
-        proportionalSwitch.classList.remove('active');
-      }
-    } catch (e) {}
-    
+
     // Start minimap updates
     startMinimapUpdates();
     
