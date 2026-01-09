@@ -1,14 +1,278 @@
-2026/01/09 14:35:51 === GoPeep started at 2026-01-09T14:35:51+01:00 ===
-2026/01/09 14:35:51 Received room code from server: FATAL-ROSE-296
-2026/01/09 14:35:51 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
-2026/01/09 14:35:51 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/09 14:35:51 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/09 14:35:51 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/09 14:35:51 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/09 14:35:51 InitializeTrackSlots: All 4 track slots ready
-2026/01/09 14:35:51 Signal server starting on :8080
-2026/01/09 14:36:01 Viewer joined room FATAL-ROSE-296 (total viewers: 1)
-2026/01/09 14:36:01 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 14:36:01 Peer viewer-1 connection state: connecting
-2026/01/09 14:36:02 Peer viewer-1 connection state: connected
-2026/01/09 14:36:23 Peer viewer-1 connection state: closed
+2026/01/09 14:44:20 === GoPeep started at 2026-01-09T14:44:20+01:00 ===
+2026/01/09 14:44:20 Received room code from server: DUSTY-GARDEN-396
+2026/01/09 14:44:20 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/09 14:44:20 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/09 14:44:20 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/09 14:44:20 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/09 14:44:20 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/09 14:44:20 InitializeTrackSlots: All 4 track slots ready
+2026/01/09 14:44:20 Signal server starting on :8080
+2026/01/09 14:44:20 Viewer joined room COOL-CLOUD-020 (total viewers: 1)
+2026/01/09 14:44:24 Viewer joined room DUSTY-GARDEN-396 (total viewers: 1)
+2026/01/09 14:44:24 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 14:44:24 Peer viewer-1 connection state: connecting
+2026/01/09 14:44:25 Peer viewer-1 connection state: connected
+2026/01/09 14:44:26 Overlay: Dynamically adding window 325008 (Messages - Alex Henningsson) to sources
+2026/01/09 14:44:26 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/09 14:44:26 ActivateSlot: Activated video0 for window 325008 (Messages - Alex Henningsson)
+2026/01/09 14:44:27 Broadcasting sharer-started to room DUSTY-GARDEN-396
+2026/01/09 14:44:27 Focus detection loop started with 1 pipelines:
+2026/01/09 14:44:27   - Track video0: windowID=325008, name=Alex Henningsson
+2026/01/09 14:44:27 Renegotiating with 1 peers
+2026/01/09 14:44:27 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/09 14:44:27 Renegotiation: peer viewer-1 connection state: connected
+2026/01/09 14:44:27 Renegotiation: ICE gathering complete for viewer-1
+2026/01/09 14:44:27 Renegotiation: sending offer to peer viewer-1 (SDP length: 16888)
+2026/01/09 14:44:27 Renegotiation: sending offer to peer viewer-1
+2026/01/09 14:44:27 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/09 14:44:27 Viewer joined room DUSTY-GARDEN-396 (total viewers: 1)
+2026/01/09 14:44:27 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 14:44:27 Peer viewer-2 connection state: connecting
+2026/01/09 14:44:27 Renegotiation: received answer from peer viewer-2, setting remote description
+2026/01/09 14:44:27 Renegotiation: failed to set remote description for viewer-2: InvalidModificationError: invalid proposed signaling state transition: stable->SetRemote(answer)->stable
+2026/01/09 14:44:27 Failed to handle renegotiate answer for viewer-2: InvalidModificationError: invalid proposed signaling state transition: stable->SetRemote(answer)->stable
+2026/01/09 14:44:27 sendLoop: Writing frame 1 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:27 Topmost captured window changed to: 325008 (was 0)
+2026/01/09 14:44:27 Focus set to track=video0, windowID=325008, name=Alex Henningsson
+2026/01/09 14:44:27 Calling NotifyFocusChange for track: video0
+2026/01/09 14:44:27 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 14:44:27 Focus change callback triggered for track: video0
+2026/01/09 14:44:27 Size change callback triggered for track video0: 1281x862
+2026/01/09 14:44:28 Peer viewer-2 connection state: connected
+2026/01/09 14:44:29 sendLoop: Writing frame 101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:29 TUI: Adding window dynamically: 317592 (Scratch)
+2026/01/09 14:44:29 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 14:44:29 ActivateSlot: Activated video1 for window 317592 (Heynote - Scratch)
+2026/01/09 14:44:30 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/09 14:44:30 Broadcasting stream-activated: video1 (fast path)
+2026/01/09 14:44:30 Added window dynamically: video1 (windowID=317592, fastPath=true)
+2026/01/09 14:44:30 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 14:44:30 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/09 14:44:30 Calling NotifyFocusChange for track: video1
+2026/01/09 14:44:30 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 14:44:30 Focus change callback triggered for track: video1
+2026/01/09 14:44:30 sendLoop: Writing frame 1 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:31 sendLoop: Writing frame 201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:32 sendLoop: Writing frame 101 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:33 sendLoop: Writing frame 301 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:33 Peer viewer-1 connection state: disconnected
+2026/01/09 14:44:33 Peer viewer-1 connection state: closed
+2026/01/09 14:44:34 sendLoop: Writing frame 201 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:34 sendLoop: Writing frame 401 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:35 SetCodec: Changing codec from vp8 to vp9
+2026/01/09 14:44:35 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/09 14:44:35 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/09 14:44:35 encodeLoop: Encode failed for track video0 (error #3): encoder not initialized
+2026/01/09 14:44:35 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/09 14:44:35 SetCodec: Using slots path - recreating slots with new codec
+2026/01/09 14:44:35 encodeLoop: Encode failed for track video1 (error #2): encoder not initialized
+2026/01/09 14:44:35 Removed track video0 from peer viewer-2
+2026/01/09 14:44:35 Removed track video1 from peer viewer-2
+2026/01/09 14:44:35 Removed track video2 from peer viewer-2
+2026/01/09 14:44:35 Removed track video3 from peer viewer-2
+2026/01/09 14:44:35 RecreateSlots: Recreating 4 track slots with new codec video/VP9
+2026/01/09 14:44:35 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/09 14:44:35 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/09 14:44:35 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/09 14:44:35 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/09 14:44:35 RecreateSlots: Restored active slot 0 for window 325008 (Alex Henningsson)
+2026/01/09 14:44:35 RecreateSlots: Restored active slot 1 for window 317592 (Scratch)
+2026/01/09 14:44:35 RecreateSlots: Completed - 2 active slots restored
+2026/01/09 14:44:35 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/09 14:44:35 AddTrackToAllPeers: Adding track video0 to peer viewer-2 (state: connected)
+2026/01/09 14:44:35 AddTrackToAllPeers: Successfully added track video0 to peer viewer-2
+2026/01/09 14:44:35 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/09 14:44:35 AddTrackToAllPeers: Adding track video1 to peer viewer-2 (state: connected)
+2026/01/09 14:44:35 AddTrackToAllPeers: Successfully added track video1 to peer viewer-2
+2026/01/09 14:44:35 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/09 14:44:35 AddTrackToAllPeers: Adding track video2 to peer viewer-2 (state: connected)
+2026/01/09 14:44:35 AddTrackToAllPeers: Successfully added track video2 to peer viewer-2
+2026/01/09 14:44:35 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/09 14:44:35 AddTrackToAllPeers: Adding track video3 to peer viewer-2 (state: connected)
+2026/01/09 14:44:35 AddTrackToAllPeers: Successfully added track video3 to peer viewer-2
+2026/01/09 14:44:35 SetCodec: Created pipeline for slot video0 (window 325008)
+2026/01/09 14:44:35 SetCodec: Created pipeline for slot video1 (window 317592)
+2026/01/09 14:44:35 SetCodec: Triggering renegotiation for 2 pipelines
+2026/01/09 14:44:35 SetCodec: Successfully changed codec to vp9 with 2 pipelines
+2026/01/09 14:44:35 Renegotiating with 1 peers
+2026/01/09 14:44:35 Renegotiation: peer viewer-2 signaling state: stable
+2026/01/09 14:44:35 Renegotiation: peer viewer-2 connection state: connected
+2026/01/09 14:44:35 Renegotiation: ICE gathering complete for viewer-2
+2026/01/09 14:44:35 Renegotiation: sending offer to peer viewer-2 (SDP length: 31208)
+2026/01/09 14:44:35 Renegotiation: sending offer to peer viewer-2
+2026/01/09 14:44:35 Renegotiation: sent streams-info with 2 tracks to peer viewer-2
+2026/01/09 14:44:35 Renegotiation: received answer from peer viewer-2, setting remote description
+2026/01/09 14:44:35 Renegotiation: complete for peer viewer-2, signaling state: stable, connection state: connected
+2026/01/09 14:44:35 sendLoop: Writing frame 1 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:35 sendLoop: Writing frame 1 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:35 Size change callback triggered for track video1: 1157x743
+2026/01/09 14:44:37 sendLoop: Writing frame 101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:37 sendLoop: Writing frame 101 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:38 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 14:44:38 Focus set to track=video0, windowID=325008, name=Alex Henningsson
+2026/01/09 14:44:38 Calling NotifyFocusChange for track: video0
+2026/01/09 14:44:38 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 14:44:38 Focus change callback triggered for track: video0
+2026/01/09 14:44:39 sendLoop: Writing frame 201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:39 sendLoop: Writing frame 201 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:40 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 14:44:40 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/09 14:44:40 Calling NotifyFocusChange for track: video1
+2026/01/09 14:44:40 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 14:44:40 Focus change callback triggered for track: video1
+2026/01/09 14:44:41 sendLoop: Writing frame 301 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:41 sendLoop: Writing frame 301 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:43 sendLoop: Writing frame 401 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:43 sendLoop: Writing frame 401 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:44 Viewer joined room DUSTY-GARDEN-396 (total viewers: 1)
+2026/01/09 14:44:44 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 14:44:44 Peer viewer-3 connection state: connecting
+2026/01/09 14:44:45 sendLoop: Writing frame 501 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:45 sendLoop: Writing frame 501 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:45 Peer viewer-3 connection state: connected
+2026/01/09 14:44:47 sendLoop: Writing frame 601 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:47 sendLoop: Writing frame 601 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:48 Peer viewer-2 connection state: disconnected
+2026/01/09 14:44:48 Peer viewer-2 connection state: closed
+2026/01/09 14:44:48 sendLoop: Writing frame 701 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:49 sendLoop: Writing frame 701 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:49 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 14:44:49 Focus set to track=video0, windowID=325008, name=Alex Henningsson
+2026/01/09 14:44:49 Calling NotifyFocusChange for track: video0
+2026/01/09 14:44:49 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 14:44:49 Focus change callback triggered for track: video0
+2026/01/09 14:44:50 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 14:44:50 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/09 14:44:50 Calling NotifyFocusChange for track: video1
+2026/01/09 14:44:50 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 14:44:50 Focus change callback triggered for track: video1
+2026/01/09 14:44:50 sendLoop: Writing frame 801 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:51 sendLoop: Writing frame 801 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:52 sendLoop: Writing frame 901 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:53 sendLoop: Writing frame 901 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:54 sendLoop: Writing frame 1001 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:55 sendLoop: Writing frame 1001 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:56 sendLoop: Writing frame 1101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:56 sendLoop: Writing frame 1101 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:57 SetCodec: Changing codec from vp9 to vp8
+2026/01/09 14:44:57 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/09 14:44:57 SetCodec: Using slots path - recreating slots with new codec
+2026/01/09 14:44:57 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/09 14:44:57 Removed track video0 from peer viewer-3
+2026/01/09 14:44:57 Removed track video1 from peer viewer-3
+2026/01/09 14:44:57 Removed track video2 from peer viewer-3
+2026/01/09 14:44:57 Removed track video3 from peer viewer-3
+2026/01/09 14:44:57 RecreateSlots: Recreating 4 track slots with new codec video/VP8
+2026/01/09 14:44:57 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/09 14:44:57 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/09 14:44:57 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/09 14:44:57 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/09 14:44:57 RecreateSlots: Restored active slot 0 for window 325008 (Alex Henningsson)
+2026/01/09 14:44:57 RecreateSlots: Restored active slot 1 for window 317592 (Scratch)
+2026/01/09 14:44:57 RecreateSlots: Completed - 2 active slots restored
+2026/01/09 14:44:57 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/09 14:44:57 AddTrackToAllPeers: Adding track video0 to peer viewer-3 (state: connected)
+2026/01/09 14:44:57 AddTrackToAllPeers: Successfully added track video0 to peer viewer-3
+2026/01/09 14:44:57 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/09 14:44:57 AddTrackToAllPeers: Adding track video1 to peer viewer-3 (state: connected)
+2026/01/09 14:44:57 AddTrackToAllPeers: Successfully added track video1 to peer viewer-3
+2026/01/09 14:44:57 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/09 14:44:57 AddTrackToAllPeers: Adding track video2 to peer viewer-3 (state: connected)
+2026/01/09 14:44:57 AddTrackToAllPeers: Successfully added track video2 to peer viewer-3
+2026/01/09 14:44:57 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/09 14:44:57 AddTrackToAllPeers: Adding track video3 to peer viewer-3 (state: connected)
+2026/01/09 14:44:57 AddTrackToAllPeers: Successfully added track video3 to peer viewer-3
+2026/01/09 14:44:57 SetCodec: Created pipeline for slot video0 (window 325008)
+2026/01/09 14:44:57 SetCodec: Created pipeline for slot video1 (window 317592)
+2026/01/09 14:44:57 SetCodec: Triggering renegotiation for 2 pipelines
+2026/01/09 14:44:57 SetCodec: Successfully changed codec to vp8 with 2 pipelines
+2026/01/09 14:44:57 Renegotiating with 1 peers
+2026/01/09 14:44:57 Renegotiation: peer viewer-3 signaling state: stable
+2026/01/09 14:44:57 Renegotiation: peer viewer-3 connection state: connected
+2026/01/09 14:44:57 Renegotiation: ICE gathering complete for viewer-3
+2026/01/09 14:44:57 Renegotiation: sending offer to peer viewer-3 (SDP length: 31216)
+2026/01/09 14:44:57 Renegotiation: sending offer to peer viewer-3
+2026/01/09 14:44:57 Renegotiation: sent streams-info with 2 tracks to peer viewer-3
+2026/01/09 14:44:57 Renegotiation: received answer from peer viewer-3, setting remote description
+2026/01/09 14:44:57 Renegotiation: complete for peer viewer-3, signaling state: stable, connection state: connected
+2026/01/09 14:44:57 sendLoop: Writing frame 1 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:44:57 sendLoop: Writing frame 1 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:58 Size change callback triggered for track video1: 1157x743
+2026/01/09 14:44:59 sendLoop: Writing frame 101 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:44:59 sendLoop: Writing frame 101 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:01 sendLoop: Writing frame 201 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:01 sendLoop: Writing frame 201 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:02 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 14:45:02 Focus set to track=video0, windowID=325008, name=Alex Henningsson
+2026/01/09 14:45:02 Calling NotifyFocusChange for track: video0
+2026/01/09 14:45:02 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 14:45:02 Focus change callback triggered for track: video0
+2026/01/09 14:45:03 sendLoop: Writing frame 301 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:03 sendLoop: Writing frame 301 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:04 Viewer joined room DUSTY-GARDEN-396 (total viewers: 1)
+2026/01/09 14:45:04 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 14:45:04 Peer viewer-4 connection state: connecting
+2026/01/09 14:45:05 sendLoop: Writing frame 401 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:05 sendLoop: Writing frame 401 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:05 Peer viewer-4 connection state: connected
+2026/01/09 14:45:07 sendLoop: Writing frame 501 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:07 sendLoop: Writing frame 501 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:07 Topmost captured window changed to: 317592 (was 325008)
+2026/01/09 14:45:07 Focus set to track=video1, windowID=317592, name=Scratch
+2026/01/09 14:45:07 Calling NotifyFocusChange for track: video1
+2026/01/09 14:45:07 NotifyFocusChange: callback exists, calling with trackID: video1
+2026/01/09 14:45:07 Focus change callback triggered for track: video1
+2026/01/09 14:45:09 sendLoop: Writing frame 601 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:09 sendLoop: Writing frame 601 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:09 Peer viewer-3 connection state: disconnected
+2026/01/09 14:45:09 Peer viewer-3 connection state: closed
+2026/01/09 14:45:11 sendLoop: Writing frame 701 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:11 sendLoop: Writing frame 701 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:12 sendLoop: Writing frame 801 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:13 sendLoop: Writing frame 801 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:14 sendLoop: Writing frame 901 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:15 sendLoop: Writing frame 901 to track video1 (windowID=317592, streamID=gopeep-stream-1)
+2026/01/09 14:45:16 TUI: Removing window 325008 for fullscreen switch
+2026/01/09 14:45:16 Removing window dynamically: video0 (windowID=325008, fastPath=true)
+2026/01/09 14:45:16 DeactivateSlot: Deactivated video0
+2026/01/09 14:45:16 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/09 14:45:16 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/09 14:45:16 TUI: Removing window 317592 for fullscreen switch
+2026/01/09 14:45:16 Removing window dynamically: video1 (windowID=317592, fastPath=true)
+2026/01/09 14:45:16 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/09 14:45:16 DeactivateSlot: Deactivated video1
+2026/01/09 14:45:16 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/09 14:45:16 Broadcasting stream-deactivated: video1 (fast path)
+2026/01/09 14:45:16 TUI: Adding display capture
+2026/01/09 14:45:16 AddDisplayDynamic: Using fast path (pre-allocated slots)
+2026/01/09 14:45:16 ActivateSlot: Activated video0 for window 0 (Display - Fullscreen)
+2026/01/09 14:45:17 AddDisplayDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/09 14:45:17 Broadcasting stream-activated: video0 (fast path)
+2026/01/09 14:45:17 Added display dynamically: video0 (fastPath=true)
+2026/01/09 14:45:17 sendLoop: Writing frame 1 to track video0 (windowID=0, streamID=gopeep-stream-0)
+2026/01/09 14:45:17 Size change callback triggered for track video0: 5120x1440
+2026/01/09 14:45:18 TUI: Removing display (no sources selected)
+2026/01/09 14:45:18 Removing window dynamically: video0 (windowID=0, fastPath=true)
+2026/01/09 14:45:18 DeactivateSlot: Deactivated video0
+2026/01/09 14:45:18 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/09 14:45:18 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/09 14:45:20 TUI: Adding window dynamically: 325008 (Alex Henningsson)
+2026/01/09 14:45:20 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 14:45:20 ActivateSlot: Activated video0 for window 325008 (Messages - Alex Henningsson)
+2026/01/09 14:45:21 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/09 14:45:21 Broadcasting stream-activated: video0 (fast path)
+2026/01/09 14:45:21 Added window dynamically: video0 (windowID=325008, fastPath=true)
+2026/01/09 14:45:21 Topmost captured window changed to: 325008 (was 317592)
+2026/01/09 14:45:21 Focus set to track=video0, windowID=325008, name=Alex Henningsson
+2026/01/09 14:45:21 Calling NotifyFocusChange for track: video0
+2026/01/09 14:45:21 NotifyFocusChange: callback exists, calling with trackID: video0
+2026/01/09 14:45:21 Focus change callback triggered for track: video0
+2026/01/09 14:45:21 sendLoop: Writing frame 1 to track video0 (windowID=325008, streamID=gopeep-stream-0)
+2026/01/09 14:45:21 Size change callback triggered for track video0: 1281x862
+2026/01/09 14:45:22 TUI: Removing window 325008 (no sources selected)
+2026/01/09 14:45:22 Removing window dynamically: video0 (windowID=325008, fastPath=true)
+2026/01/09 14:45:23 DeactivateSlot: Deactivated video0
+2026/01/09 14:45:23 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/09 14:45:23 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/09 14:45:27 Focus detection loop stopped
+2026/01/09 14:45:27 Peer viewer-4 connection state: closed

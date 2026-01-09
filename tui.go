@@ -1251,7 +1251,7 @@ func (m model) selectWindowByNumber(num int) (tea.Model, tea.Cmd) {
 // sharing immediately (like pressing Enter in the TUI).
 // When already sharing, this toggles the window selection.
 func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
-	// Validate window exists in sources
+	// Check if window exists in sources
 	found := false
 	for _, source := range m.sources {
 		if !source.IsFullscreen && source.Window != nil && source.Window.ID == windowID {
@@ -1261,8 +1261,18 @@ func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 	}
 
 	if !found {
-		// Window not found in sources, ignore
-		return m, nil
+		// Window not in sources list - try to get its info directly via CGWindowList
+		// This handles the case where gopeep was started in a different Space
+		windowInfo := GetWindowInfoByID(windowID)
+		if windowInfo == nil {
+			// Window doesn't exist or is invalid
+			log.Printf("Overlay: Window %d not found via CGWindowList, ignoring", windowID)
+			return m, nil
+		}
+
+		// Add window to sources dynamically so it shows in the TUI
+		log.Printf("Overlay: Dynamically adding window %d (%s) to sources", windowID, windowInfo.DisplayName())
+		m.sources = append(m.sources, SourceItem{Window: windowInfo})
 	}
 
 	return m.selection.ToggleWindow(&m, windowID)
