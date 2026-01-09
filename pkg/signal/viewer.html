@@ -1949,7 +1949,7 @@
           const src = cell.video.srcObject;
           cell.video.srcObject = null;
           cell.video.srcObject = src;
-          cell.video.play().catch(e => {});
+          cell.video.play().catch(e => console.log('Skip-to-live grid play error:', e));
         }
       });
 
@@ -1959,7 +1959,7 @@
           const src = cell.video.srcObject;
           cell.video.srcObject = null;
           cell.video.srcObject = src;
-          cell.video.play().catch(e => {});
+          cell.video.play().catch(e => console.log('Skip-to-live row play error:', e));
         }
       });
     }
@@ -2794,10 +2794,17 @@
             document.getElementById('stats-jitter').textContent = jitter;
 
             // Monitor jitter buffer delay for latency accumulation detection
+            // jitterBufferDelay is cumulative delay in seconds; divide by jitterBufferEmittedCount
+            // to get average per-frame buffer delay. Values above ~0.5s indicate we're behind live.
             if (videoStats.jitterBufferDelay !== undefined && videoStats.jitterBufferEmittedCount > 0) {
               const bufferDelay = videoStats.jitterBufferDelay / videoStats.jitterBufferEmittedCount;
-              // If buffer delay exceeds 500ms, we're falling behind - trigger skip-to-live
-              if (bufferDelay > 0.5) {
+
+              // Validate: ignore non-finite, non-positive, or unrealistically large values (>10s)
+              if (!Number.isFinite(bufferDelay) || bufferDelay <= 0 || bufferDelay > 10) {
+                console.debug('Ignoring invalid jitter buffer delay:', bufferDelay,
+                  '(delay:', videoStats.jitterBufferDelay, 'emittedCount:', videoStats.jitterBufferEmittedCount, ')');
+              } else if (bufferDelay > 0.5) {
+                // If buffer delay exceeds 500ms, we're falling behind - trigger skip-to-live
                 console.warn('High buffer delay detected:', (bufferDelay * 1000).toFixed(0), 'ms - triggering skip-to-live');
                 skipToLive();
               }

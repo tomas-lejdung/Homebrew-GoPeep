@@ -1,70 +1,169 @@
-2026/01/09 20:36:37 === GoPeep started at 2026-01-09T20:36:37+01:00 ===
-2026/01/09 20:36:38 Received room code from server: SLIM-DESERT-767
-2026/01/09 20:36:38 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
-2026/01/09 20:36:38 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/09 20:36:38 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/09 20:36:38 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/09 20:36:38 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/09 20:36:38 InitializeTrackSlots: All 4 track slots ready
-2026/01/09 20:36:38 Signal server starting on :8080
-2026/01/09 20:36:39 Viewer joined room SLIM-DESERT-767 (total viewers: 1)
-2026/01/09 20:36:39 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 20:36:39 Peer viewer-1 connection state: connecting
-2026/01/09 20:36:40 Peer viewer-1 connection state: connected
-2026/01/09 20:36:46 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/09 20:36:46 ActivateSlot: Activated video0 for window 317592 (Heynote - Scratch)
-2026/01/09 20:36:47 Broadcasting sharer-started to room SLIM-DESERT-767
-2026/01/09 20:36:47 Renegotiating with 1 peers
-2026/01/09 20:36:47 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/09 20:36:47 Renegotiation: peer viewer-1 connection state: connected
-2026/01/09 20:36:47 Renegotiation: ICE gathering complete for viewer-1
-2026/01/09 20:36:47 Renegotiation: sending offer to peer viewer-1 (SDP length: 16888)
-2026/01/09 20:36:47 Renegotiation: sending offer to peer viewer-1
-2026/01/09 20:36:47 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
-2026/01/09 20:36:47 Viewer joined room SLIM-DESERT-767 (total viewers: 1)
-2026/01/09 20:36:47 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/09 20:36:47 Peer viewer-2 connection state: connecting
-2026/01/09 20:36:47 Renegotiation: received answer from peer viewer-2, setting remote description
-2026/01/09 20:36:47 Renegotiation: failed to set remote description for viewer-2: InvalidModificationError: invalid proposed signaling state transition: stable->SetRemote(answer)->stable
-2026/01/09 20:36:47 Failed to handle renegotiate answer for viewer-2: InvalidModificationError: invalid proposed signaling state transition: stable->SetRemote(answer)->stable
-2026/01/09 20:36:47 sendLoop: Writing frame 1 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:36:48 Peer viewer-2 connection state: connected
-2026/01/09 20:36:49 sendLoop: Writing frame 101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:36:50 sendLoop: Writing frame 201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:36:52 sendLoop: Writing frame 301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:36:52 Peer viewer-1 connection state: disconnected
-2026/01/09 20:36:52 Peer viewer-1 connection state: closed
-2026/01/09 20:36:54 sendLoop: Writing frame 401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:36:56 sendLoop: Writing frame 501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:36:57 TUI: Adding window dynamically: 312846 (Performance)
-2026/01/09 20:36:57 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/09 20:36:57 ActivateSlot: Activated video1 for window 312846 (Arc - Performance)
-2026/01/09 20:36:58 sendLoop: Writing frame 601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:36:58 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
-2026/01/09 20:36:58 Broadcasting stream-activated: video1 (fast path)
-2026/01/09 20:36:58 Added window dynamically: video1 (windowID=312846, fastPath=true)
-2026/01/09 20:36:58 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:36:59 sendLoop: Writing frame 701 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:00 sendLoop: Writing frame 101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:01 sendLoop: Writing frame 801 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:02 sendLoop: Writing frame 201 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:03 sendLoop: Writing frame 901 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:04 sendLoop: Writing frame 301 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:05 sendLoop: Writing frame 1001 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:06 sendLoop: Writing frame 401 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:07 sendLoop: Writing frame 1101 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:07 sendLoop: Writing frame 501 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:08 sendLoop: Writing frame 1201 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:09 sendLoop: Writing frame 601 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:10 sendLoop: Writing frame 1301 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:11 sendLoop: Writing frame 701 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:12 sendLoop: Writing frame 1401 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:13 sendLoop: Writing frame 801 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:14 sendLoop: Writing frame 1501 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:15 sendLoop: Writing frame 901 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:16 sendLoop: Writing frame 1601 to track video0 (windowID=317592, streamID=gopeep-stream-0)
-2026/01/09 20:37:17 sendLoop: Writing frame 1001 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/09 20:37:17 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
-2026/01/09 20:37:17 Broadcasting stream-removed: video0
-2026/01/09 20:37:17 Broadcasting stream-removed: video1
-2026/01/09 20:37:17 Peer viewer-2 connection state: closed
+2026/01/09 21:01:01 === GoPeep started at 2026-01-09T21:01:01+01:00 ===
+2026/01/09 21:01:01 Received room code from server: GREEN-BADGE-951
+2026/01/09 21:01:01 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/09 21:01:01 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/09 21:01:01 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/09 21:01:01 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/09 21:01:01 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/09 21:01:01 InitializeTrackSlots: All 4 track slots ready
+2026/01/09 21:01:01 Signal server starting on :8080
+2026/01/09 21:01:03 Viewer joined room GREEN-BADGE-951 (total viewers: 1)
+2026/01/09 21:01:03 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 21:01:03 Peer viewer-1 connection state: connecting
+2026/01/09 21:01:04 Peer viewer-1 connection state: connected
+2026/01/09 21:01:06 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/09 21:01:07 ActivateSlot: Activated video0 for window 312846 (Arc - Performance)
+2026/01/09 21:01:07 Broadcasting sharer-started to room GREEN-BADGE-951
+2026/01/09 21:01:07 Renegotiating with 1 peers
+2026/01/09 21:01:07 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/09 21:01:07 Renegotiation: peer viewer-1 connection state: connected
+2026/01/09 21:01:07 Renegotiation: ICE gathering complete for viewer-1
+2026/01/09 21:01:07 Renegotiation: sending offer to peer viewer-1 (SDP length: 16892)
+2026/01/09 21:01:07 Renegotiation: sending offer to peer viewer-1
+2026/01/09 21:01:07 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/09 21:01:07 Viewer joined room GREEN-BADGE-951 (total viewers: 1)
+2026/01/09 21:01:07 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/09 21:01:07 Peer viewer-2 connection state: connecting
+2026/01/09 21:01:07 Renegotiation: received answer from peer viewer-2, setting remote description
+2026/01/09 21:01:07 Renegotiation: failed to set remote description for viewer-2: InvalidModificationError: invalid proposed signaling state transition: stable->SetRemote(answer)->stable
+2026/01/09 21:01:07 Failed to handle renegotiate answer for viewer-2: InvalidModificationError: invalid proposed signaling state transition: stable->SetRemote(answer)->stable
+2026/01/09 21:01:08 sendLoop: Writing frame 1 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:08 Peer viewer-2 connection state: connected
+2026/01/09 21:01:09 TUI: Adding window dynamically: 342305 (GoPeep - Screen Sharing)
+2026/01/09 21:01:09 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 21:01:09 ActivateSlot: Activated video1 for window 342305 (Ghostty - GoPeep - Screen Sharing)
+2026/01/09 21:01:09 sendLoop: Writing frame 101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:10 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/09 21:01:10 Broadcasting stream-activated: video1 (fast path)
+2026/01/09 21:01:10 Added window dynamically: video1 (windowID=342305, fastPath=true)
+2026/01/09 21:01:10 Track video0 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:10 Track video1 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:10 sendLoop: Writing frame 1 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:11 sendLoop: Writing frame 201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:12 sendLoop: Writing frame 101 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:13 Track video0 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:13 Track video1 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:13 sendLoop: Writing frame 301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:14 sendLoop: Writing frame 201 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:14 Peer viewer-1 connection state: disconnected
+2026/01/09 21:01:14 Peer viewer-1 connection state: closed
+2026/01/09 21:01:15 sendLoop: Writing frame 401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:16 sendLoop: Writing frame 301 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:17 sendLoop: Writing frame 501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:18 sendLoop: Writing frame 401 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:19 sendLoop: Writing frame 601 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:20 sendLoop: Writing frame 501 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:21 sendLoop: Writing frame 701 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:22 sendLoop: Writing frame 601 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:23 sendLoop: Writing frame 801 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:24 sendLoop: Writing frame 701 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:25 sendLoop: Writing frame 901 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:26 sendLoop: Writing frame 801 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:27 sendLoop: Writing frame 1001 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:27 Track video0 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:27 Track video1 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:28 sendLoop: Writing frame 901 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:29 sendLoop: Writing frame 1101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:30 sendLoop: Writing frame 1001 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:30 Track video0 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:30 Track video1 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:31 sendLoop: Writing frame 1201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:31 Track video0 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:31 Track video1 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:32 sendLoop: Writing frame 1101 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:32 Track video0 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:32 Track video1 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:33 sendLoop: Writing frame 1301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:34 Track video0 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:34 Track video1 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:34 sendLoop: Writing frame 1201 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:35 sendLoop: Writing frame 1401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:36 sendLoop: Writing frame 1301 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:37 sendLoop: Writing frame 1501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:37 TUI: Adding window dynamically: 325008 (Alex Henningsson)
+2026/01/09 21:01:37 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/09 21:01:37 ActivateSlot: Activated video2 for window 325008 (Messages - Alex Henningsson)
+2026/01/09 21:01:38 sendLoop: Writing frame 1401 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:39 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/09 21:01:39 Broadcasting stream-activated: video2 (fast path)
+2026/01/09 21:01:39 Added window dynamically: video2 (windowID=325008, fastPath=true)
+2026/01/09 21:01:39 sendLoop: Writing frame 1 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:39 Track video1 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:39 Track video2 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:39 sendLoop: Writing frame 1601 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:40 sendLoop: Writing frame 1501 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:40 Track video1 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:40 Track video2 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:41 sendLoop: Writing frame 101 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:41 sendLoop: Writing frame 1701 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:41 Track video1 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:41 Track video2 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:42 sendLoop: Writing frame 1601 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:43 sendLoop: Writing frame 201 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:43 sendLoop: Writing frame 1801 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:44 sendLoop: Writing frame 1701 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:44 sendLoop: Writing frame 301 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:45 sendLoop: Writing frame 1901 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:46 sendLoop: Writing frame 1801 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:46 Track video0 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:46 Track video2 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:46 sendLoop: Writing frame 401 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:47 sendLoop: Writing frame 2001 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:48 sendLoop: Writing frame 1901 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:48 Track video2 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:48 Track video0 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:48 sendLoop: Writing frame 501 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:49 sendLoop: Writing frame 2101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:50 sendLoop: Writing frame 2001 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:50 sendLoop: Writing frame 601 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:51 sendLoop: Writing frame 2201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:52 sendLoop: Writing frame 2101 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:52 sendLoop: Writing frame 701 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:53 sendLoop: Writing frame 2301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:54 sendLoop: Writing frame 2201 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:54 sendLoop: Writing frame 801 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:54 sendLoop: Writing frame 2401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:55 Track video0 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:01:55 Track video2 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:01:56 sendLoop: Writing frame 2301 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:56 sendLoop: Writing frame 901 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:56 sendLoop: Writing frame 2501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:01:58 sendLoop: Writing frame 2401 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:01:58 sendLoop: Writing frame 1001 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:01:59 sendLoop: Writing frame 2601 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:00 sendLoop: Writing frame 2501 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:01 sendLoop: Writing frame 1101 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:01 sendLoop: Writing frame 2701 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:02 sendLoop: Writing frame 2601 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:03 sendLoop: Writing frame 1201 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:03 sendLoop: Writing frame 2801 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:04 sendLoop: Writing frame 2701 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:05 sendLoop: Writing frame 1301 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:05 sendLoop: Writing frame 2901 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:06 sendLoop: Writing frame 2801 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:07 sendLoop: Writing frame 1401 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:07 sendLoop: Writing frame 3001 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:08 sendLoop: Writing frame 2901 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:09 sendLoop: Writing frame 1501 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:09 sendLoop: Writing frame 3101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:11 sendLoop: Writing frame 3001 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:11 sendLoop: Writing frame 1601 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:11 sendLoop: Writing frame 3201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:13 sendLoop: Writing frame 3101 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:13 sendLoop: Writing frame 1701 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:13 sendLoop: Writing frame 3301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:15 sendLoop: Writing frame 3201 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:15 sendLoop: Writing frame 1801 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:15 sendLoop: Writing frame 3401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:17 sendLoop: Writing frame 3301 to track video1 (windowID=342305, streamID=gopeep-stream-1)
+2026/01/09 21:02:17 sendLoop: Writing frame 1901 to track video2 (windowID=325008, streamID=gopeep-stream-2)
+2026/01/09 21:02:18 sendLoop: Writing frame 3501 to track video0 (windowID=312846, streamID=gopeep-stream-0)
+2026/01/09 21:02:18 Track video0 bitrate changed to 16666 kbps (focused: false)
+2026/01/09 21:02:18 Track video1 bitrate changed to 50000 kbps (focused: true)
+2026/01/09 21:02:19 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/09 21:02:19 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/09 21:02:19 encodeLoop: Encode failed for track video2 (error #2): encoder not initialized
+2026/01/09 21:02:19 Broadcasting stream-removed: video0
+2026/01/09 21:02:19 Broadcasting stream-removed: video1
+2026/01/09 21:02:19 Broadcasting stream-removed: video2
+2026/01/09 21:02:19 Peer viewer-2 connection state: closed
