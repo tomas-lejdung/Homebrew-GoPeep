@@ -1487,9 +1487,9 @@ func (ms *Streamer) focusDetectionLoop() {
 	}
 }
 
-// cursorTrackingLoop sends cursor position updates at ~15fps to minimize message volume
+// cursorTrackingLoop sends cursor position updates at ~5fps to minimize message volume
 func (ms *Streamer) cursorTrackingLoop() {
-	ticker := time.NewTicker(66 * time.Millisecond) // ~15fps
+	ticker := time.NewTicker(200 * time.Millisecond) // ~5fps
 	defer ticker.Stop()
 
 	const threshold = 1.0 // Only send if cursor moved >1% of window
