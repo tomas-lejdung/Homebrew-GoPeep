@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/gorilla/websocket"
 )
@@ -22,11 +23,13 @@ type Client struct {
 
 // Room holds connected clients for a session
 type Room struct {
-	code     string
-	password string // optional password for room protection
-	sharer   *Client
-	viewers  map[*Client]bool
-	mu       sync.RWMutex
+	code       string
+	password   string // optional password for room protection
+	sharer     *Client
+	viewers    map[*Client]bool
+	mu         sync.RWMutex
+	reserved   bool      // true if reserved but sharer hasn't joined yet
+	reservedAt time.Time // when the room was reserved
 }
 
 // Server manages WebSocket connections and room routing
@@ -38,7 +41,7 @@ type Server struct {
 
 // NewServer creates a new signaling server
 func NewServer() *Server {
-	return &Server{
+	s := &Server{
 		rooms: make(map[string]*Room),
 		upgrader: websocket.Upgrader{
 			ReadBufferSize:  1024,
@@ -48,6 +51,17 @@ func NewServer() *Server {
 			},
 		},
 	}
+
+	// Start cleanup goroutine for expired room reservations
+	go func() {
+		ticker := time.NewTicker(1 * time.Minute)
+		defer ticker.Stop()
+		for range ticker.C {
+			s.CleanupReservedRooms(5 * time.Minute)
+		}
+	}()
+
+	return s
 }
 
 // getOrCreateRoom returns existing room or creates new one
@@ -100,6 +114,75 @@ func (s *Server) removeClient(client *Client) {
 	if room.sharer == nil && len(room.viewers) == 0 {
 		delete(s.rooms, client.room)
 	}
+}
+
+// GenerateUniqueRoomCode generates a room code that doesn't collide with active rooms
+func (s *Server) GenerateUniqueRoomCode() string {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	const maxAttempts = 100
+	for i := 0; i < maxAttempts; i++ {
+		code := GenerateRoomCode()
+		if _, exists := s.rooms[code]; !exists {
+			return code
+		}
+	}
+
+	// Fallback: add random suffix if all attempts failed (extremely unlikely with 10M combinations)
+	return GenerateRoomCode() + "-" + string(rune('A'+rng.Intn(26)))
+}
+
+// ReserveRoom creates a reserved room that expires if not claimed
+func (s *Server) ReserveRoom() string {
+	code := s.GenerateUniqueRoomCode()
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	room := &Room{
+		code:       code,
+		viewers:    make(map[*Client]bool),
+		reserved:   true,
+		reservedAt: time.Now(),
+	}
+	s.rooms[code] = room
+
+	log.Printf("Reserved room: %s", code)
+	return code
+}
+
+// CleanupReservedRooms removes rooms that were reserved but never claimed
+func (s *Server) CleanupReservedRooms(maxAge time.Duration) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	now := time.Now()
+	for code, room := range s.rooms {
+		room.mu.RLock()
+		shouldDelete := room.reserved && room.sharer == nil && now.Sub(room.reservedAt) > maxAge
+		room.mu.RUnlock()
+		if shouldDelete {
+			log.Printf("Cleaning up expired reservation: %s", code)
+			delete(s.rooms, code)
+		}
+	}
+}
+
+// HandleReserveRoom handles HTTP requests to reserve a new room code
+func (s *Server) HandleReserveRoom(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	code := s.ReserveRoom()
+
+	w.Header().Set("Content-Type", "application/json")
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	json.NewEncoder(w).Encode(map[string]string{
+		"room": code,
+	})
 }
 
 // HandleWebSocket handles WebSocket connections for signaling
@@ -155,6 +238,9 @@ func (s *Server) HandleViewer(w http.ResponseWriter, r *http.Request) {
 func (s *Server) StartServer(addr string) error {
 	mux := http.NewServeMux()
 
+	// API endpoint to reserve a room code
+	mux.HandleFunc("/api/reserve", s.HandleReserveRoom)
+
 	// WebSocket endpoint for signaling
 	mux.HandleFunc("/ws/", s.HandleWebSocket)
 
@@ -186,6 +272,26 @@ func (s *Server) BroadcastToViewers(roomCode string, msg SignalMessage) {
 		default:
 		}
 	}
+}
+
+// UpdateRoomPassword updates the password for an existing room
+func (s *Server) UpdateRoomPassword(roomCode string, password string) {
+	s.mu.RLock()
+	room, exists := s.rooms[NormalizeRoomCode(roomCode)]
+	s.mu.RUnlock()
+
+	if !exists {
+		return
+	}
+
+	room.mu.Lock()
+	room.password = password
+	if password != "" {
+		log.Printf("Room %s password updated", roomCode)
+	} else {
+		log.Printf("Room %s password removed", roomCode)
+	}
+	room.mu.Unlock()
 }
 
 // LocalSharer provides an interface for local (in-process) sharing

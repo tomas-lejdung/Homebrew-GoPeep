@@ -2064,20 +2064,57 @@
     function handleStreamsInfo(infoArray) {
       // Store the streams info array
       streamsInfo = infoArray || [];
-      
+
       console.log('Received streams-info:', streamsInfo.map(i => i.trackId));
-      
+
+      // If we have streams-info but no streams yet, try to get them from the PeerConnection
+      // This handles the case where ontrack didn't fire (e.g., renegotiation with same tracks)
+      if (streamsInfo.length > 0 && Object.keys(streams).length === 0 && pc) {
+        console.log('No streams stored but have streams-info, checking PeerConnection receivers');
+        const receivers = pc.getReceivers();
+        const transceivers = pc.getTransceivers();
+
+        for (let i = 0; i < transceivers.length && i < 4; i++) {
+          const transceiver = transceivers[i];
+          const receiver = transceiver?.receiver;
+          if (receiver && receiver.track && receiver.track.kind === 'video') {
+            const track = receiver.track;
+            const stream = new MediaStream([track]);
+            const mid = transceiver.mid;
+            const midNum = mid !== null ? parseInt(mid, 10) : i;
+            const streamIndex = !isNaN(midNum) && midNum >= 0 && midNum <= 3 ? midNum : i;
+
+            // Find matching streamsInfo
+            const trackInfo = streamsInfo.find(info => info.trackId === `video${streamIndex}`) || null;
+
+            if (!streams[streamIndex]) {
+              streams[streamIndex] = {
+                stream: stream,
+                browserTrackId: track.id,
+                info: trackInfo
+              };
+              console.log('Retrieved stream from receiver at index:', streamIndex, 'mid:', mid);
+
+              if (trackInfo && !streamOrder.includes(streamIndex)) {
+                streamOrder.push(streamIndex);
+                streamOrder.sort((a, b) => a - b);
+              }
+            }
+          }
+        }
+      }
+
       // Map info to streams by index (video0 -> index 0, video1 -> index 1, etc.)
       for (const info of streamsInfo) {
         // Extract index from trackId (e.g., "video0" -> 0)
         const match = info.trackId.match(/video(\d+)/);
         if (match) {
           const idx = parseInt(match[1], 10);
-          
+
           // Update stream info if track already arrived
           if (streams[idx]) {
             streams[idx].info = info;
-            
+
             // Add to streamOrder if not already there (track arrived before info)
             if (!streamOrder.includes(idx)) {
               streamOrder.push(idx);
@@ -2085,13 +2122,19 @@
               console.log('Added stream', idx, 'to streamOrder after receiving info');
             }
           }
-          
+
           if (info.isFocused) {
             sharerFocusedIndex = idx;
           }
         }
       }
       
+      // Update status when sharer has started (streams-info with actual streams)
+      // The waiting overlay will be hidden when actual video arrives via ontrack
+      if (streamsInfo.length > 0 && !mainVideo.srcObject) {
+        setStatus('Receiving stream...', 'connecting');
+      }
+
       // If we have active streams but no video is showing, show the first one
       if (streamOrder.length > 0 && (viewerFocusedIndex === null || !mainVideo.srcObject)) {
         const firstActiveIdx = sharerFocusedIndex !== null && streamOrder.includes(sharerFocusedIndex) 
@@ -2691,7 +2734,8 @@
             break;
             
           case 'sharer-ready':
-            setStatus('Sharer reconnected', 'connecting');
+            console.log('Sharer ready - waiting for offer');
+            setStatus('Connecting...', 'connecting');
             if (pc) {
               pc.close();
               pc = null;
@@ -2705,8 +2749,9 @@
             mainVideo.srcObject = null;
             streamStats.style.display = 'none';
             updateMultiStreamUI();
-            setWaitingState('Reconnecting', 'Sharer has reconnected, establishing new stream...');
-            waitingEl.classList.remove('hidden');
+            // Hide waiting overlay - offer should arrive shortly
+            // Server already sent viewer-joined to sharer when sharer connected
+            waitingEl.classList.add('hidden');
             break;
             
           case 'sharer-stopped':
@@ -2731,9 +2776,23 @@
             break;
           
           case 'sharer-started':
-            console.log('Sharer started sharing again');
+            console.log('Sharer started sharing - closing old connection and rejoining');
             setStatus('Connecting...', 'connecting');
             setWaitingState('Connecting', 'Sharer started streaming, establishing connection...');
+            // Close old connection to ensure clean reconnection
+            if (pc) {
+              pc.close();
+              pc = null;
+              stopStatsCollection();
+            }
+            streams = {};
+            streamOrder = [];
+            streamsInfo = [];
+            viewerFocusedIndex = null;
+            sharerFocusedIndex = null;
+            mainVideo.srcObject = null;
+            streamStats.style.display = 'none';
+            updateMultiStreamUI();
             // Now rejoin to get a new offer
             const rejoinMsg = { type: 'join', role: 'viewer' };
             if (roomPassword) {
@@ -3087,13 +3146,8 @@
         // Build the row
         updateRowLayout();
       }
-      
-      // Save preference
-      try {
-        localStorage.setItem('gopeep-layout', layout);
-      } catch (e) {}
     }
-    
+
     function toggleLayout() {
       // Cycle through: focus -> grid -> row -> focus
       const layouts = ['focus', 'grid', 'row'];
@@ -3112,15 +3166,10 @@
     function toggleProportionalSizing() {
       proportionalSizing = !proportionalSizing;
       proportionalSwitch.classList.toggle('active', proportionalSizing);
-      
+
       if (currentLayout === 'grid') {
         updateGridLayout();
       }
-      
-      // Save preference
-      try {
-        localStorage.setItem('gopeep-proportional', proportionalSizing ? '1' : '0');
-      } catch (e) {}
     }
     
     function toggleFollowMode() {
@@ -3895,20 +3944,7 @@
     
     // Double-click to fullscreen
     mainVideoContainer.addEventListener('dblclick', toggleFullscreen);
-    
-    // Load saved preferences
-    try {
-      const savedLayout = localStorage.getItem('gopeep-layout');
-      if (savedLayout === 'grid' || savedLayout === 'row') {
-        currentLayout = savedLayout;
-      }
-      const savedProportional = localStorage.getItem('gopeep-proportional');
-      if (savedProportional === '0') {
-        proportionalSizing = false;
-        proportionalSwitch.classList.remove('active');
-      }
-    } catch (e) {}
-    
+
     // Start minimap updates
     startMinimapUpdates();
     
