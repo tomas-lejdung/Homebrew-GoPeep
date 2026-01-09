@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 	"github.com/gorilla/websocket"
 	"github.com/tomaslejdung/gopeep/pkg/overlay"
+	"github.com/tomaslejdung/gopeep/pkg/settings"
 	sig "github.com/tomaslejdung/gopeep/pkg/signal"
 )
 
@@ -291,20 +292,43 @@ func initialModel(config Config) model {
 	// Initialize available codecs
 	InitAvailableCodecs()
 
-	// Find FPS index that matches config.FPS
-	fpsIndex := FPSIndexForValue(config.FPS)
+	// Load saved settings
+	savedSettings, err := settings.Load()
+	if err != nil {
+		log.Printf("Failed to load settings: %v", err)
+		savedSettings = settings.DefaultSettings()
+	}
+
+	// Validate indices after InitAvailableCodecs()
+	if savedSettings.Quality < 0 || savedSettings.Quality >= len(QualityPresets) {
+		savedSettings.Quality = DefaultQualityIndex()
+	}
+	if savedSettings.FPS < 0 || savedSettings.FPS >= len(FPSPresets) {
+		savedSettings.FPS = DefaultFPSIndex()
+	}
+	if savedSettings.Codec < 0 || savedSettings.Codec >= len(AvailableCodecs) {
+		savedSettings.Codec = DefaultCodecIndex()
+	}
+
+	// CLI flags override saved settings (30 is the default FPS flag value)
+	fpsIndex := savedSettings.FPS
+	if config.FPS != 30 {
+		fpsIndex = FPSIndexForValue(config.FPS)
+	}
 
 	return model{
 		config:          config,
 		sourceCursor:    0,
 		selectedSource:  -1,
 		selectedWindows: make(map[uint32]bool),
-		qualityCursor:   DefaultQualityIndex(),
-		selectedQuality: DefaultQualityIndex(),
+		qualityCursor:   savedSettings.Quality,
+		selectedQuality: savedSettings.Quality,
 		fpsCursor:       fpsIndex,
 		selectedFPS:     fpsIndex,
-		codecCursor:     DefaultCodecIndex(),
-		selectedCodec:   DefaultCodecIndex(),
+		codecCursor:     savedSettings.Codec,
+		selectedCodec:   savedSettings.Codec,
+		adaptiveBitrate: savedSettings.AdaptiveBitrate,
+		qualityMode:     savedSettings.QualityMode,
 		activeColumn:    columnSources,
 		maxReconnects:   10, // Max reconnection attempts
 	}
@@ -953,7 +977,6 @@ func (m model) applyQuality(index int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// applyCodec changes the codec setting
 // applyCodec changes the codec setting dynamically without full restart
 func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
 	if index < 0 || index >= len(AvailableCodecs) {
@@ -1748,6 +1771,18 @@ func (m *model) stopCapture(preserveState bool) {
 
 // cleanup shuts down everything
 func (m *model) cleanup() {
+	// Save settings before cleanup
+	currentSettings := settings.UserSettings{
+		Quality:         m.selectedQuality,
+		FPS:             m.selectedFPS,
+		Codec:           m.selectedCodec,
+		AdaptiveBitrate: m.adaptiveBitrate,
+		QualityMode:     m.qualityMode,
+	}
+	if err := settings.Save(currentSettings); err != nil {
+		log.Printf("Failed to save settings: %v", err)
+	}
+
 	m.stopCapture(false)
 
 	// Close unified peer manager
