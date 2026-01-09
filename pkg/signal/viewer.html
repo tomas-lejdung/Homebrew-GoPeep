@@ -407,11 +407,10 @@
     
     #video-row.visible {
       display: flex;
-      align-items: center;
+      align-items: flex-start; /* Start at top so tall content is scrollable */
       gap: 8px;
       padding: 8px;
       padding-top: 60px; /* Space for header */
-      padding-bottom: calc(100px + env(safe-area-inset-bottom, 0px)); /* Space for minimap */
       padding-left: calc(8px + env(safe-area-inset-left, 0px));
       padding-right: calc(8px + env(safe-area-inset-right, 0px));
     }
@@ -444,6 +443,8 @@
       transition: all var(--transition-fast);
       border: 2px solid transparent;
       scroll-snap-align: center;
+      margin-top: auto;
+      margin-bottom: auto; /* Centers vertically when smaller than container, stays scrollable when larger */
     }
     
     .row-cell:hover {
@@ -2215,6 +2216,11 @@
         const rowRect = videoRow.getBoundingClientRect();
         const cellRect = cell.cell.getBoundingClientRect();
 
+        // Only pan if the video is larger than the viewport
+        const needsHorizontalPan = videoWidth > rowRect.width;
+        const needsVerticalPan = videoHeight > rowRect.height;
+        if (!needsHorizontalPan && !needsVerticalPan) return;
+
         // Convert cursor percentage to pixel position within the video
         const cursorPixelX = (cursorX / 100) * videoWidth;
         const cursorPixelY = (cursorY / 100) * videoHeight;
@@ -2223,9 +2229,9 @@
         const cursorInRowX = (cellRect.left - rowRect.left) + videoRow.scrollLeft + cursorPixelX;
         const cursorInRowY = (cellRect.top - rowRect.top) + videoRow.scrollTop + cursorPixelY;
 
-        // Target scroll position to center cursor in viewport
-        const targetScrollX = cursorInRowX - rowRect.width / 2;
-        const targetScrollY = cursorInRowY - rowRect.height / 2;
+        // Target scroll position to center cursor in viewport (only for axes that need panning)
+        const targetScrollX = needsHorizontalPan ? cursorInRowX - rowRect.width / 2 : videoRow.scrollLeft;
+        const targetScrollY = needsVerticalPan ? cursorInRowY - rowRect.height / 2 : videoRow.scrollTop;
 
         // Smooth scroll to position
         videoRow.scrollTo({
