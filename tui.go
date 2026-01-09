@@ -206,6 +206,9 @@ type overlayToggleMsg struct {
 	windowID uint32
 }
 
+// overlayFullscreenToggleMsg indicates the fullscreen button was clicked
+type overlayFullscreenToggleMsg struct{}
+
 // SourceItem represents a selectable source (fullscreen or window)
 type SourceItem struct {
 	IsFullscreen bool
@@ -549,6 +552,27 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		// Overlay button was clicked - toggle window selection
 		return m.handleOverlayToggle(msg.windowID)
 
+	case overlayFullscreenToggleMsg:
+		// Fullscreen button was clicked - toggle fullscreen mode
+		// Same logic as "F" key handler
+		if m.autoShareEnabled {
+			return m, nil
+		}
+		if len(m.sources) > 0 && m.sources[0].IsFullscreen {
+			m.fullscreenSelected = !m.fullscreenSelected
+			if m.fullscreenSelected {
+				m.selectedWindows = make(map[uint32]bool)
+			}
+			m.sourceCursor = 0 // Move cursor to fullscreen
+			m.syncOverlay()    // Update overlay state
+
+			// If sharing, dynamically update
+			if m.sharing && m.streamer != nil {
+				return m.updateMultiStreamSelection()
+			}
+		}
+		return m, nil
+
 	case tickMsg:
 		// Periodic refresh (1 second)
 		var cmds []tea.Cmd
@@ -858,6 +882,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 					if m.fullscreenSelected {
 						m.selectedWindows = make(map[uint32]bool)
 					}
+					m.syncOverlay() // Update overlay state
 
 					// If sharing, dynamically update
 					if m.sharing && m.streamer != nil {
@@ -926,6 +951,7 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 				m.selectedWindows = make(map[uint32]bool)
 			}
 			m.sourceCursor = 0 // Move cursor to fullscreen
+			m.syncOverlay()    // Update overlay state
 
 			// If sharing, dynamically update
 			if m.sharing && m.streamer != nil {
@@ -1192,7 +1218,7 @@ func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 // The overlay handles its own focus detection via a background thread.
 func (m *model) syncOverlay() {
 	if m.overlayController != nil {
-		m.overlayController.Sync(m.selectedWindows, m.sharing, m.autoShareEnabled, m.viewerCount)
+		m.overlayController.Sync(m.selectedWindows, m.sharing, m.autoShareEnabled, m.viewerCount, m.fullscreenSelected)
 	}
 	// Note: The overlay now runs its own update loop via background thread,
 	// so we don't need to call Refresh() here. The overlay queries state
@@ -2584,6 +2610,8 @@ func RunTUI(config Config) error {
 				switch evt.Type {
 				case overlay.EventToggleSelection:
 					p.Send(overlayToggleMsg{windowID: evt.WindowID})
+				case overlay.EventToggleFullscreen:
+					p.Send(overlayFullscreenToggleMsg{})
 				}
 			}
 		}()

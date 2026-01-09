@@ -16,12 +16,14 @@ package overlay
 
 // Forward declarations for Go callbacks
 void goOverlayButtonClicked(uint32_t windowID);
+void goFullscreenButtonClicked(void);
 int goGetWindowState(uint32_t windowID);
 int goIsManualMode(void);
 int goGetFocusedWindow(uint32_t *outWindowID, double *outX, double *outY, double *outW, double *outH);
 int goGetSelectedWindowCount(void);
 int goIsSharing(void);
 int goGetViewerCount(void);
+int goIsFullscreenSelected(void);
 
 // Window state constants
 #define STATE_NOT_SELECTED 0
@@ -68,6 +70,12 @@ static NSView *g_statusDots[4] = {nil, nil, nil, nil};
 static NSTextField *g_viewerLabel = nil;
 static int g_lastSelectedCount = -1;  // For animation on count change
 
+// Fullscreen button (in status indicator)
+static NSView *g_fullscreenButtonView = nil;
+static NSTextField *g_fullscreenLabel = nil;
+static BOOL g_fullscreenButtonHovered = NO;
+static BOOL g_lastFullscreenState = NO;  // For state change tracking
+
 // Button dimensions
 static const CGFloat kButtonWidth = 130.0;
 static const CGFloat kButtonHeight = 32.0;
@@ -81,6 +89,10 @@ static const CGFloat kStatusDotSize = 10.0;
 static const CGFloat kStatusDotSpacing = 4.0;
 static const CGFloat kStatusPadding = 8.0;
 static const CGFloat kStatusCornerMargin = 20.0;
+
+// Fullscreen button dimensions
+static const CGFloat kFullscreenButtonHeight = 26.0;
+static const CGFloat kFullscreenButtonSpacing = 6.0;  // Gap between status row and button
 
 static NSColor* overlayBackgroundColor(BOOL hovered) {
     if (hovered) {
@@ -209,8 +221,10 @@ static void pulseOverlay(void) {
 static void updateStatusIndicator(int selectedCount, BOOL isSharing) {
     if (!g_statusWindow) return;
 
-    // Red color for sharing dots
-    NSColor *filledColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];
+    // Red color for sharing dots, blue for selected but not sharing
+    NSColor *sharingColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];
+    NSColor *selectedColor = [NSColor colorWithRed:0.0 green:0.48 blue:1.0 alpha:1.0];  // Blue
+    NSColor *filledColor = isSharing ? sharingColor : selectedColor;
     // Gray outline for empty slots
     NSColor *emptyBorderColor = [NSColor colorWithRed:0.4 green:0.4 blue:0.4 alpha:1.0];
 
@@ -218,7 +232,7 @@ static void updateStatusIndicator(int selectedCount, BOOL isSharing) {
         if (!g_statusDots[i]) continue;
 
         if (i < selectedCount) {
-            // Filled dot (sharing)
+            // Filled dot (selected or sharing)
             g_statusDots[i].layer.backgroundColor = filledColor.CGColor;
             g_statusDots[i].layer.borderWidth = 0;
         } else {
@@ -300,15 +314,79 @@ static BOOL isPointOverArrow(CGPoint cgPoint) {
     return NSPointInRect(cocoaPoint, arrowRect);
 }
 
+// Check if a point is over the fullscreen button in the status window
+static BOOL isPointOverFullscreenButton(CGPoint cgPoint) {
+    if (!g_statusWindow || !g_statusWindow.isVisible || !g_fullscreenButtonView) return NO;
+
+    NSScreen *mainScreen = [NSScreen mainScreen];
+    CGFloat screenHeight = mainScreen.frame.size.height;
+    NSPoint cocoaPoint = NSMakePoint(cgPoint.x, screenHeight - cgPoint.y);
+
+    // Get the fullscreen button's frame in screen coordinates
+    NSRect statusFrame = g_statusWindow.frame;
+    NSRect buttonFrame = g_fullscreenButtonView.frame;
+    NSRect buttonScreenRect = NSMakeRect(
+        statusFrame.origin.x + buttonFrame.origin.x,
+        statusFrame.origin.y + buttonFrame.origin.y,
+        buttonFrame.size.width,
+        buttonFrame.size.height
+    );
+
+    return NSPointInRect(cocoaPoint, buttonScreenRect);
+}
+
+// Update fullscreen button appearance based on state and hover
+static void updateFullscreenButton(BOOL isFullscreen, BOOL isHovered) {
+    if (!g_fullscreenButtonView || !g_fullscreenLabel) return;
+
+    // Update background color - clear hover effect with lighter background
+    if (isHovered) {
+        g_fullscreenButtonView.layer.backgroundColor = [NSColor colorWithRed:0.35 green:0.35 blue:0.38 alpha:1.0].CGColor;
+    } else {
+        g_fullscreenButtonView.layer.backgroundColor = [NSColor clearColor].CGColor;  // Transparent, container shows through
+    }
+
+    // Update text and color based on fullscreen state
+    if (isFullscreen) {
+        g_fullscreenLabel.stringValue = @"Fullscreen ✓";
+        g_fullscreenLabel.textColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0];  // Red when active
+    } else {
+        g_fullscreenLabel.stringValue = @"Fullscreen";
+        if (isHovered) {
+            g_fullscreenLabel.textColor = [NSColor whiteColor];
+        } else {
+            g_fullscreenLabel.textColor = [NSColor colorWithRed:0.7 green:0.7 blue:0.7 alpha:1.0];
+        }
+    }
+}
+
 // Update status indicator visibility and content
 static void updateStatusWindow(void) {
     if (!g_statusWindow) return;
 
+    int isManualMode = goIsManualMode();
     int isSharing = goIsSharing();
     int selectedCount = goGetSelectedWindowCount();
+    int isFullscreen = goIsFullscreenSelected();
 
-    if (isSharing && selectedCount > 0) {
-        updateStatusIndicator(selectedCount, YES);
+    // Always show status window in manual mode (so user can click fullscreen without sharing first)
+    if (isManualMode) {
+        // Update dots indicator based on current state
+        if (isSharing) {
+            if (isFullscreen) {
+                // Show fullscreen indicator in first dot (filled), rest empty
+                updateStatusIndicator(1, YES);
+            } else {
+                updateStatusIndicator(selectedCount, YES);
+            }
+        } else {
+            // Not sharing yet - show empty dots or selected count
+            if (isFullscreen) {
+                updateStatusIndicator(1, NO);  // Show as selected but not sharing
+            } else {
+                updateStatusIndicator(selectedCount, selectedCount > 0 ? NO : NO);
+            }
+        }
 
         // Update viewer count label
         if (g_viewerLabel) {
@@ -316,14 +394,19 @@ static void updateStatusWindow(void) {
             g_viewerLabel.stringValue = [NSString stringWithFormat:@"%d", viewerCount];
         }
 
+        // Update fullscreen button appearance
+        updateFullscreenButton(isFullscreen, g_fullscreenButtonHovered);
+
         if (!g_statusWindow.isVisible) {
             [g_statusWindow orderFrontRegardless];
         }
     } else {
+        // Auto mode - hide status window
         if (g_statusWindow.isVisible) {
             [g_statusWindow orderOut:nil];
         }
         g_lastSelectedCount = -1;  // Reset for next time
+        g_lastFullscreenState = NO;
     }
 }
 
@@ -423,24 +506,40 @@ static void doFrame(void) {
     [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.001]];
 }
 
-// Event tap callback for mouse clicks
+// Event tap callback for mouse clicks and movement
 static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
     if (type == kCGEventLeftMouseDown) {
-        if (!g_overlayWindow || !g_overlayWindow.isVisible || g_currentWindowID == 0) {
-            return event;
-        }
-
         CGPoint clickPoint = CGEventGetLocation(event);
 
-        if (isPointOverOverlay(clickPoint)) {
-            if (isPointOverArrow(clickPoint)) {
-                // Start animation to opposite corner
-                startCornerAnimation(!g_positionedRight);
-            } else {
-                // Toggle selection
-                goOverlayButtonClicked(g_currentWindowID);
-            }
+        // Check for fullscreen button click first (status window)
+        if (isPointOverFullscreenButton(clickPoint)) {
+            goFullscreenButtonClicked();
             return NULL; // Consume the click
+        }
+
+        // Check for overlay button click (window share button)
+        if (g_overlayWindow && g_overlayWindow.isVisible && g_currentWindowID != 0) {
+            if (isPointOverOverlay(clickPoint)) {
+                if (isPointOverArrow(clickPoint)) {
+                    // Start animation to opposite corner
+                    startCornerAnimation(!g_positionedRight);
+                } else {
+                    // Toggle selection
+                    goOverlayButtonClicked(g_currentWindowID);
+                }
+                return NULL; // Consume the click
+            }
+        }
+    } else if (type == kCGEventMouseMoved) {
+        // Track hover state for fullscreen button
+        CGPoint mousePoint = CGEventGetLocation(event);
+        BOOL wasHovered = g_fullscreenButtonHovered;
+        g_fullscreenButtonHovered = isPointOverFullscreenButton(mousePoint);
+
+        // Update button appearance if hover state changed
+        if (wasHovered != g_fullscreenButtonHovered) {
+            int isFullscreen = goIsFullscreenSelected();
+            updateFullscreenButton(isFullscreen, g_fullscreenButtonHovered);
         }
     } else if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
         if (g_eventTap) {
@@ -553,12 +652,15 @@ static void createOverlay(void) {
         g_arrowLabel.alignment = NSTextAlignmentCenter;
         [g_buttonView addSubview:g_arrowLabel];
 
-        // Create status indicator window (top-right corner, shows when sharing)
+        // Create status indicator window (top-right corner, shows status and fullscreen toggle)
         // Width: padding + 4 dots + spacing + divider space + viewer label + padding
         CGFloat dotsWidth = kStatusDotSize * 4 + kStatusDotSpacing * 3;
         CGFloat viewerLabelWidth = 24.0;  // Space for "99" (just number)
         CGFloat statusWidth = kStatusPadding + dotsWidth + 8.0 + viewerLabelWidth + kStatusPadding;
-        CGFloat statusHeight = kStatusPadding * 2 + kStatusDotSize;
+        CGFloat statusRowHeight = kStatusPadding * 2 + kStatusDotSize;
+        CGFloat dividerHeight = 1.0;
+        // Total height: status row + divider + fullscreen button row
+        CGFloat statusHeight = statusRowHeight + dividerHeight + kFullscreenButtonHeight;
         NSScreen *mainScreen = [NSScreen mainScreen];
         CGFloat statusX = mainScreen.frame.size.width - statusWidth - kStatusCornerMargin;
         CGFloat statusY = mainScreen.frame.size.height - statusHeight - kStatusCornerMargin - 25; // Below menu bar
@@ -573,23 +675,25 @@ static void createOverlay(void) {
         g_statusWindow.backgroundColor = [NSColor clearColor];
         g_statusWindow.opaque = NO;
         g_statusWindow.hasShadow = YES;
-        g_statusWindow.ignoresMouseEvents = YES;  // Non-interactive
+        g_statusWindow.ignoresMouseEvents = NO;  // Interactive (for fullscreen button)
         g_statusWindow.collectionBehavior = NSWindowCollectionBehaviorCanJoinAllSpaces |
                                             NSWindowCollectionBehaviorStationary |
                                             NSWindowCollectionBehaviorFullScreenAuxiliary |
                                             NSWindowCollectionBehaviorIgnoresCycle;
         g_statusWindow.alphaValue = 1.0;
 
+        // Single container with rounded corners
         g_statusView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, statusWidth, statusHeight)];
         g_statusView.wantsLayer = YES;
-        g_statusView.layer.cornerRadius = statusHeight / 2.0;  // Pill shape
-        g_statusView.layer.backgroundColor = [NSColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.7].CGColor;
+        g_statusView.layer.cornerRadius = 10.0;  // Rounded rectangle
+        g_statusView.layer.backgroundColor = [NSColor colorWithRed:0.0 green:0.0 blue:0.0 alpha:0.75].CGColor;
         g_statusWindow.contentView = g_statusView;
 
-        // Create 4 dots
+        // Top row: dots + viewer count
+        CGFloat dotsRowY = kFullscreenButtonHeight + dividerHeight;
         for (int i = 0; i < 4; i++) {
             CGFloat dotX = kStatusPadding + i * (kStatusDotSize + kStatusDotSpacing);
-            CGFloat dotY = kStatusPadding;
+            CGFloat dotY = dotsRowY + kStatusPadding;
             g_statusDots[i] = [[NSView alloc] initWithFrame:NSMakeRect(dotX, dotY, kStatusDotSize, kStatusDotSize)];
             g_statusDots[i].wantsLayer = YES;
             g_statusDots[i].layer.cornerRadius = kStatusDotSize / 2.0;
@@ -600,9 +704,9 @@ static void createOverlay(void) {
             [g_statusView addSubview:g_statusDots[i]];
         }
 
-        // Create viewer count label (after dots)
+        // Viewer count label (after dots)
         CGFloat viewerX = kStatusPadding + dotsWidth + 8.0;
-        CGFloat viewerY = (statusHeight - 14.0) / 2.0;  // Center vertically
+        CGFloat viewerY = dotsRowY + (statusRowHeight - 14.0) / 2.0;
         g_viewerLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(viewerX, viewerY, viewerLabelWidth, 14.0)];
         g_viewerLabel.stringValue = @"0";
         g_viewerLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
@@ -614,7 +718,37 @@ static void createOverlay(void) {
         g_viewerLabel.alignment = NSTextAlignmentLeft;
         [g_statusView addSubview:g_viewerLabel];
 
-        CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown);
+        // Divider line between rows
+        NSView *divider = [[NSView alloc] initWithFrame:NSMakeRect(kStatusPadding, kFullscreenButtonHeight, statusWidth - 2 * kStatusPadding, dividerHeight)];
+        divider.wantsLayer = YES;
+        divider.layer.backgroundColor = [NSColor colorWithRed:0.3 green:0.3 blue:0.3 alpha:1.0].CGColor;
+        [g_statusView addSubview:divider];
+
+        // Bottom row: Fullscreen toggle button (clickable area)
+        g_fullscreenButtonView = [[NSView alloc] initWithFrame:NSMakeRect(0, 0, statusWidth, kFullscreenButtonHeight)];
+        g_fullscreenButtonView.wantsLayer = YES;
+        g_fullscreenButtonView.layer.cornerRadius = 0;  // Part of container, no separate rounding
+        g_fullscreenButtonView.layer.backgroundColor = [NSColor clearColor].CGColor;  // Transparent by default
+        // Round only the bottom corners
+        g_fullscreenButtonView.layer.maskedCorners = kCALayerMinXMinYCorner | kCALayerMaxXMinYCorner;
+        [g_statusView addSubview:g_fullscreenButtonView];
+
+        // Fullscreen button label - properly centered
+        CGFloat fsLabelHeight = 14.0;
+        CGFloat fsLabelY = (kFullscreenButtonHeight - fsLabelHeight) / 2.0;
+        g_fullscreenLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(0, fsLabelY, statusWidth, fsLabelHeight)];
+        g_fullscreenLabel.stringValue = @"Fullscreen";
+        g_fullscreenLabel.font = [NSFont systemFontOfSize:11 weight:NSFontWeightMedium];
+        g_fullscreenLabel.textColor = [NSColor colorWithRed:0.7 green:0.7 blue:0.7 alpha:1.0];
+        g_fullscreenLabel.backgroundColor = [NSColor clearColor];
+        g_fullscreenLabel.bordered = NO;
+        g_fullscreenLabel.editable = NO;
+        g_fullscreenLabel.selectable = NO;
+        g_fullscreenLabel.alignment = NSTextAlignmentCenter;
+        [g_fullscreenButtonView addSubview:g_fullscreenLabel];
+
+        // Event tap for clicks AND mouse movement (for hover)
+        CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown) | CGEventMaskBit(kCGEventMouseMoved);
         g_eventTap = CGEventTapCreate(
             kCGSessionEventTap,
             kCGHeadInsertEventTap,
@@ -829,6 +963,40 @@ func goGetViewerCount() C.int {
 	}
 
 	return C.int(o.controller.GetViewerCount())
+}
+
+//export goIsFullscreenSelected
+func goIsFullscreenSelected() C.int {
+	globalMu.RLock()
+	o := globalOverlay
+	globalMu.RUnlock()
+
+	if o == nil || o.controller == nil {
+		return 0
+	}
+
+	if o.controller.IsFullscreenSelected() {
+		return 1
+	}
+	return 0
+}
+
+//export goFullscreenButtonClicked
+func goFullscreenButtonClicked() {
+	if time.Since(lastClickTime) < 300*time.Millisecond {
+		return
+	}
+	lastClickTime = time.Now()
+
+	globalMu.RLock()
+	o := globalOverlay
+	globalMu.RUnlock()
+
+	if o != nil {
+		o.sendEvent(Event{
+			Type: EventToggleFullscreen,
+		})
+	}
 }
 
 // runLoop is the 60fps game loop for the overlay.

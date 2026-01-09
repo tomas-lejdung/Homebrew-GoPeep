@@ -31,6 +31,8 @@ type EventType int
 const (
 	// EventToggleSelection - user clicked the overlay button to toggle selection
 	EventToggleSelection EventType = iota
+	// EventToggleFullscreen - user clicked the fullscreen button
+	EventToggleFullscreen
 )
 
 // FocusedWindowInfo contains information about the currently focused window
@@ -64,6 +66,9 @@ type Controller interface {
 
 	// GetViewerCount returns the number of connected viewers.
 	GetViewerCount() int
+
+	// IsFullscreenSelected returns true if fullscreen mode is selected.
+	IsFullscreenSelected() bool
 }
 
 // Overlay manages the floating button that appears on focused windows.

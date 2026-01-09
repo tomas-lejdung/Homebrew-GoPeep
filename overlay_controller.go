@@ -12,10 +12,11 @@ type OverlayController struct {
 	mu sync.RWMutex
 
 	// State mirrors from the TUI model (updated via Sync method)
-	selectedWindows map[uint32]bool
-	sharing         bool
-	autoShareMode   bool
-	viewerCount     int
+	selectedWindows    map[uint32]bool
+	sharing            bool
+	autoShareMode      bool
+	viewerCount        int
+	fullscreenSelected bool
 }
 
 // NewOverlayController creates a new overlay controller.
@@ -27,7 +28,7 @@ func NewOverlayController() *OverlayController {
 
 // Sync updates the controller state from the TUI model.
 // Call this whenever the TUI state changes.
-func (c *OverlayController) Sync(selectedWindows map[uint32]bool, sharing bool, autoShareMode bool, viewerCount int) {
+func (c *OverlayController) Sync(selectedWindows map[uint32]bool, sharing bool, autoShareMode bool, viewerCount int, fullscreenSelected bool) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
 
@@ -39,6 +40,7 @@ func (c *OverlayController) Sync(selectedWindows map[uint32]bool, sharing bool, 
 	c.sharing = sharing
 	c.autoShareMode = autoShareMode
 	c.viewerCount = viewerCount
+	c.fullscreenSelected = fullscreenSelected
 }
 
 // GetWindowState implements overlay.Controller.
@@ -102,4 +104,11 @@ func (c *OverlayController) GetViewerCount() int {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
 	return c.viewerCount
+}
+
+// IsFullscreenSelected implements overlay.Controller.
+func (c *OverlayController) IsFullscreenSelected() bool {
+	c.mu.RLock()
+	defer c.mu.RUnlock()
+	return c.fullscreenSelected
 }
