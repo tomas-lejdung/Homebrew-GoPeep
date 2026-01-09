@@ -19,7 +19,6 @@ void goOverlayButtonClicked(uint32_t windowID);
 int goGetWindowState(uint32_t windowID);
 int goIsManualMode(void);
 int goGetFocusedWindow(uint32_t *outWindowID, double *outX, double *outY, double *outW, double *outH);
-int goGetViewerCount(void);
 
 // Window state constants
 #define STATE_NOT_SELECTED 0
@@ -32,8 +31,6 @@ static NSView *g_buttonView = nil;
 static NSTextField *g_label = nil;
 static NSView *g_indicator = nil;
 static NSTextField *g_arrowLabel = nil;
-static NSView *g_badgeView = nil;       // Viewer count badge
-static NSTextField *g_badgeLabel = nil; // Viewer count text
 static uint32_t g_currentWindowID = 0;
 static BOOL g_overlayEnabled = YES;
 static BOOL g_initialized = NO;
@@ -68,9 +65,6 @@ static const CGFloat kCornerRadius = 8.0;
 static const CGFloat kMargin = 16.0;
 static const CGFloat kIndicatorSize = 8.0;
 static const CGFloat kArrowWidth = 20.0;
-
-// Badge dimensions (viewer count)
-static const CGFloat kBadgeSize = 18.0;
 
 static NSColor* overlayBackgroundColor(BOOL hovered) {
     if (hovered) {
@@ -249,6 +243,9 @@ static BOOL isPointOverArrow(CGPoint cgPoint) {
 }
 
 // Main frame update - called by game loop at 60fps
+// Note: NSWindow was created on main thread, but most operations can be
+// called from other threads if done carefully. The game loop thread is
+// locked with runtime.LockOSThread() for consistency.
 static void doFrame(void) {
     if (!g_overlayWindow || !g_initialized) {
         return;
@@ -308,19 +305,6 @@ static void doFrame(void) {
     updateButtonAppearance(state, nowHovered, arrowHovered);
     g_isHovered = nowHovered;
     g_isArrowHovered = arrowHovered;
-
-    // Update viewer count badge
-    int viewerCount = goGetViewerCount();
-    if (state == STATE_SHARING && viewerCount > 0) {
-        if (viewerCount > 9) {
-            g_badgeLabel.stringValue = @"9+";
-        } else {
-            g_badgeLabel.stringValue = [NSString stringWithFormat:@"%d", viewerCount];
-        }
-        g_badgeView.hidden = NO;
-    } else {
-        g_badgeView.hidden = YES;
-    }
 
     // Calculate position
     NSScreen *mainScreen = [NSScreen mainScreen];
@@ -421,11 +405,23 @@ static void createOverlay(void) {
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 
-        NSRect frame = NSMakeRect(100, 100, kButtonWidth, kButtonHeight);
-        g_overlayWindow = [[NSWindow alloc] initWithContentRect:frame
-                                                      styleMask:NSWindowStyleMaskBorderless
-                                                        backing:NSBackingStoreBuffered
-                                                          defer:NO];
+        // Check if we're on the main thread - NSWindow requires main thread
+        if (![NSThread isMainThread]) {
+            NSLog(@"Warning: createOverlay called from non-main thread, overlay will be disabled");
+            return;
+        }
+
+        @try {
+            NSRect frame = NSMakeRect(100, 100, kButtonWidth, kButtonHeight);
+            g_overlayWindow = [[NSWindow alloc] initWithContentRect:frame
+                                                          styleMask:NSWindowStyleMaskBorderless
+                                                            backing:NSBackingStoreBuffered
+                                                              defer:NO];
+        } @catch (NSException *exception) {
+            NSLog(@"Failed to create overlay window: %@", exception);
+            g_overlayWindow = nil;
+            return;
+        }
 
         g_overlayWindow.level = NSFloatingWindowLevel;
         g_overlayWindow.backgroundColor = [NSColor clearColor];
@@ -479,29 +475,6 @@ static void createOverlay(void) {
         g_arrowLabel.selectable = NO;
         g_arrowLabel.alignment = NSTextAlignmentCenter;
         [g_buttonView addSubview:g_arrowLabel];
-
-        // Viewer count badge (top-right corner, slightly overlapping)
-        CGFloat badgeX = kButtonWidth - kBadgeSize + 4.0;  // Overlap right edge by 4px
-        CGFloat badgeY = kButtonHeight - kBadgeSize + 4.0; // Overlap top edge by 4px
-        g_badgeView = [[NSView alloc] initWithFrame:NSMakeRect(badgeX, badgeY, kBadgeSize, kBadgeSize)];
-        g_badgeView.wantsLayer = YES;
-        g_badgeView.layer.cornerRadius = kBadgeSize / 2.0;
-        g_badgeView.layer.backgroundColor = [NSColor colorWithRed:1.0 green:0.23 blue:0.19 alpha:1.0].CGColor; // #FF3B30
-        g_badgeView.hidden = YES; // Hidden by default
-        [g_buttonView addSubview:g_badgeView];
-
-        g_badgeLabel = [[NSTextField alloc] initWithFrame:NSMakeRect(0, 0, kBadgeSize, kBadgeSize)];
-        g_badgeLabel.stringValue = @"0";
-        g_badgeLabel.font = [NSFont systemFontOfSize:10 weight:NSFontWeightBold];
-        g_badgeLabel.textColor = [NSColor whiteColor];
-        g_badgeLabel.backgroundColor = [NSColor clearColor];
-        g_badgeLabel.bordered = NO;
-        g_badgeLabel.editable = NO;
-        g_badgeLabel.selectable = NO;
-        g_badgeLabel.alignment = NSTextAlignmentCenter;
-        // Center vertically - adjust Y position for better centering
-        g_badgeLabel.frame = NSMakeRect(0, 1, kBadgeSize, kBadgeSize - 2);
-        [g_badgeView addSubview:g_badgeLabel];
 
         CGEventMask eventMask = CGEventMaskBit(kCGEventLeftMouseDown);
         g_eventTap = CGEventTapCreate(
@@ -572,8 +545,6 @@ static void destroyOverlay(void) {
     g_label = nil;
     g_indicator = nil;
     g_arrowLabel = nil;
-    g_badgeView = nil;
-    g_badgeLabel = nil;
     g_initialized = NO;
 }
 
@@ -667,27 +638,15 @@ func goGetFocusedWindow(outWindowID *C.uint32_t, outX, outY, outW, outH *C.doubl
 	return 1
 }
 
-//export goGetViewerCount
-func goGetViewerCount() C.int {
-	globalMu.RLock()
-	o := globalOverlay
-	globalMu.RUnlock()
-
-	if o == nil || o.controller == nil {
-		return 0
-	}
-
-	return C.int(o.controller.GetViewerCount())
-}
-
 // runLoop is the 60fps game loop for the overlay.
 // It runs in its own goroutine, locked to an OS thread for Cocoa compatibility.
-// The overlay is created on this same thread to ensure Cocoa consistency.
+// The overlay is created on this thread - if it happens to be the main thread,
+// NSWindow will work. Otherwise, the overlay gracefully degrades.
 func (o *Overlay) runLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	// Create overlay on this thread (Cocoa requires consistent thread)
+	// Create overlay on this thread
 	C.createOverlay()
 
 	// Signal that we're ready
@@ -726,7 +685,7 @@ func (o *Overlay) platformStart() error {
 	o.stopped = make(chan struct{})
 	go o.runLoop()
 
-	// Wait for overlay to be created
+	// Wait for overlay to be created (or fail gracefully)
 	<-o.ready
 
 	return nil

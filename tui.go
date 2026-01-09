@@ -1091,7 +1091,7 @@ func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 // The overlay handles its own focus detection via a background thread.
 func (m *model) syncOverlay() {
 	if m.overlayController != nil {
-		m.overlayController.Sync(m.selectedWindows, m.sharing, m.autoShareEnabled, m.viewerCount)
+		m.overlayController.Sync(m.selectedWindows, m.sharing, m.autoShareEnabled)
 	}
 	// Note: The overlay now runs its own update loop via background thread,
 	// so we don't need to call Refresh() here. The overlay queries state

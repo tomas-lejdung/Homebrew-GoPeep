@@ -55,10 +55,6 @@ type Controller interface {
 	// GetFocusedWindow returns the currently focused window (excluding terminals).
 	// Returns nil if no valid focused window or a terminal is focused.
 	GetFocusedWindow() *FocusedWindowInfo
-
-	// GetViewerCount returns the number of connected viewers.
-	// Used for displaying viewer count badge when sharing.
-	GetViewerCount() int
 }
 
 // Overlay manages the floating button that appears on focused windows.

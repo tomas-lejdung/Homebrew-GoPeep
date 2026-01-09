@@ -70,10 +70,12 @@ type Controller interface {
 - Show "9+" if more than 9 viewers
 
 ### Acceptance Criteria
-- [x] Badge appears when sharing with 1+ viewers
-- [x] Badge hidden when not sharing or 0 viewers
-- [x] Count updates in real-time as viewers join/leave
-- [x] Badge doesn't obscure main button functionality
+- [ ] Badge appears when sharing with 1+ viewers
+- [ ] Badge hidden when not sharing or 0 viewers
+- [ ] Count updates in real-time as viewers join/leave
+- [ ] Badge doesn't obscure main button functionality
+
+**Note:** This enhancement was removed - deemed not necessary.
 
 ---
 
