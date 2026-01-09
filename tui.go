@@ -176,7 +176,8 @@ type SourceItem struct {
 // Model
 type model struct {
 	// Config
-	config Config
+	config          Config
+	settingsManager *SettingsManager
 
 	// Sources (fullscreen + windows)
 	sources        []SourceItem
@@ -291,20 +292,48 @@ func initialModel(config Config) model {
 	// Initialize available codecs
 	InitAvailableCodecs()
 
-	// Find FPS index that matches config.FPS
-	fpsIndex := FPSIndexForValue(config.FPS)
+	// Load saved settings
+	var settingsMgr *SettingsManager
+	var settings UserSettings
+	var err error
+
+	settingsMgr, err = NewSettingsManager()
+	if err != nil {
+		log.Printf("Failed to initialize settings manager: %v", err)
+		settings = DefaultSettings()
+	} else {
+		settings, err = settingsMgr.Load()
+		if err != nil {
+			log.Printf("Failed to load settings: %v", err)
+			settings = DefaultSettings()
+		}
+	}
+
+	// Validate codec index after InitAvailableCodecs()
+	if settings.Codec < 0 || settings.Codec >= len(AvailableCodecs) {
+		settings.Codec = DefaultCodecIndex()
+	}
+
+	// CLI flags override saved settings (30 is the default FPS flag value)
+	fpsIndex := settings.FPS
+	if config.FPS != 30 {
+		fpsIndex = FPSIndexForValue(config.FPS)
+	}
 
 	return model{
 		config:          config,
+		settingsManager: settingsMgr,
 		sourceCursor:    0,
 		selectedSource:  -1,
 		selectedWindows: make(map[uint32]bool),
-		qualityCursor:   DefaultQualityIndex(),
-		selectedQuality: DefaultQualityIndex(),
+		qualityCursor:   settings.Quality,
+		selectedQuality: settings.Quality,
 		fpsCursor:       fpsIndex,
 		selectedFPS:     fpsIndex,
-		codecCursor:     DefaultCodecIndex(),
-		selectedCodec:   DefaultCodecIndex(),
+		codecCursor:     settings.Codec,
+		selectedCodec:   settings.Codec,
+		adaptiveBitrate: settings.AdaptiveBitrate,
+		qualityMode:     settings.QualityMode,
 		activeColumn:    columnSources,
 		maxReconnects:   10, // Max reconnection attempts
 	}
@@ -917,6 +946,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.streamer != nil {
 			m.streamer.SetAdaptiveBitrate(m.adaptiveBitrate)
 		}
+		// Save settings when changed
+		m.saveSettings()
 		return m, nil
 
 	case "A": // Shift+A - Toggle auto-share mode
@@ -929,6 +960,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		if m.streamer != nil {
 			m.streamer.SetQualityMode(m.qualityMode)
 		}
+		// Save settings when changed
+		m.saveSettings()
 		return m, nil
 	}
 
@@ -945,6 +978,9 @@ func (m model) applyQuality(index int) (tea.Model, tea.Cmd) {
 	m.selectedQuality = index
 	m.qualityCursor = index
 
+	// Save settings when changed
+	m.saveSettings()
+
 	// If we're sharing and quality changed, apply new bitrate dynamically
 	if m.sharing && oldQuality != m.selectedQuality {
 		return m.applyBitrateChange()
@@ -953,7 +989,6 @@ func (m model) applyQuality(index int) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
-// applyCodec changes the codec setting
 // applyCodec changes the codec setting dynamically without full restart
 func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
 	if index < 0 || index >= len(AvailableCodecs) {
@@ -963,6 +998,9 @@ func (m model) applyCodec(index int) (tea.Model, tea.Cmd) {
 	oldCodec := m.selectedCodec
 	m.selectedCodec = index
 	m.codecCursor = index
+
+	// Save settings when changed
+	m.saveSettings()
 
 	// If we're sharing and codec changed, update dynamically
 	if m.sharing && m.streamer != nil && oldCodec != m.selectedCodec {
@@ -1148,6 +1186,9 @@ func (m model) applyFPS(index int) (tea.Model, tea.Cmd) {
 	oldFPS := m.selectedFPS
 	m.selectedFPS = index
 	m.fpsCursor = index
+
+	// Save settings when changed
+	m.saveSettings()
 
 	// If we're sharing and FPS changed, update dynamically
 	if m.sharing && m.streamer != nil && oldFPS != m.selectedFPS {
@@ -1746,8 +1787,30 @@ func (m *model) stopCapture(preserveState bool) {
 	}
 }
 
+// saveSettings persists current settings to disk
+func (m *model) saveSettings() {
+	if m.settingsManager == nil {
+		return
+	}
+
+	settings := UserSettings{
+		Quality:         m.selectedQuality,
+		FPS:             m.selectedFPS,
+		Codec:           m.selectedCodec,
+		AdaptiveBitrate: m.adaptiveBitrate,
+		QualityMode:     m.qualityMode,
+	}
+
+	if err := m.settingsManager.Save(settings); err != nil {
+		log.Printf("Failed to save settings: %v", err)
+	}
+}
+
 // cleanup shuts down everything
 func (m *model) cleanup() {
+	// Save settings before cleanup
+	m.saveSettings()
+
 	m.stopCapture(false)
 
 	// Close unified peer manager
