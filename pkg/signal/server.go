@@ -116,11 +116,9 @@ func (s *Server) removeClient(client *Client) {
 	}
 }
 
-// GenerateUniqueRoomCode generates a room code that doesn't collide with active rooms
-func (s *Server) GenerateUniqueRoomCode() string {
-	s.mu.RLock()
-	defer s.mu.RUnlock()
-
+// generateUniqueRoomCode generates a room code that doesn't collide with active rooms.
+// Caller must hold s.mu (read or write lock).
+func (s *Server) generateUniqueRoomCode() string {
 	const maxAttempts = 100
 	for i := 0; i < maxAttempts; i++ {
 		code := GenerateRoomCode()
@@ -133,12 +131,14 @@ func (s *Server) GenerateUniqueRoomCode() string {
 	return GenerateRoomCode() + "-" + string(rune('A'+rng.Intn(26)))
 }
 
-// ReserveRoom creates a reserved room that expires if not claimed
+// ReserveRoom creates a reserved room that expires if not claimed.
+// Uses a single write lock to atomically generate a unique code and create the room,
+// avoiding TOCTOU race conditions.
 func (s *Server) ReserveRoom() string {
-	code := s.GenerateUniqueRoomCode()
-
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	code := s.generateUniqueRoomCode()
 
 	room := &Room{
 		code:       code,
