@@ -75,6 +75,8 @@ type Controller interface {
 - [ ] Count updates in real-time as viewers join/leave
 - [ ] Badge doesn't obscure main button functionality
 
+**Note:** This enhancement was removed - deemed not necessary.
+
 ---
 
 ## Enhancement 3: State Change Effect

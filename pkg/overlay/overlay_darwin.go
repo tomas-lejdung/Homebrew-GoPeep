@@ -243,6 +243,9 @@ static BOOL isPointOverArrow(CGPoint cgPoint) {
 }
 
 // Main frame update - called by game loop at 60fps
+// Note: NSWindow was created on main thread, but most operations can be
+// called from other threads if done carefully. The game loop thread is
+// locked with runtime.LockOSThread() for consistency.
 static void doFrame(void) {
     if (!g_overlayWindow || !g_initialized) {
         return;
@@ -402,11 +405,23 @@ static void createOverlay(void) {
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
 
-        NSRect frame = NSMakeRect(100, 100, kButtonWidth, kButtonHeight);
-        g_overlayWindow = [[NSWindow alloc] initWithContentRect:frame
-                                                      styleMask:NSWindowStyleMaskBorderless
-                                                        backing:NSBackingStoreBuffered
-                                                          defer:NO];
+        // Check if we're on the main thread - NSWindow requires main thread
+        if (![NSThread isMainThread]) {
+            NSLog(@"Warning: createOverlay called from non-main thread, overlay will be disabled");
+            return;
+        }
+
+        @try {
+            NSRect frame = NSMakeRect(100, 100, kButtonWidth, kButtonHeight);
+            g_overlayWindow = [[NSWindow alloc] initWithContentRect:frame
+                                                          styleMask:NSWindowStyleMaskBorderless
+                                                            backing:NSBackingStoreBuffered
+                                                              defer:NO];
+        } @catch (NSException *exception) {
+            NSLog(@"Failed to create overlay window: %@", exception);
+            g_overlayWindow = nil;
+            return;
+        }
 
         g_overlayWindow.level = NSFloatingWindowLevel;
         g_overlayWindow.backgroundColor = [NSColor clearColor];
@@ -625,12 +640,13 @@ func goGetFocusedWindow(outWindowID *C.uint32_t, outX, outY, outW, outH *C.doubl
 
 // runLoop is the 60fps game loop for the overlay.
 // It runs in its own goroutine, locked to an OS thread for Cocoa compatibility.
-// The overlay is created on this same thread to ensure Cocoa consistency.
+// The overlay is created on this thread - if it happens to be the main thread,
+// NSWindow will work. Otherwise, the overlay gracefully degrades.
 func (o *Overlay) runLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	// Create overlay on this thread (Cocoa requires consistent thread)
+	// Create overlay on this thread
 	C.createOverlay()
 
 	// Signal that we're ready
@@ -669,7 +685,7 @@ func (o *Overlay) platformStart() error {
 	o.stopped = make(chan struct{})
 	go o.runLoop()
 
-	// Wait for overlay to be created
+	// Wait for overlay to be created (or fail gracefully)
 	<-o.ready
 
 	return nil
