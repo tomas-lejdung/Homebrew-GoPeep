@@ -25,6 +25,7 @@ type Client struct {
 type Room struct {
 	code       string
 	password   string // optional password for room protection
+	secret     string // secret token for sharer authentication
 	sharer     *Client
 	viewers    map[*Client]bool
 	mu         sync.RWMutex
@@ -146,14 +147,17 @@ func (s *Server) generateUniqueRoomCode() string {
 // ReserveRoom creates a reserved room that expires if not claimed.
 // Uses a single write lock to atomically generate a unique code and create the room,
 // avoiding TOCTOU race conditions.
-func (s *Server) ReserveRoom() string {
+// Returns the room code and a secret token for sharer authentication.
+func (s *Server) ReserveRoom() (string, string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
 	code := s.generateUniqueRoomCode()
+	secret := GenerateSecret()
 
 	room := &Room{
 		code:       code,
+		secret:     secret,
 		viewers:    make(map[*Client]bool),
 		reserved:   true,
 		reservedAt: time.Now(),
@@ -161,7 +165,7 @@ func (s *Server) ReserveRoom() string {
 	s.rooms[code] = room
 
 	log.Printf("Reserved room: %s", code)
-	return code
+	return code, secret
 }
 
 // CleanupReservedRooms removes rooms that were reserved but never claimed
@@ -188,12 +192,13 @@ func (s *Server) HandleReserveRoom(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	code := s.ReserveRoom()
+	code, secret := s.ReserveRoom()
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	json.NewEncoder(w).Encode(map[string]string{
-		"room": code,
+		"room":   code,
+		"secret": secret,
 	})
 }
 

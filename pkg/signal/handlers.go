@@ -62,6 +62,8 @@ func (c *Client) handleMessage(msg SignalMessage) {
 	case "streams-info", "focus-change", "stream-added", "stream-removed", "stream-activated", "stream-deactivated", "size-change":
 		// Forward stream metadata from sharer to all viewers
 		c.forwardToViewers(room, msg)
+	case "password-update":
+		c.handlePasswordUpdate(room, msg)
 	default:
 		log.Printf("Unknown message type: %s", msg.Type)
 	}
@@ -96,6 +98,14 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 	c.role = msg.Role
 
 	if msg.Role == "sharer" {
+		// Validate secret before allowing sharer role (if room has a secret)
+		if room.secret != "" && msg.Secret != room.secret {
+			errMsg := SignalMessage{Type: "error", Error: "Invalid room secret"}
+			data, _ := json.Marshal(errMsg)
+			c.send <- data
+			return
+		}
+
 		if room.sharer != nil && room.sharer != c {
 			// Close old sharer connection if exists (sharer reconnecting)
 			oldSharer := room.sharer
@@ -240,5 +250,28 @@ func (c *Client) forwardICE(room *Room, msg SignalMessage) {
 		// From viewer to sharer - include this viewer's peerID
 		msg.PeerID = c.peerID
 		c.forwardToSharer(room, msg)
+	}
+}
+
+// handlePasswordUpdate processes password updates from the sharer
+func (c *Client) handlePasswordUpdate(room *Room, msg SignalMessage) {
+	room.mu.Lock()
+	defer room.mu.Unlock()
+
+	// Only the sharer can update the password
+	if c.role != "sharer" || room.sharer != c {
+		return
+	}
+
+	// Validate secret before allowing password update
+	if room.secret != "" && msg.Secret != room.secret {
+		return
+	}
+
+	room.password = msg.Password
+	if msg.Password != "" {
+		log.Printf("Room %s password updated", room.code)
+	} else {
+		log.Printf("Room %s password removed", room.code)
 	}
 }

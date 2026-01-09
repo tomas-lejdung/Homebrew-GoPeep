@@ -10,6 +10,7 @@ type SignalMessage struct {
 	Error     string `json:"error,omitempty"`     // error message
 	PeerID    string `json:"peerId,omitempty"`    // peer identifier for routing
 	Password  string `json:"password,omitempty"`  // room password (for joining protected rooms)
+	Secret    string `json:"secret,omitempty"`    // sharer authentication token
 	TrackID   string `json:"trackId,omitempty"`   // track identifier for multi-stream
 
 	// Multi-stream fields
