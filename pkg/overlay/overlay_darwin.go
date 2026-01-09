@@ -559,10 +559,25 @@ static void updateStatusWindow(void) {
 }
 
 // Main frame update - called by game loop at 60fps
-// Note: NSWindow was created on main thread, but most operations can be
-// called from other threads if done carefully. The game loop thread is
-// locked with runtime.LockOSThread() for consistency.
+// All NSWindow operations are dispatched to the main thread.
+static void doFrameOnMainThread(void);
+
 static void doFrame(void) {
+    if (!g_overlayWindow || !atomic_load(&g_initialized)) {
+        return;
+    }
+
+    // Dispatch UI updates to main thread
+    if ([NSThread isMainThread]) {
+        doFrameOnMainThread();
+    } else {
+        dispatch_async(dispatch_get_main_queue(), ^{
+            doFrameOnMainThread();
+        });
+    }
+}
+
+static void doFrameOnMainThread(void) {
     if (!g_overlayWindow || !atomic_load(&g_initialized)) {
         return;
     }
@@ -750,18 +765,28 @@ static void* eventTapThread(void* arg) {
     return NULL;
 }
 
+static void createOverlayOnMainThread(void);
+
 static void createOverlay(void) {
+    if (atomic_load(&g_initialized)) return;
+
+    // NSWindow operations MUST happen on the main thread
+    if ([NSThread isMainThread]) {
+        createOverlayOnMainThread();
+    } else {
+        // Dispatch synchronously to main thread and wait for completion
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            createOverlayOnMainThread();
+        });
+    }
+}
+
+static void createOverlayOnMainThread(void) {
     if (atomic_load(&g_initialized)) return;
 
     @autoreleasepool {
         [NSApplication sharedApplication];
         [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
-
-        // Check if we're on the main thread - NSWindow requires main thread
-        if (![NSThread isMainThread]) {
-            NSLog(@"Warning: createOverlay called from non-main thread, overlay will be disabled");
-            return;
-        }
 
         @try {
             NSRect frame = NSMakeRect(100, 100, kButtonWidth, kButtonHeight);
@@ -987,6 +1012,8 @@ static void createOverlay(void) {
     }
 }
 
+static void destroyOverlayOnMainThread(void);
+
 static void destroyOverlay(void) {
     atomic_store(&g_shouldStop, YES);
     atomic_store(&g_isAnimating, NO);
@@ -1007,6 +1034,19 @@ static void destroyOverlay(void) {
         g_eventTap = NULL;
     }
 
+    // Dispatch NSWindow cleanup to main thread
+    if ([NSThread isMainThread]) {
+        destroyOverlayOnMainThread();
+    } else {
+        dispatch_sync(dispatch_get_main_queue(), ^{
+            destroyOverlayOnMainThread();
+        });
+    }
+
+    atomic_store(&g_initialized, NO);
+}
+
+static void destroyOverlayOnMainThread(void) {
     if (g_overlayWindow) {
         [g_overlayWindow orderOut:nil];
         g_overlayWindow = nil;
@@ -1027,8 +1067,6 @@ static void destroyOverlay(void) {
     }
     g_viewerLabel = nil;
     g_lastSelectedCount = -1;
-
-    atomic_store(&g_initialized, NO);
 }
 
 static void setOverlayEnabled(BOOL enabled) {
@@ -1216,14 +1254,13 @@ func goClearButtonClicked() {
 }
 
 // runLoop is the 60fps game loop for the overlay.
-// It runs in its own goroutine, locked to an OS thread for Cocoa compatibility.
-// The overlay is created on this thread - if it happens to be the main thread,
-// NSWindow will work. Otherwise, the overlay gracefully degrades.
+// It runs in its own goroutine, locked to an OS thread for stability.
+// All NSWindow operations are dispatched to the main thread via dispatch_sync/async.
 func (o *Overlay) runLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	// Create overlay on this thread
+	// Create overlay (dispatches to main thread internally)
 	C.createOverlay()
 
 	// Signal that we're ready
