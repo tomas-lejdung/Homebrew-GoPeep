@@ -5,7 +5,8 @@
       "Bash(go vet:*)",
       "Bash(go test:*)",
       "Bash(go fmt:*)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(go doc:*)"
     ]
   }
 }
