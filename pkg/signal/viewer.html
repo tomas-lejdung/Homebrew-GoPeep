@@ -2285,17 +2285,34 @@
         viewerFocusedIndex = index;
         selectedGridIndex = index;
 
+        // Reset pan/zoom state before switching
+        panZoomState.translateX = 0;
+        panZoomState.translateY = 0;
+
         // Update main video (for focus mode)
         mainVideo.srcObject = streams[index].stream;
         mainVideo
           .play()
           .catch((e) => console.log("Main video play error:", e.message));
 
-        // Reset pan/zoom when switching streams
-        panZoomState.translateX = 0;
-        panZoomState.translateY = 0;
-        applyPanZoomTransform();
-        setTimeout(updatePanZoomState, 100);
+        // Wait for video dimensions to be available before centering
+        // Use loadedmetadata event for reliable dimension detection
+        const centerWhenReady = () => {
+          if (mainVideo.videoWidth && mainVideo.videoHeight) {
+            updatePanZoomState();
+          } else {
+            // Dimensions not ready yet, wait for loadedmetadata
+            mainVideo.addEventListener('loadedmetadata', function onMeta() {
+              mainVideo.removeEventListener('loadedmetadata', onMeta);
+              updatePanZoomState();
+            });
+            // Fallback timeout in case loadedmetadata already fired
+            setTimeout(updatePanZoomState, 100);
+          }
+        };
+
+        // Give the video element a moment to update its srcObject
+        requestAnimationFrame(centerWhenReady);
 
         // Update UI based on current layout
         updateMultiStreamUI();
