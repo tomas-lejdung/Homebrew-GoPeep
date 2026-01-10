@@ -345,6 +345,50 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 					localSharer.SendToViewer(pid, streamsMsg)
 				}(peerID)
 
+			case "viewer-reoffer":
+				// Viewer is rejoining - reuse their existing peerID
+				peerID := msg.PeerID
+				if peerID == "" {
+					log.Printf("viewer-reoffer received without peerID")
+					continue
+				}
+
+				// Re-assign the peerID to the unassigned viewer
+				found, assignPeerID := localSharer.GetUnassignedViewer()
+				if !found {
+					log.Printf("viewer-reoffer: no unassigned viewer found for %s", peerID)
+					continue
+				}
+				assignPeerID(peerID)
+
+				log.Printf("Sending reoffer to existing viewer: %s", peerID)
+				go func(pid string) {
+					offer, err := pm.CreateOffer(pid)
+					if err != nil {
+						log.Printf("Failed to create reoffer: %v", err)
+						return
+					}
+
+					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
+					localSharer.SendToViewer(pid, offerMsg)
+
+					// Send streams-info after offer
+					tracks := pm.GetTracks()
+					streams := make([]sig.StreamInfo, len(tracks))
+					for i, t := range tracks {
+						streams[i] = sig.StreamInfo{
+							TrackID:    t.TrackID,
+							WindowName: t.WindowName,
+							AppName:    t.AppName,
+							IsFocused:  t.IsFocused,
+							Width:      t.Width,
+							Height:     t.Height,
+						}
+					}
+					streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
+					localSharer.SendToViewer(pid, streamsMsg)
+				}(peerID)
+
 			case "answer":
 				peerID := msg.PeerID
 				if peerID == "" {
@@ -541,6 +585,46 @@ func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnec
 					offer, err := pm.CreateOffer(pid)
 					if err != nil {
 						log.Printf("Failed to create offer: %v", err)
+						return
+					}
+
+					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
+					connMu.Lock()
+					conn.WriteJSON(offerMsg)
+					connMu.Unlock()
+
+					// Send streams-info after offer
+					tracks := pm.GetTracks()
+					streams := make([]sig.StreamInfo, len(tracks))
+					for i, t := range tracks {
+						streams[i] = sig.StreamInfo{
+							TrackID:    t.TrackID,
+							WindowName: t.WindowName,
+							AppName:    t.AppName,
+							IsFocused:  t.IsFocused,
+							Width:      t.Width,
+							Height:     t.Height,
+						}
+					}
+					streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
+					connMu.Lock()
+					conn.WriteJSON(streamsMsg)
+					connMu.Unlock()
+				}(peerID)
+
+			case "viewer-reoffer":
+				// Viewer is rejoining - reuse their existing peerID (no counter increment)
+				peerID := msg.PeerID
+				if peerID == "" {
+					log.Printf("viewer-reoffer received without peerID")
+					continue
+				}
+
+				log.Printf("Sending reoffer to existing viewer: %s", peerID)
+				go func(pid string) {
+					offer, err := pm.CreateOffer(pid)
+					if err != nil {
+						log.Printf("Failed to create reoffer: %v", err)
 						return
 					}
 

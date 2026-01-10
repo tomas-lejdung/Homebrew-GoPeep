@@ -335,7 +335,23 @@ func (s *Server) RegisterLocalSharer(roomCode string, password string) *LocalSha
 	room.mu.Lock()
 	room.sharer = sharerClient
 	room.password = password
+
+	// Send viewer-joined for each existing viewer so sharer creates offers
+	// This handles the case where viewers connected before the sharer started
+	existingViewerCount := len(room.viewers)
+	for range room.viewers {
+		notifyMsg := SignalMessage{Type: "viewer-joined"}
+		data, _ := json.Marshal(notifyMsg)
+		select {
+		case sharerClient.send <- data:
+		default:
+		}
+	}
 	room.mu.Unlock()
+
+	if existingViewerCount > 0 {
+		log.Printf("RegisterLocalSharer: notified about %d existing viewers", existingViewerCount)
+	}
 
 	return &LocalSharer{
 		server:   s,
