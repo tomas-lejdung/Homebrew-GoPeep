@@ -2031,7 +2031,7 @@
         rowAnimating: false,
         rowAnimationId: null,
       };
-      const CURSOR_LERP_FACTOR = 0.12; // Smooth factor (0-1, higher = faster)
+      const CURSOR_LERP_FACTOR = 0.05; // Smooth factor (0-1, higher = faster)
 
       // Password dialog elements
       const passwordDialog = document.getElementById("password-dialog");
@@ -2281,6 +2281,13 @@
 
         console.log("Switching to stream", index);
 
+        // Cancel any ongoing cursor follow animation
+        if (cursorFollowState.animationId) {
+          cancelAnimationFrame(cursorFollowState.animationId);
+          cursorFollowState.animationId = null;
+        }
+        cursorFollowState.animating = false;
+
         // Swap the focused stream
         viewerFocusedIndex = index;
         selectedGridIndex = index;
@@ -2289,30 +2296,25 @@
         panZoomState.translateX = 0;
         panZoomState.translateY = 0;
 
+        // Clear transform immediately to avoid stale positioning
+        panZoomContent.style.transform = "";
+
         // Update main video (for focus mode)
         mainVideo.srcObject = streams[index].stream;
         mainVideo
           .play()
           .catch((e) => console.log("Main video play error:", e.message));
 
-        // Wait for video dimensions to be available before centering
-        // Use loadedmetadata event for reliable dimension detection
-        const centerWhenReady = () => {
-          if (mainVideo.videoWidth && mainVideo.videoHeight) {
-            updatePanZoomState();
-          } else {
-            // Dimensions not ready yet, wait for loadedmetadata
-            mainVideo.addEventListener('loadedmetadata', function onMeta() {
-              mainVideo.removeEventListener('loadedmetadata', onMeta);
-              updatePanZoomState();
-            });
-            // Fallback timeout in case loadedmetadata already fired
-            setTimeout(updatePanZoomState, 100);
-          }
+        // Always wait for fresh dimensions via loadedmetadata
+        // Don't trust current videoWidth/videoHeight - they may be stale
+        const onMetadataLoaded = () => {
+          mainVideo.removeEventListener('loadedmetadata', onMetadataLoaded);
+          updatePanZoomState();
         };
+        mainVideo.addEventListener('loadedmetadata', onMetadataLoaded);
 
-        // Give the video element a moment to update its srcObject
-        requestAnimationFrame(centerWhenReady);
+        // Fallback timeout in case loadedmetadata already fired or doesn't fire
+        setTimeout(updatePanZoomState, 150);
 
         // Update UI based on current layout
         updateMultiStreamUI();
