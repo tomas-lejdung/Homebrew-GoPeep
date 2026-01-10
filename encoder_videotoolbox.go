@@ -312,7 +312,12 @@ void vtb_output_callback(void* outputCallbackRefCon,
         size_t new_capacity = requiredSize * 2;
         uint8_t* new_buffer = (uint8_t*)realloc(ctx->output_buffers[buf_idx], new_capacity);
         if (new_buffer == NULL) {
-            // Realloc failed - skip this frame to avoid memory leak
+            // Realloc failed - signal failure but don't block caller
+            ctx->output_sizes[buf_idx] = 0;  // Indicate no output for this frame
+            if (ctx->pending_frames > 0) {
+                ctx->pending_frames--;
+            }
+            pthread_cond_signal(&ctx->output_cond);
             pthread_mutex_unlock(&ctx->output_mutex);
             return;
         }
