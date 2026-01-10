@@ -3653,9 +3653,21 @@
               );
 
               // Determine if we should display this stream
-              const shouldDisplay =
-                viewerFocusedIndex === null || // No focus set yet (first stream)
-                viewerFocusedIndex === streamIndex; // This is the focused stream (renegotiation)
+              // If no viewer focus yet, use sharer's focus if available, otherwise show first stream
+              let shouldDisplay = false;
+              if (viewerFocusedIndex === null) {
+                // First stream scenario - check if this is the sharer's focused stream
+                if (sharerFocusedIndex !== null) {
+                  // Show only if this is the sharer's focused stream
+                  shouldDisplay = streamIndex === sharerFocusedIndex;
+                } else {
+                  // No sharer focus info yet - show first stream as default
+                  shouldDisplay = true;
+                }
+              } else {
+                // Already have a focused stream - only update if this is it (renegotiation)
+                shouldDisplay = viewerFocusedIndex === streamIndex;
+              }
 
               if (shouldDisplay) {
                 const isFirstStream = viewerFocusedIndex === null;
