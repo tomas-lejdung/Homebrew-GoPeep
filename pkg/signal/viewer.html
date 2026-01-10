@@ -2996,10 +2996,20 @@
             break;
           
           case 'sharer-started':
-            console.log('Sharer started sharing - closing old connection and rejoining');
+            console.log('Sharer started sharing');
+            // If we already have a peer connection (connected or connecting),
+            // just update the status - no need to rejoin
+            if (pc && (pc.connectionState === 'connected' || pc.connectionState === 'connecting' || pc.connectionState === 'new')) {
+              console.log('Already have peer connection, not rejoining');
+              setStatus('Connected', 'connected');
+              waitingEl.classList.add('hidden');
+              break;
+            }
+            // No peer connection yet - request an offer
+            console.log('No peer connection, requesting offer');
             setStatus('Connecting...', 'connecting');
             setWaitingState('Connecting', 'Sharer started streaming, establishing connection...');
-            // Close old connection to ensure clean reconnection
+            // Close any stale connection
             if (pc) {
               pc.close();
               pc = null;
@@ -3013,7 +3023,8 @@
             mainVideo.srcObject = null;
             streamStats.style.display = 'none';
             updateMultiStreamUI();
-            // Now rejoin to get a new offer
+            // Request new offer - server will send viewer-reoffer (not viewer-joined)
+            // if we already have a peerID, preserving our viewer number
             const rejoinMsg = { type: 'join', role: 'viewer' };
             if (roomPassword) {
               rejoinMsg.password = roomPassword;

@@ -168,9 +168,9 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 			return
 		}
 
-		// Clear peerID on rejoin so they can get a new offer
-		// This handles the case where viewer rejoins after sharer stopped
-		c.peerID = ""
+		// Check if this viewer already has a peerID (rejoin case)
+		oldPeerID := c.peerID
+		c.peerID = "" // Reset so they can get a new offer
 
 		room.viewers[c] = true
 		log.Printf("Viewer joined room %s (total viewers: %d)", room.code, len(room.viewers))
@@ -180,9 +180,18 @@ func (c *Client) handleJoin(room *Room, msg SignalMessage) {
 		data, _ := json.Marshal(confirmMsg)
 		c.send <- data
 
-		// Notify sharer about new viewer
+		// Notify sharer
 		if room.sharer != nil {
-			notifyMsg := SignalMessage{Type: "viewer-joined"}
+			var notifyMsg SignalMessage
+			if oldPeerID != "" {
+				// Viewer is rejoining - request reoffer with same peerID
+				// This avoids creating a new peer/incrementing peer counter
+				log.Printf("Viewer rejoining with existing peerID: %s", oldPeerID)
+				notifyMsg = SignalMessage{Type: "viewer-reoffer", PeerID: oldPeerID}
+			} else {
+				// New viewer - needs a new peerID assigned
+				notifyMsg = SignalMessage{Type: "viewer-joined"}
+			}
 			data, _ := json.Marshal(notifyMsg)
 			select {
 			case room.sharer.send <- data:
