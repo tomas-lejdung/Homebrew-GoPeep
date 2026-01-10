@@ -99,7 +99,10 @@ func NewEncoderFactory() *EncoderFactory {
 }
 
 // CreateEncoder creates an encoder for the specified codec
-func (f *EncoderFactory) CreateEncoder(codecType CodecType, fps, bitrate int) (VideoEncoder, error) {
+func (f *EncoderFactory) CreateEncoder(
+	codecType CodecType,
+	fps, bitrate int,
+) (VideoEncoder, error) {
 	config := EncoderConfig{
 		FPS:     fps,
 		Bitrate: bitrate,

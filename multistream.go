@@ -58,20 +58,20 @@ type TrackSlot struct {
 
 // PeerManager manages WebRTC connections with multiple video tracks
 type PeerManager struct {
-	config        webrtc.Configuration
-	iceConfig     ICEConfig
-	codecType     CodecType
-	tracks        map[string]*StreamTrackInfo // trackID -> track info
-	connections   map[string]*PeerInfo        // peerID -> peer info with senders
-	viewerStates  map[string]*ViewerInfo
-	trackCounter  int // Monotonically increasing track counter
-	mu            sync.RWMutex
-	renegMu       sync.Mutex // Mutex to serialize renegotiations
-	onICE         func(peerID string, candidate string)
-	onConnected   func(peerID string)
-	onDisconnect  func(peerID string)
-	onFocusChange  func(trackID string)                         // Called when focus changes to a new track
-	onSizeChange   func(trackID string, width, height int)      // Called when focused track dimensions change
+	config         webrtc.Configuration
+	iceConfig      ICEConfig
+	codecType      CodecType
+	tracks         map[string]*StreamTrackInfo // trackID -> track info
+	connections    map[string]*PeerInfo        // peerID -> peer info with senders
+	viewerStates   map[string]*ViewerInfo
+	trackCounter   int // Monotonically increasing track counter
+	mu             sync.RWMutex
+	renegMu        sync.Mutex // Mutex to serialize renegotiations
+	onICE          func(peerID string, candidate string)
+	onConnected    func(peerID string)
+	onDisconnect   func(peerID string)
+	onFocusChange  func(trackID string)                            // Called when focus changes to a new track
+	onSizeChange   func(trackID string, width, height int)         // Called when focused track dimensions change
 	onCursorUpdate func(trackID string, x, y float64, inView bool) // Called with cursor position updates
 
 	// Renegotiation callbacks

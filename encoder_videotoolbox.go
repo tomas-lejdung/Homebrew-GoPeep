@@ -143,28 +143,56 @@ void convert_bgra_to_nv12_vimage(const uint8_t* bgra_data, int bgra_stride,
         }
     }
 
-    // Process UV plane - half resolution (2x2 subsampling)
-    // Sample from top-left pixel of each 2x2 block
+    // Process UV plane - half resolution with 2x2 block averaging for better quality
     for (int row = 0; row < height; row += 2) {
-        const uint8_t* src_row = bgra_data + row * bgra_stride;
+        const uint8_t* src_row0 = bgra_data + row * bgra_stride;
+        const uint8_t* src_row1 = (row + 1 < height) ? bgra_data + (row + 1) * bgra_stride : src_row0;
         uint8_t* uv_row = uv_plane + (row / 2) * uv_stride;
 
         int col = 0;
         // Process 2 UV pairs at a time (4 pixels horizontally)
         for (; col + 3 < width; col += 4) {
-            // First 2x2 block
-            int b0 = src_row[col * 4 + 0];
-            int g0 = src_row[col * 4 + 1];
-            int r0 = src_row[col * 4 + 2];
-            int u0 = ((-38 * r0 - 74 * g0 + 112 * b0 + 128) >> 8) + 128;
-            int v0 = ((112 * r0 - 94 * g0 - 18 * b0 + 128) >> 8) + 128;
+            // First 2x2 block - average all 4 pixels
+            int b00 = src_row0[col * 4 + 0];
+            int g00 = src_row0[col * 4 + 1];
+            int r00 = src_row0[col * 4 + 2];
+            int b01 = src_row0[(col + 1) * 4 + 0];
+            int g01 = src_row0[(col + 1) * 4 + 1];
+            int r01 = src_row0[(col + 1) * 4 + 2];
+            int b10 = src_row1[col * 4 + 0];
+            int g10 = src_row1[col * 4 + 1];
+            int r10 = src_row1[col * 4 + 2];
+            int b11 = src_row1[(col + 1) * 4 + 0];
+            int g11 = src_row1[(col + 1) * 4 + 1];
+            int r11 = src_row1[(col + 1) * 4 + 2];
 
-            // Second 2x2 block
-            int b1 = src_row[(col + 2) * 4 + 0];
-            int g1 = src_row[(col + 2) * 4 + 1];
-            int r1 = src_row[(col + 2) * 4 + 2];
-            int u1 = ((-38 * r1 - 74 * g1 + 112 * b1 + 128) >> 8) + 128;
-            int v1 = ((112 * r1 - 94 * g1 - 18 * b1 + 128) >> 8) + 128;
+            // Average RGB values of 2x2 block
+            int r_avg0 = (r00 + r01 + r10 + r11 + 2) >> 2;
+            int g_avg0 = (g00 + g01 + g10 + g11 + 2) >> 2;
+            int b_avg0 = (b00 + b01 + b10 + b11 + 2) >> 2;
+            int u0 = ((-38 * r_avg0 - 74 * g_avg0 + 112 * b_avg0 + 128) >> 8) + 128;
+            int v0 = ((112 * r_avg0 - 94 * g_avg0 - 18 * b_avg0 + 128) >> 8) + 128;
+
+            // Second 2x2 block - average all 4 pixels
+            int b02 = src_row0[(col + 2) * 4 + 0];
+            int g02 = src_row0[(col + 2) * 4 + 1];
+            int r02 = src_row0[(col + 2) * 4 + 2];
+            int b03 = src_row0[(col + 3) * 4 + 0];
+            int g03 = src_row0[(col + 3) * 4 + 1];
+            int r03 = src_row0[(col + 3) * 4 + 2];
+            int b12 = src_row1[(col + 2) * 4 + 0];
+            int g12 = src_row1[(col + 2) * 4 + 1];
+            int r12 = src_row1[(col + 2) * 4 + 2];
+            int b13 = src_row1[(col + 3) * 4 + 0];
+            int g13 = src_row1[(col + 3) * 4 + 1];
+            int r13 = src_row1[(col + 3) * 4 + 2];
+
+            // Average RGB values of 2x2 block
+            int r_avg1 = (r02 + r03 + r12 + r13 + 2) >> 2;
+            int g_avg1 = (g02 + g03 + g12 + g13 + 2) >> 2;
+            int b_avg1 = (b02 + b03 + b12 + b13 + 2) >> 2;
+            int u1 = ((-38 * r_avg1 - 74 * g_avg1 + 112 * b_avg1 + 128) >> 8) + 128;
+            int v1 = ((112 * r_avg1 - 94 * g_avg1 - 18 * b_avg1 + 128) >> 8) + 128;
 
             // Clamp and store interleaved UV
             uv_row[col] = (uint8_t)(u0 < 0 ? 0 : (u0 > 255 ? 255 : u0));
@@ -175,11 +203,26 @@ void convert_bgra_to_nv12_vimage(const uint8_t* bgra_data, int bgra_stride,
 
         // Handle remaining columns
         for (; col < width; col += 2) {
-            int b = src_row[col * 4 + 0];
-            int g = src_row[col * 4 + 1];
-            int r = src_row[col * 4 + 2];
-            int u = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128;
-            int v = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128;
+            // Average 2x2 block (or 2x1 if at edge)
+            int b00 = src_row0[col * 4 + 0];
+            int g00 = src_row0[col * 4 + 1];
+            int r00 = src_row0[col * 4 + 2];
+            int b01 = (col + 1 < width) ? src_row0[(col + 1) * 4 + 0] : b00;
+            int g01 = (col + 1 < width) ? src_row0[(col + 1) * 4 + 1] : g00;
+            int r01 = (col + 1 < width) ? src_row0[(col + 1) * 4 + 2] : r00;
+            int b10 = src_row1[col * 4 + 0];
+            int g10 = src_row1[col * 4 + 1];
+            int r10 = src_row1[col * 4 + 2];
+            int b11 = (col + 1 < width) ? src_row1[(col + 1) * 4 + 0] : b10;
+            int g11 = (col + 1 < width) ? src_row1[(col + 1) * 4 + 1] : g10;
+            int r11 = (col + 1 < width) ? src_row1[(col + 1) * 4 + 2] : r10;
+
+            int r_avg = (r00 + r01 + r10 + r11 + 2) >> 2;
+            int g_avg = (g00 + g01 + g10 + g11 + 2) >> 2;
+            int b_avg = (b00 + b01 + b10 + b11 + 2) >> 2;
+            int u = ((-38 * r_avg - 74 * g_avg + 112 * b_avg + 128) >> 8) + 128;
+            int v = ((112 * r_avg - 94 * g_avg - 18 * b_avg + 128) >> 8) + 128;
+
             uv_row[col] = (uint8_t)(u < 0 ? 0 : (u > 255 ? 255 : u));
             uv_row[col + 1] = (uint8_t)(v < 0 ? 0 : (v > 255 ? 255 : v));
         }
@@ -266,8 +309,15 @@ void vtb_output_callback(void* outputCallbackRefCon,
 
     // Ensure buffer capacity
     if (requiredSize > ctx->output_capacities[buf_idx]) {
-        ctx->output_capacities[buf_idx] = requiredSize * 2;
-        ctx->output_buffers[buf_idx] = (uint8_t*)realloc(ctx->output_buffers[buf_idx], ctx->output_capacities[buf_idx]);
+        size_t new_capacity = requiredSize * 2;
+        uint8_t* new_buffer = (uint8_t*)realloc(ctx->output_buffers[buf_idx], new_capacity);
+        if (new_buffer == NULL) {
+            // Realloc failed - skip this frame to avoid memory leak
+            pthread_mutex_unlock(&ctx->output_mutex);
+            return;
+        }
+        ctx->output_buffers[buf_idx] = new_buffer;
+        ctx->output_capacities[buf_idx] = new_capacity;
     }
 
     uint8_t* writePtr = ctx->output_buffers[buf_idx];
@@ -820,7 +870,12 @@ func (e *VideoToolboxEncoder) initWithDimensions(width, height int) error {
 		C.int(qualityMode), C.float(e.qualityValue),
 	)
 	if ctx == nil {
-		return fmt.Errorf("failed to create VideoToolbox encoder")
+		mode := "bitrate"
+		if e.qualityMode {
+			mode = fmt.Sprintf("quality(%.2f)", e.qualityValue)
+		}
+		return fmt.Errorf("failed to create VideoToolbox H.264 encoder: %dx%d @ %dfps, %dkbps, mode=%s",
+			width, height, e.fps, e.bitrate, mode)
 	}
 
 	e.ctx = ctx
@@ -937,7 +992,8 @@ func (e *VideoToolboxEncoder) EncodeBGRAFrame(frame *BGRAFrame) ([]byte, error) 
 		if e.frameCount == 0 {
 			log.Printf("VideoToolbox: First frame encode failed (forceKeyframe=%d)", forceKeyframe)
 		}
-		return nil, fmt.Errorf("encoding failed")
+		return nil, fmt.Errorf("VideoToolbox H.264 encoding failed: frame=%d, dimensions=%dx%d, keyframe=%v, hw=%v",
+			e.frameCount, e.width, e.height, forceKeyframe == 1, e.hardwareAccelerated)
 	}
 
 	// Log first successful frame after recreation

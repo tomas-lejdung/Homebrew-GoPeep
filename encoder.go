@@ -130,7 +130,7 @@ const uint8_t* encode_vpx_frame(VPXEncoderContext* ctx, const uint8_t* bgra_data
         return NULL;
     }
 
-    // Convert BGRA to I420 directly (no intermediate RGBA conversion)
+    // Convert BGRA to I420 with SIMD-friendly batching and 2x2 UV averaging
     int width = ctx->width;
     int height = ctx->height;
     uint8_t* y_plane = ctx->raw.planes[VPX_PLANE_Y];
@@ -139,33 +139,138 @@ const uint8_t* encode_vpx_frame(VPXEncoderContext* ctx, const uint8_t* bgra_data
     int y_stride = ctx->raw.stride[VPX_PLANE_Y];
     int uv_stride = ctx->raw.stride[VPX_PLANE_U];
 
+    // Process Y plane - full resolution with 4-pixel batching for SIMD
     for (int row = 0; row < height; row++) {
-        for (int col = 0; col < width; col++) {
-            int bgra_idx = row * bgra_stride + col * 4;
-            // BGRA format: B=0, G=1, R=2, A=3
-            int b = bgra_data[bgra_idx];
-            int g = bgra_data[bgra_idx + 1];
-            int r = bgra_data[bgra_idx + 2];
+        const uint8_t* src_row = bgra_data + row * bgra_stride;
+        uint8_t* y_row = y_plane + row * y_stride;
 
-            // RGB to YUV (BT.601)
+        // Process 4 pixels at a time for better vectorization
+        int col = 0;
+        for (; col + 3 < width; col += 4) {
+            // Pixel 0
+            int b0 = src_row[col * 4 + 0];
+            int g0 = src_row[col * 4 + 1];
+            int r0 = src_row[col * 4 + 2];
+            int y0 = ((66 * r0 + 129 * g0 + 25 * b0 + 128) >> 8) + 16;
+
+            // Pixel 1
+            int b1 = src_row[(col + 1) * 4 + 0];
+            int g1 = src_row[(col + 1) * 4 + 1];
+            int r1 = src_row[(col + 1) * 4 + 2];
+            int y1 = ((66 * r1 + 129 * g1 + 25 * b1 + 128) >> 8) + 16;
+
+            // Pixel 2
+            int b2 = src_row[(col + 2) * 4 + 0];
+            int g2 = src_row[(col + 2) * 4 + 1];
+            int r2 = src_row[(col + 2) * 4 + 2];
+            int y2 = ((66 * r2 + 129 * g2 + 25 * b2 + 128) >> 8) + 16;
+
+            // Pixel 3
+            int b3 = src_row[(col + 3) * 4 + 0];
+            int g3 = src_row[(col + 3) * 4 + 1];
+            int r3 = src_row[(col + 3) * 4 + 2];
+            int y3 = ((66 * r3 + 129 * g3 + 25 * b3 + 128) >> 8) + 16;
+
+            // Clamp and store
+            y_row[col] = (uint8_t)(y0 < 0 ? 0 : (y0 > 255 ? 255 : y0));
+            y_row[col + 1] = (uint8_t)(y1 < 0 ? 0 : (y1 > 255 ? 255 : y1));
+            y_row[col + 2] = (uint8_t)(y2 < 0 ? 0 : (y2 > 255 ? 255 : y2));
+            y_row[col + 3] = (uint8_t)(y3 < 0 ? 0 : (y3 > 255 ? 255 : y3));
+        }
+
+        // Handle remaining pixels
+        for (; col < width; col++) {
+            int b = src_row[col * 4 + 0];
+            int g = src_row[col * 4 + 1];
+            int r = src_row[col * 4 + 2];
             int y = ((66 * r + 129 * g + 25 * b + 128) >> 8) + 16;
-            int u = ((-38 * r - 74 * g + 112 * b + 128) >> 8) + 128;
-            int v = ((112 * r - 94 * g - 18 * b + 128) >> 8) + 128;
+            y_row[col] = (uint8_t)(y < 0 ? 0 : (y > 255 ? 255 : y));
+        }
+    }
 
-            // Clamp
-            if (y < 0) y = 0; else if (y > 255) y = 255;
-            if (u < 0) u = 0; else if (u > 255) u = 255;
-            if (v < 0) v = 0; else if (v > 255) v = 255;
+    // Process UV planes - half resolution with 2x2 block averaging for better quality
+    for (int row = 0; row < height; row += 2) {
+        const uint8_t* src_row0 = bgra_data + row * bgra_stride;
+        const uint8_t* src_row1 = (row + 1 < height) ? bgra_data + (row + 1) * bgra_stride : src_row0;
+        uint8_t* u_row = u_plane + (row / 2) * uv_stride;
+        uint8_t* v_row = v_plane + (row / 2) * uv_stride;
 
-            y_plane[row * y_stride + col] = (uint8_t)y;
+        int col = 0;
+        // Process 2 UV values at a time (4 source columns)
+        for (; col + 3 < width; col += 4) {
+            // First 2x2 block - average all 4 pixels
+            int b00 = src_row0[col * 4 + 0];
+            int g00 = src_row0[col * 4 + 1];
+            int r00 = src_row0[col * 4 + 2];
+            int b01 = src_row0[(col + 1) * 4 + 0];
+            int g01 = src_row0[(col + 1) * 4 + 1];
+            int r01 = src_row0[(col + 1) * 4 + 2];
+            int b10 = src_row1[col * 4 + 0];
+            int g10 = src_row1[col * 4 + 1];
+            int r10 = src_row1[col * 4 + 2];
+            int b11 = src_row1[(col + 1) * 4 + 0];
+            int g11 = src_row1[(col + 1) * 4 + 1];
+            int r11 = src_row1[(col + 1) * 4 + 2];
 
-            // Subsample UV
-            if (row % 2 == 0 && col % 2 == 0) {
-                int uv_row = row / 2;
-                int uv_col = col / 2;
-                u_plane[uv_row * uv_stride + uv_col] = (uint8_t)u;
-                v_plane[uv_row * uv_stride + uv_col] = (uint8_t)v;
-            }
+            // Average RGB values of 2x2 block
+            int r_avg0 = (r00 + r01 + r10 + r11 + 2) >> 2;
+            int g_avg0 = (g00 + g01 + g10 + g11 + 2) >> 2;
+            int b_avg0 = (b00 + b01 + b10 + b11 + 2) >> 2;
+            int u0 = ((-38 * r_avg0 - 74 * g_avg0 + 112 * b_avg0 + 128) >> 8) + 128;
+            int v0 = ((112 * r_avg0 - 94 * g_avg0 - 18 * b_avg0 + 128) >> 8) + 128;
+
+            // Second 2x2 block - average all 4 pixels
+            int b02 = src_row0[(col + 2) * 4 + 0];
+            int g02 = src_row0[(col + 2) * 4 + 1];
+            int r02 = src_row0[(col + 2) * 4 + 2];
+            int b03 = src_row0[(col + 3) * 4 + 0];
+            int g03 = src_row0[(col + 3) * 4 + 1];
+            int r03 = src_row0[(col + 3) * 4 + 2];
+            int b12 = src_row1[(col + 2) * 4 + 0];
+            int g12 = src_row1[(col + 2) * 4 + 1];
+            int r12 = src_row1[(col + 2) * 4 + 2];
+            int b13 = src_row1[(col + 3) * 4 + 0];
+            int g13 = src_row1[(col + 3) * 4 + 1];
+            int r13 = src_row1[(col + 3) * 4 + 2];
+
+            // Average RGB values of 2x2 block
+            int r_avg1 = (r02 + r03 + r12 + r13 + 2) >> 2;
+            int g_avg1 = (g02 + g03 + g12 + g13 + 2) >> 2;
+            int b_avg1 = (b02 + b03 + b12 + b13 + 2) >> 2;
+            int u1 = ((-38 * r_avg1 - 74 * g_avg1 + 112 * b_avg1 + 128) >> 8) + 128;
+            int v1 = ((112 * r_avg1 - 94 * g_avg1 - 18 * b_avg1 + 128) >> 8) + 128;
+
+            // Clamp and store to separate U and V planes
+            u_row[col / 2] = (uint8_t)(u0 < 0 ? 0 : (u0 > 255 ? 255 : u0));
+            v_row[col / 2] = (uint8_t)(v0 < 0 ? 0 : (v0 > 255 ? 255 : v0));
+            u_row[col / 2 + 1] = (uint8_t)(u1 < 0 ? 0 : (u1 > 255 ? 255 : u1));
+            v_row[col / 2 + 1] = (uint8_t)(v1 < 0 ? 0 : (v1 > 255 ? 255 : v1));
+        }
+
+        // Handle remaining columns
+        for (; col < width; col += 2) {
+            // Average 2x2 block (or 2x1 if at edge)
+            int b00 = src_row0[col * 4 + 0];
+            int g00 = src_row0[col * 4 + 1];
+            int r00 = src_row0[col * 4 + 2];
+            int b01 = (col + 1 < width) ? src_row0[(col + 1) * 4 + 0] : b00;
+            int g01 = (col + 1 < width) ? src_row0[(col + 1) * 4 + 1] : g00;
+            int r01 = (col + 1 < width) ? src_row0[(col + 1) * 4 + 2] : r00;
+            int b10 = src_row1[col * 4 + 0];
+            int g10 = src_row1[col * 4 + 1];
+            int r10 = src_row1[col * 4 + 2];
+            int b11 = (col + 1 < width) ? src_row1[(col + 1) * 4 + 0] : b10;
+            int g11 = (col + 1 < width) ? src_row1[(col + 1) * 4 + 1] : g10;
+            int r11 = (col + 1 < width) ? src_row1[(col + 1) * 4 + 2] : r10;
+
+            int r_avg = (r00 + r01 + r10 + r11 + 2) >> 2;
+            int g_avg = (g00 + g01 + g10 + g11 + 2) >> 2;
+            int b_avg = (b00 + b01 + b10 + b11 + 2) >> 2;
+            int u = ((-38 * r_avg - 74 * g_avg + 112 * b_avg + 128) >> 8) + 128;
+            int v = ((112 * r_avg - 94 * g_avg - 18 * b_avg + 128) >> 8) + 128;
+
+            u_row[col / 2] = (uint8_t)(u < 0 ? 0 : (u > 255 ? 255 : u));
+            v_row[col / 2] = (uint8_t)(v < 0 ? 0 : (v > 255 ? 255 : v));
         }
     }
 
@@ -323,7 +428,12 @@ func (e *VPXEncoder) initWithDimensions(width, height int) error {
 		if e.isVP9 {
 			codecName = "VP9"
 		}
-		return fmt.Errorf("failed to create %s encoder", codecName)
+		mode := "CBR"
+		if e.qualityMode {
+			mode = fmt.Sprintf("CQ(level=%d)", e.cqLevel)
+		}
+		return fmt.Errorf("failed to create %s encoder: %dx%d @ %dfps, %dkbps, mode=%s",
+			codecName, width, height, e.fps, e.bitrate, mode)
 	}
 
 	e.ctx = ctx
@@ -423,7 +533,12 @@ func (e *VPXEncoder) EncodeBGRAFrame(frame *BGRAFrame) ([]byte, error) {
 	)
 
 	if dataPtr == nil || outSize == 0 {
-		return nil, fmt.Errorf("encoding failed")
+		codecName := "VP8"
+		if e.isVP9 {
+			codecName = "VP9"
+		}
+		return nil, fmt.Errorf("%s encoding failed: frame=%d, dimensions=%dx%d, keyframe=%v",
+			codecName, e.frameCount, e.width, e.height, forceKeyframe == 1)
 	}
 
 	e.frameCount++
