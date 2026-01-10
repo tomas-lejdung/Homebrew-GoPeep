@@ -203,110 +203,106 @@ func getLocalIP() string {
 	return "localhost"
 }
 
-// setupPeerSignaling connects the signal server to the peer manager
-func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, password string) {
-	localSharer := server.RegisterLocalSharer(roomCode, password)
+// buildStreamsInfo converts tracks to StreamInfo slice
+func buildStreamsInfo(tracks []*StreamTrackInfo) []sig.StreamInfo {
+	streams := make([]sig.StreamInfo, len(tracks))
+	for i, t := range tracks {
+		streams[i] = sig.StreamInfo{
+			TrackID:    t.TrackID,
+			WindowName: t.WindowName,
+			AppName:    t.AppName,
+			IsFocused:  t.IsFocused,
+			Width:      t.Width,
+			Height:     t.Height,
+		}
+	}
+	return streams
+}
 
+// sendOfferToViewer creates and sends an offer along with stream info to a viewer
+func sendOfferToViewer(pm *PeerManager, sharer sig.Sharer, peerID string) {
+	offer, err := pm.CreateOffer(peerID)
+	if err != nil {
+		log.Printf("Failed to create offer: %v", err)
+		return
+	}
+
+	sharer.SendToViewer(peerID, sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID})
+	sharer.SendToViewer(peerID, sig.SignalMessage{Type: "streams-info", Streams: buildStreamsInfo(pm.GetTracks())})
+}
+
+// setupSignaling is the SINGLE entry point for all signaling logic.
+// Works identically for local embedded server and remote WebSocket.
+func setupSignaling(sharer sig.Sharer, pm *PeerManager) {
 	var peerCounter int
 	var peerMu sync.Mutex
 
-	// Set up ICE callback
+	// === CALLBACK REGISTRATION (shared for all modes) ===
+
 	pm.SetICECallback(func(peerID string, candidate string) {
-		// Send ICE to specific viewer
-		iceMsg := sig.SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
-		localSharer.SendToViewer(peerID, iceMsg)
+		sharer.SendToViewer(peerID, sig.SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID})
 	})
 
-	// Set up focus change callback to broadcast to all viewers
 	pm.SetFocusChangeCallback(func(trackID string) {
-		focusMsg := sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID}
-		localSharer.SendToAllViewers(focusMsg)
+		sharer.SendToAllViewers(sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID})
 	})
 
-	// Set up size change callback to broadcast dimension changes to all viewers
 	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
-		sizeMsg := sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height}
-		localSharer.SendToAllViewers(sizeMsg)
+		sharer.SendToAllViewers(sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height})
 	})
 
-	// Set up cursor position callback to broadcast cursor position to all viewers
 	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
-		cursorMsg := sig.SignalMessage{
+		sharer.SendToAllViewers(sig.SignalMessage{
 			Type:         "cursor-position",
 			TrackID:      trackID,
 			CursorX:      x,
 			CursorY:      y,
 			CursorInView: inView,
-		}
-		localSharer.SendToAllViewers(cursorMsg)
+		})
 	})
 
-	// Set up renegotiation callback to send new offers during track add/remove
 	pm.SetRenegotiateCallback(func(peerID string, offer string) {
 		log.Printf("Renegotiation: sending offer to peer %s", peerID)
-		offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
-		localSharer.SendToViewer(peerID, offerMsg)
-
-		// Also send updated streams-info after renegotiation offer
-		tracks := pm.GetTracks()
-		streams := make([]sig.StreamInfo, len(tracks))
-		for i, t := range tracks {
-			streams[i] = sig.StreamInfo{
-				TrackID:    t.TrackID,
-				WindowName: t.WindowName,
-				AppName:    t.AppName,
-				IsFocused:  t.IsFocused,
-				Width:      t.Width,
-				Height:     t.Height,
-			}
-		}
-		streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
-		localSharer.SendToViewer(peerID, streamsMsg)
-		log.Printf("Renegotiation: sent streams-info with %d tracks to peer %s", len(tracks), peerID)
+		sharer.SendToViewer(peerID, sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID})
+		sharer.SendToViewer(peerID, sig.SignalMessage{Type: "streams-info", Streams: buildStreamsInfo(pm.GetTracks())})
+		log.Printf("Renegotiation: sent streams-info with %d tracks to peer %s", len(pm.GetTracks()), peerID)
 	})
 
-	// Set up stream change callbacks (legacy mode - requires renegotiation)
 	pm.SetStreamChangeCallbacks(
 		func(info sig.StreamInfo) {
-			// Broadcast stream-added to all viewers
 			log.Printf("Broadcasting stream-added: %s", info.TrackID)
-			msg := sig.SignalMessage{Type: "stream-added", StreamAdded: &info}
-			localSharer.SendToAllViewers(msg)
+			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-added", StreamAdded: &info})
 		},
 		func(trackID string) {
-			// Broadcast stream-removed to all viewers
 			log.Printf("Broadcasting stream-removed: %s", trackID)
-			msg := sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
-			localSharer.SendToAllViewers(msg)
+			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID})
 		},
 	)
 
-	// Set up stream activation callbacks (fast path - no renegotiation needed)
 	pm.SetStreamActivationCallbacks(
 		func(info sig.StreamInfo) {
-			// Broadcast stream-activated to all viewers (no renegotiation!)
 			log.Printf("Broadcasting stream-activated: %s (fast path)", info.TrackID)
-			msg := sig.SignalMessage{Type: "stream-activated", StreamActivated: &info}
-			localSharer.SendToAllViewers(msg)
+			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-activated", StreamActivated: &info})
 		},
 		func(trackID string) {
-			// Broadcast stream-deactivated to all viewers (no renegotiation!)
 			log.Printf("Broadcasting stream-deactivated: %s (fast path)", trackID)
-			msg := sig.SignalMessage{Type: "stream-deactivated", StreamDeactivated: trackID}
-			localSharer.SendToAllViewers(msg)
+			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-deactivated", StreamDeactivated: trackID})
 		},
 	)
 
+	// === MESSAGE HANDLING LOOP (shared for all modes) ===
+
 	go func() {
-		for data := range localSharer.Messages() {
+		for data := range sharer.Messages() {
 			var msg sig.SignalMessage
 			if err := json.Unmarshal(data, &msg); err != nil {
+				log.Printf("Invalid message: %v", err)
 				continue
 			}
 
 			switch msg.Type {
 			case "viewer-joined":
-				found, assignPeerID := localSharer.GetUnassignedViewer()
+				found, assignPeerID := sharer.GetUnassignedViewer()
 				if !found {
 					continue
 				}
@@ -317,44 +313,16 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 				peerMu.Unlock()
 
 				assignPeerID(peerID)
-
-				go func(pid string) {
-					offer, err := pm.CreateOffer(pid)
-					if err != nil {
-						log.Printf("Failed to create offer: %v", err)
-						return
-					}
-
-					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
-					localSharer.SendToViewer(pid, offerMsg)
-
-					// Send streams-info after offer
-					tracks := pm.GetTracks()
-					streams := make([]sig.StreamInfo, len(tracks))
-					for i, t := range tracks {
-						streams[i] = sig.StreamInfo{
-							TrackID:    t.TrackID,
-							WindowName: t.WindowName,
-							AppName:    t.AppName,
-							IsFocused:  t.IsFocused,
-							Width:      t.Width,
-							Height:     t.Height,
-						}
-					}
-					streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
-					localSharer.SendToViewer(pid, streamsMsg)
-				}(peerID)
+				go sendOfferToViewer(pm, sharer, peerID)
 
 			case "viewer-reoffer":
-				// Viewer is rejoining - reuse their existing peerID
 				peerID := msg.PeerID
 				if peerID == "" {
 					log.Printf("viewer-reoffer received without peerID")
 					continue
 				}
 
-				// Re-assign the peerID to the unassigned viewer
-				found, assignPeerID := localSharer.GetUnassignedViewer()
+				found, assignPeerID := sharer.GetUnassignedViewer()
 				if !found {
 					log.Printf("viewer-reoffer: no unassigned viewer found for %s", peerID)
 					continue
@@ -362,326 +330,52 @@ func setupPeerSignaling(server *sig.Server, pm *PeerManager, roomCode string, pa
 				assignPeerID(peerID)
 
 				log.Printf("Sending reoffer to existing viewer: %s", peerID)
-				go func(pid string) {
-					offer, err := pm.CreateOffer(pid)
-					if err != nil {
-						log.Printf("Failed to create reoffer: %v", err)
-						return
-					}
-
-					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
-					localSharer.SendToViewer(pid, offerMsg)
-
-					// Send streams-info after offer
-					tracks := pm.GetTracks()
-					streams := make([]sig.StreamInfo, len(tracks))
-					for i, t := range tracks {
-						streams[i] = sig.StreamInfo{
-							TrackID:    t.TrackID,
-							WindowName: t.WindowName,
-							AppName:    t.AppName,
-							IsFocused:  t.IsFocused,
-							Width:      t.Width,
-							Height:     t.Height,
-						}
-					}
-					streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
-					localSharer.SendToViewer(pid, streamsMsg)
-				}(peerID)
+				go sendOfferToViewer(pm, sharer, peerID)
 
 			case "answer":
-				peerID := msg.PeerID
-				if peerID == "" {
+				if msg.PeerID == "" {
 					continue
 				}
-				if err := pm.HandleAnswer(peerID, msg.SDP); err != nil {
-					log.Printf("Failed to handle answer for %s: %v", peerID, err)
+				if err := pm.HandleAnswer(msg.PeerID, msg.SDP); err != nil {
+					log.Printf("Failed to handle answer for %s: %v", msg.PeerID, err)
 				}
 
 			case "ice":
-				peerID := msg.PeerID
-				if peerID == "" {
+				if msg.PeerID == "" {
 					continue
 				}
-				if err := pm.AddICECandidate(peerID, msg.Candidate); err != nil {
-					log.Printf("Failed to add ICE candidate for %s: %v", peerID, err)
+				if err := pm.AddICECandidate(msg.PeerID, msg.Candidate); err != nil {
+					log.Printf("Failed to add ICE candidate for %s: %v", msg.PeerID, err)
 				}
 
 			case "renegotiate-answer":
-				peerID := msg.PeerID
-				if peerID == "" {
+				if msg.PeerID == "" {
 					continue
 				}
-				if err := pm.HandleRenegotiateAnswer(peerID, msg.SDP); err != nil {
-					log.Printf("Failed to handle renegotiate answer for %s: %v", peerID, err)
-				}
-			}
-		}
-	}()
-}
-
-// setupRemotePeerSignaling connects WebSocket to the peer manager with disconnect callback
-func setupRemotePeerSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnect func()) {
-	var peerCounter int
-	var peerMu sync.Mutex
-	var connMu sync.Mutex // Protect WebSocket writes
-
-	// Async cursor channel - decouples cursor sampling from network I/O
-	cursorChan := make(chan sig.SignalMessage, 4)
-	go func() {
-		for msg := range cursorChan {
-			connMu.Lock()
-			conn.WriteJSON(msg)
-			connMu.Unlock()
-		}
-	}()
-
-	pm.SetICECallback(func(peerID string, candidate string) {
-		iceMsg := sig.SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID}
-		connMu.Lock()
-		conn.WriteJSON(iceMsg)
-		connMu.Unlock()
-	})
-
-	// Set up focus change callback to broadcast to all viewers
-	pm.SetFocusChangeCallback(func(trackID string) {
-		focusMsg := sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID}
-		connMu.Lock()
-		conn.WriteJSON(focusMsg)
-		connMu.Unlock()
-	})
-
-	// Set up size change callback to broadcast dimension changes to all viewers
-	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
-		sizeMsg := sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height}
-		connMu.Lock()
-		err := conn.WriteJSON(sizeMsg)
-		connMu.Unlock()
-		if err != nil {
-			log.Printf("Failed to send size-change: %v", err)
-		}
-	})
-
-	// Set up cursor position callback to broadcast cursor position to all viewers
-	// Uses async channel to avoid blocking cursor sampling on network I/O
-	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
-		cursorMsg := sig.SignalMessage{
-			Type:         "cursor-position",
-			TrackID:      trackID,
-			CursorX:      x,
-			CursorY:      y,
-			CursorInView: inView,
-		}
-		select {
-		case cursorChan <- cursorMsg:
-			// Sent successfully
-		default:
-			// Channel full, drop oldest by receiving and try to resend
-			select {
-			case <-cursorChan:
-				// Dropped oldest message
-			default:
-				// Nothing to drop
-			}
-			// Try to send again, but don't block if still full
-			select {
-			case cursorChan <- cursorMsg:
-				// Resent successfully
-			default:
-				// Channel still full, drop this message
-			}
-		}
-	})
-
-	// Set up renegotiation callback for dynamic track add/remove
-	pm.SetRenegotiateCallback(func(peerID string, offer string) {
-		log.Printf("Remote renegotiation: sending offer for peer %s", peerID)
-		offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID}
-		connMu.Lock()
-		err := conn.WriteJSON(offerMsg)
-		connMu.Unlock()
-		if err != nil {
-			log.Printf("Failed to send renegotiation offer: %v", err)
-		}
-
-		// Also send updated streams-info after renegotiation offer
-		tracks := pm.GetTracks()
-		streams := make([]sig.StreamInfo, len(tracks))
-		for i, t := range tracks {
-			streams[i] = sig.StreamInfo{
-				TrackID:    t.TrackID,
-				WindowName: t.WindowName,
-				AppName:    t.AppName,
-				IsFocused:  t.IsFocused,
-				Width:      t.Width,
-				Height:     t.Height,
-			}
-		}
-		streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
-		connMu.Lock()
-		conn.WriteJSON(streamsMsg)
-		connMu.Unlock()
-		log.Printf("Remote renegotiation: sent streams-info with %d tracks", len(tracks))
-	})
-
-	// Set up stream change callbacks (legacy mode - requires renegotiation)
-	pm.SetStreamChangeCallbacks(
-		func(info sig.StreamInfo) {
-			log.Printf("Remote: broadcasting stream-added: %s", info.TrackID)
-			msg := sig.SignalMessage{Type: "stream-added", StreamAdded: &info}
-			connMu.Lock()
-			conn.WriteJSON(msg)
-			connMu.Unlock()
-		},
-		func(trackID string) {
-			log.Printf("Remote: broadcasting stream-removed: %s", trackID)
-			msg := sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID}
-			connMu.Lock()
-			conn.WriteJSON(msg)
-			connMu.Unlock()
-		},
-	)
-
-	// Set up stream activation callbacks (fast path - no renegotiation needed)
-	pm.SetStreamActivationCallbacks(
-		func(info sig.StreamInfo) {
-			log.Printf("Remote: broadcasting stream-activated: %s (fast path)", info.TrackID)
-			msg := sig.SignalMessage{Type: "stream-activated", StreamActivated: &info}
-			connMu.Lock()
-			conn.WriteJSON(msg)
-			connMu.Unlock()
-		},
-		func(trackID string) {
-			log.Printf("Remote: broadcasting stream-deactivated: %s (fast path)", trackID)
-			msg := sig.SignalMessage{Type: "stream-deactivated", StreamDeactivated: trackID}
-			connMu.Lock()
-			conn.WriteJSON(msg)
-			connMu.Unlock()
-		},
-	)
-
-	go func() {
-		defer close(cursorChan) // Close cursor channel when connection ends to prevent goroutine leak
-		for {
-			var msg sig.SignalMessage
-			if err := conn.ReadJSON(&msg); err != nil {
-				if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
-					log.Printf("Signal server disconnected: %v", err)
-				}
-				if onDisconnect != nil {
-					onDisconnect()
-				}
-				return
-			}
-
-			switch msg.Type {
-			case "viewer-joined":
-				peerMu.Lock()
-				peerCounter++
-				peerID := fmt.Sprintf("viewer-%d", peerCounter)
-				peerMu.Unlock()
-
-				go func(pid string) {
-					offer, err := pm.CreateOffer(pid)
-					if err != nil {
-						log.Printf("Failed to create offer: %v", err)
-						return
-					}
-
-					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
-					connMu.Lock()
-					conn.WriteJSON(offerMsg)
-					connMu.Unlock()
-
-					// Send streams-info after offer
-					tracks := pm.GetTracks()
-					streams := make([]sig.StreamInfo, len(tracks))
-					for i, t := range tracks {
-						streams[i] = sig.StreamInfo{
-							TrackID:    t.TrackID,
-							WindowName: t.WindowName,
-							AppName:    t.AppName,
-							IsFocused:  t.IsFocused,
-							Width:      t.Width,
-							Height:     t.Height,
-						}
-					}
-					streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
-					connMu.Lock()
-					conn.WriteJSON(streamsMsg)
-					connMu.Unlock()
-				}(peerID)
-
-			case "viewer-reoffer":
-				// Viewer is rejoining - reuse their existing peerID (no counter increment)
-				peerID := msg.PeerID
-				if peerID == "" {
-					log.Printf("viewer-reoffer received without peerID")
-					continue
-				}
-
-				log.Printf("Sending reoffer to existing viewer: %s", peerID)
-				go func(pid string) {
-					offer, err := pm.CreateOffer(pid)
-					if err != nil {
-						log.Printf("Failed to create reoffer: %v", err)
-						return
-					}
-
-					offerMsg := sig.SignalMessage{Type: "offer", SDP: offer, PeerID: pid}
-					connMu.Lock()
-					conn.WriteJSON(offerMsg)
-					connMu.Unlock()
-
-					// Send streams-info after offer
-					tracks := pm.GetTracks()
-					streams := make([]sig.StreamInfo, len(tracks))
-					for i, t := range tracks {
-						streams[i] = sig.StreamInfo{
-							TrackID:    t.TrackID,
-							WindowName: t.WindowName,
-							AppName:    t.AppName,
-							IsFocused:  t.IsFocused,
-							Width:      t.Width,
-							Height:     t.Height,
-						}
-					}
-					streamsMsg := sig.SignalMessage{Type: "streams-info", Streams: streams}
-					connMu.Lock()
-					conn.WriteJSON(streamsMsg)
-					connMu.Unlock()
-				}(peerID)
-
-			case "answer":
-				peerID := msg.PeerID
-				if peerID == "" {
-					continue
-				}
-				if err := pm.HandleAnswer(peerID, msg.SDP); err != nil {
-					log.Printf("Failed to handle answer for %s: %v", peerID, err)
-				}
-
-			case "ice":
-				peerID := msg.PeerID
-				if peerID == "" {
-					continue
-				}
-				if err := pm.AddICECandidate(peerID, msg.Candidate); err != nil {
-					log.Printf("Failed to add ICE candidate for %s: %v", peerID, err)
-				}
-
-			case "renegotiate-answer":
-				peerID := msg.PeerID
-				if peerID == "" {
-					continue
-				}
-				if err := pm.HandleRenegotiateAnswer(peerID, msg.SDP); err != nil {
-					log.Printf("Failed to handle renegotiate answer for %s: %v", peerID, err)
+				if err := pm.HandleRenegotiateAnswer(msg.PeerID, msg.SDP); err != nil {
+					log.Printf("Failed to handle renegotiate answer for %s: %v", msg.PeerID, err)
 				}
 
 			case "error":
 				log.Printf("Signal server error: %s", msg.Error)
 			}
 		}
+
+		log.Printf("Signaling connection closed")
 	}()
+}
+
+// setupLocalSignaling sets up signaling for local embedded server mode
+func setupLocalSignaling(server *sig.Server, pm *PeerManager, roomCode string, password string) sig.Sharer {
+	sharer := server.RegisterLocalSharer(roomCode, password)
+	setupSignaling(sharer, pm)
+	return sharer
+}
+
+// setupRemoteSignaling sets up signaling for remote WebSocket mode
+func setupRemoteSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnect func()) sig.Sharer {
+	sharer := sig.NewRemoteSharer(conn)
+	sharer.SetDisconnectHandler(onDisconnect)
+	setupSignaling(sharer, pm)
+	return sharer
 }

@@ -912,7 +912,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 		// Set up signaling via the new WebSocket with disconnect callback
 		disconnectFlag := m.wsDisconnected
-		setupRemotePeerSignaling(m.wsConn, m.peerManager, func() {
+		setupRemoteSignaling(m.wsConn, m.peerManager, func() {
 			if disconnectFlag != nil {
 				*disconnectFlag = true
 			}
@@ -1624,7 +1624,7 @@ func (m *model) initRemoteSignaling() error {
 
 	// Set up signaling via WebSocket with disconnect callback
 	disconnectFlag := m.wsDisconnected
-	setupRemotePeerSignaling(conn, m.peerManager, func() {
+	setupRemoteSignaling(conn, m.peerManager, func() {
 		*disconnectFlag = true
 	})
 
@@ -1881,7 +1881,7 @@ func (m *model) initMultiServer() error {
 	m.shareURL = fmt.Sprintf("http://%s:%d/%s", localIP, m.config.Port, m.roomCode)
 
 	// Set up signaling for multi-window
-	setupPeerSignaling(m.server, m.peerManager, m.roomCode, m.password)
+	setupLocalSignaling(m.server, m.peerManager, m.roomCode, m.password)
 
 	m.serverStarted = true
 	return nil

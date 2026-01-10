@@ -314,10 +314,11 @@ func (s *Server) UpdateRoomPassword(roomCode string, password string) {
 // LocalSharer provides an interface for local (in-process) sharing
 // It registers as the sharer for a room and provides methods to interact with viewers
 type LocalSharer struct {
-	server   *Server
-	room     *Room
-	client   *Client
-	roomCode string
+	server       *Server
+	room         *Room
+	client       *Client
+	roomCode     string
+	onDisconnect func()
 }
 
 // RegisterLocalSharer creates a local sharer for a room
@@ -413,4 +414,16 @@ func (ls *LocalSharer) GetUnassignedViewer() (found bool, assignPeerID func(stri
 		}
 	}
 	return false, nil
+}
+
+// SetDisconnectHandler sets callback for when connection is lost
+func (ls *LocalSharer) SetDisconnectHandler(handler func()) {
+	ls.onDisconnect = handler
+}
+
+// Close shuts down the local sharer
+func (ls *LocalSharer) Close() {
+	if ls.onDisconnect != nil {
+		ls.onDisconnect()
+	}
 }
