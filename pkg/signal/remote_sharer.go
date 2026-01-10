@@ -55,6 +55,13 @@ func (rs *RemoteSharer) readLoop() {
 
 // SendToViewer sends a message to a specific viewer
 func (rs *RemoteSharer) SendToViewer(peerID string, msg SignalMessage) {
+	rs.closeMu.Lock()
+	closed := rs.closed
+	rs.closeMu.Unlock()
+	if closed {
+		return
+	}
+
 	rs.connMu.Lock()
 	defer rs.connMu.Unlock()
 	if err := rs.conn.WriteJSON(msg); err != nil {
@@ -65,6 +72,13 @@ func (rs *RemoteSharer) SendToViewer(peerID string, msg SignalMessage) {
 // SendToAllViewers broadcasts to all connected viewers
 // In remote mode, the server handles broadcast distribution
 func (rs *RemoteSharer) SendToAllViewers(msg SignalMessage) {
+	rs.closeMu.Lock()
+	closed := rs.closed
+	rs.closeMu.Unlock()
+	if closed {
+		return
+	}
+
 	rs.connMu.Lock()
 	defer rs.connMu.Unlock()
 	if err := rs.conn.WriteJSON(msg); err != nil {
