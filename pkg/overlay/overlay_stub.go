@@ -14,3 +14,11 @@ func (o *Overlay) platformStop() {
 // platformSetEnabled is a no-op on non-macOS platforms.
 func (o *Overlay) platformSetEnabled(enabled bool) {
 }
+
+// RunMainRunLoop is a no-op on non-macOS platforms.
+func RunMainRunLoop() {
+}
+
+// StopMainRunLoop is a no-op on non-macOS platforms.
+func StopMainRunLoop() {
+}

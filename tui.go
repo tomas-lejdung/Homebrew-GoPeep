@@ -2586,15 +2586,7 @@ func truncate(s string, maxLen int) string {
 
 // RunTUI starts the TUI application
 func RunTUI(config Config) error {
-	// Check screen recording permission first
-	if !HasScreenRecordingPermission() {
-		fmt.Println("Screen Recording permission required.")
-		fmt.Println("Please grant permission in:")
-		fmt.Println("  System Preferences > Security & Privacy > Privacy > Screen Recording")
-		fmt.Println()
-		fmt.Println("After granting permission, restart gopeep.")
-		return nil
-	}
+	// Note: Screen recording permission is checked in main() on the main thread
 
 	// Write logs to file instead of corrupting TUI display
 	logFile, err := os.Create("gopeep-debug.log")

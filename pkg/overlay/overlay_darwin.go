@@ -770,12 +770,15 @@ static void createOverlayOnMainThread(void);
 static void createOverlay(void) {
     if (atomic_load(&g_initialized)) return;
 
-    // NSWindow operations MUST happen on the main thread
+    // NSWindow operations MUST happen on the main thread.
+    // In the current architecture, RunTUI runs in a background goroutine while
+    // the main goroutine runs the main run loop. So this will typically be called
+    // from a non-main thread, and we dispatch to the main queue which is serviced
+    // by the main run loop.
     if ([NSThread isMainThread]) {
         createOverlayOnMainThread();
     } else {
-        // Dispatch synchronously to main thread and wait for completion
-        dispatch_sync(dispatch_get_main_queue(), ^{
+        dispatch_async(dispatch_get_main_queue(), ^{
             createOverlayOnMainThread();
         });
     }
@@ -1038,9 +1041,14 @@ static void destroyOverlay(void) {
     if ([NSThread isMainThread]) {
         destroyOverlayOnMainThread();
     } else {
-        dispatch_sync(dispatch_get_main_queue(), ^{
+        // Use async with timeout to avoid hanging if main queue isn't serviced
+        dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+        dispatch_async(dispatch_get_main_queue(), ^{
             destroyOverlayOnMainThread();
+            dispatch_semaphore_signal(sem);
         });
+        // Wait up to 500ms for cleanup, then give up to avoid hang
+        dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC));
     }
 
     atomic_store(&g_initialized, NO);
@@ -1071,6 +1079,29 @@ static void destroyOverlayOnMainThread(void) {
 
 static void setOverlayEnabled(BOOL enabled) {
     atomic_store(&g_overlayEnabled, enabled);
+}
+
+// Main run loop support - needed because Go doesn't automatically service the main queue
+static volatile BOOL g_mainLoopRunning = NO;
+
+static void runMainRunLoop(void) {
+    @autoreleasepool {
+        [NSApplication sharedApplication];
+        [NSApp setActivationPolicy:NSApplicationActivationPolicyAccessory];
+
+        g_mainLoopRunning = YES;
+
+        while (g_mainLoopRunning) {
+            @autoreleasepool {
+                NSDate *future = [NSDate dateWithTimeIntervalSinceNow:0.01];
+                [[NSRunLoop currentRunLoop] runMode:NSDefaultRunLoopMode beforeDate:future];
+            }
+        }
+    }
+}
+
+static void stopMainRunLoop(void) {
+    g_mainLoopRunning = NO;
 }
 
 */
@@ -1260,12 +1291,6 @@ func (o *Overlay) runLoop() {
 	runtime.LockOSThread()
 	defer runtime.UnlockOSThread()
 
-	// Create overlay (dispatches to main thread internally)
-	C.createOverlay()
-
-	// Signal that we're ready
-	o.ready <- struct{}{}
-
 	const targetFrameTime = time.Second / 60 // ~16.67ms
 
 	for o.running.Load() {
@@ -1288,19 +1313,19 @@ func (o *Overlay) runLoop() {
 }
 
 // platformStart initializes the macOS overlay and starts the game loop.
+// Called from the main goroutine which runs on the main OS thread.
 func (o *Overlay) platformStart() error {
 	globalMu.Lock()
 	globalOverlay = o
 	globalMu.Unlock()
 
+	// Create overlay on main thread (this function is called from main goroutine)
+	C.createOverlay()
+
 	// Start the game loop in a separate goroutine
 	o.running.Store(true)
-	o.ready = make(chan struct{})
 	o.stopped = make(chan struct{})
 	go o.runLoop()
-
-	// Wait for overlay to be created (or fail gracefully)
-	<-o.ready
 
 	return nil
 }
@@ -1325,4 +1350,16 @@ func (o *Overlay) platformStop() {
 // platformSetEnabled enables/disables the overlay visibility.
 func (o *Overlay) platformSetEnabled(enabled bool) {
 	C.setOverlayEnabled(C.BOOL(enabled))
+}
+
+// RunMainRunLoop runs the macOS main run loop on the current thread.
+// This MUST be called from the main goroutine (which should be locked to the main OS thread).
+// It blocks until StopMainRunLoop is called.
+func RunMainRunLoop() {
+	C.runMainRunLoop()
+}
+
+// StopMainRunLoop signals the main run loop to stop.
+func StopMainRunLoop() {
+	C.stopMainRunLoop()
 }
