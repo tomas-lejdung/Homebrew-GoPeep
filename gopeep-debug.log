@@ -1,30 +1,59 @@
-2026/01/10 14:35:59 === GoPeep started at 2026-01-10T14:35:59+01:00 ===
-2026/01/10 14:35:59 Received room code from server: HUMBLE-LOTUS-622
-2026/01/10 14:35:59 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP9
-2026/01/10 14:35:59 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/10 14:35:59 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/10 14:35:59 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/10 14:35:59 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/10 14:35:59 InitializeTrackSlots: All 4 track slots ready
-2026/01/10 14:36:00 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/10 14:36:00 Peer viewer-1 connection state: connecting
-2026/01/10 14:36:01 Peer viewer-1 connection state: connected
-2026/01/10 14:36:01 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/10 14:36:02 ActivateSlot: Activated video0 for window 343883 (Ghostty - ./gopeep )
-2026/01/10 14:36:03 Cannot broadcast sharer-started: server=false roomCode=HUMBLE-LOTUS-622
-2026/01/10 14:36:03 Renegotiating with 1 peers
-2026/01/10 14:36:03 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/10 14:36:03 Renegotiation: peer viewer-1 connection state: connected
-2026/01/10 14:36:03 Renegotiation: ICE gathering complete for viewer-1
-2026/01/10 14:36:03 Renegotiation: sending offer to peer viewer-1 (SDP length: 16883)
-2026/01/10 14:36:03 Renegotiation: sending offer to peer viewer-1
-2026/01/10 14:36:03 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
-2026/01/10 14:36:03 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/10 14:36:03 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/10 14:36:03 sendLoop: Writing frame 1 to track video0 (windowID=343883, streamID=gopeep-stream-0)
-2026/01/10 14:36:05 sendLoop: Writing frame 101 to track video0 (windowID=343883, streamID=gopeep-stream-0)
-2026/01/10 14:36:05 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
-2026/01/10 14:36:05 Broadcasting stream-removed: video0
-2026/01/10 14:36:05 Peer viewer-1 connection state: closed
-2026/01/10 14:36:05 WebSocket read error: read tcp 192.168.1.123:65111->92.34.139.8:443: use of closed network connection
-2026/01/10 14:36:05 Signaling connection closed
+2026/01/10 15:40:48 === GoPeep started at 2026-01-10T15:40:48+01:00 ===
+2026/01/10 15:40:48 Received room code from server: HOLLOW-BLADE-813
+2026/01/10 15:40:48 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP9
+2026/01/10 15:40:48 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/10 15:40:48 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/10 15:40:48 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/10 15:40:48 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/10 15:40:48 InitializeTrackSlots: All 4 track slots ready
+2026/01/10 15:40:50 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/10 15:40:51 Peer viewer-1 connection state: connecting
+2026/01/10 15:40:52 Peer viewer-1 connection state: connected
+2026/01/10 15:40:54 Overlay: Dynamically adding window 349325 (Ghostty - ./gopeep --serve) to sources
+2026/01/10 15:40:54 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/10 15:40:54 ActivateSlot: Activated video0 for window 349325 (Ghostty - ./gopeep --serve)
+2026/01/10 15:40:55 Broadcasting sharer-started to room HOLLOW-BLADE-813
+2026/01/10 15:40:55 Renegotiating with 1 peers
+2026/01/10 15:40:55 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/10 15:40:55 Renegotiation: peer viewer-1 connection state: connected
+2026/01/10 15:40:55 Renegotiation: ICE gathering complete for viewer-1
+2026/01/10 15:40:55 Renegotiation: sending offer to peer viewer-1 (SDP length: 16884)
+2026/01/10 15:40:55 Renegotiation: sending offer to peer viewer-1
+2026/01/10 15:40:55 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/10 15:40:55 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/10 15:40:55 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/10 15:40:55 sendLoop: Writing frame 1 to track video0 (windowID=349325, streamID=gopeep-stream-0)
+2026/01/10 15:40:57 sendLoop: Writing frame 101 to track video0 (windowID=349325, streamID=gopeep-stream-0)
+2026/01/10 15:40:58 sendLoop: Writing frame 201 to track video0 (windowID=349325, streamID=gopeep-stream-0)
+2026/01/10 15:40:59 TUI: Removing window 349325 (no sources selected)
+2026/01/10 15:40:59 Removing window dynamically: video0 (windowID=349325, fastPath=true)
+2026/01/10 15:40:59 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/10 15:40:59 DeactivateSlot: Deactivated video0
+2026/01/10 15:40:59 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/10 15:40:59 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/10 15:41:02 TUI: Adding window dynamically: 349325 (./gopeep --serve)
+2026/01/10 15:41:02 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/10 15:41:02 ActivateSlot: Activated video0 for window 349325 (Ghostty - ./gopeep --serve)
+2026/01/10 15:41:03 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/10 15:41:03 Broadcasting stream-activated: video0 (fast path)
+2026/01/10 15:41:03 Added window dynamically: video0 (windowID=349325, fastPath=true)
+2026/01/10 15:41:03 sendLoop: Writing frame 1 to track video0 (windowID=349325, streamID=gopeep-stream-0)
+2026/01/10 15:41:06 Broadcasting stream-removed: video0
+2026/01/10 15:41:06 Closing peer connection: viewer-1
+2026/01/10 15:41:06 Peer viewer-1 connection state: closed
+2026/01/10 15:41:09 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/10 15:41:09 ActivateSlot: Activated video0 for window 349325 (Ghostty - ./gopeep --serve)
+2026/01/10 15:41:11 Renegotiating with 0 peers
+2026/01/10 15:41:11 Broadcasting sharer-started to room HOLLOW-BLADE-813
+2026/01/10 15:41:11 sendLoop: Writing frame 1 to track video0 (windowID=349325, streamID=gopeep-stream-0)
+2026/01/10 15:41:13 sendLoop: Writing frame 101 to track video0 (windowID=349325, streamID=gopeep-stream-0)
+2026/01/10 15:41:15 sendLoop: Writing frame 201 to track video0 (windowID=349325, streamID=gopeep-stream-0)
+2026/01/10 15:41:17 sendLoop: Writing frame 301 to track video0 (windowID=349325, streamID=gopeep-stream-0)
+2026/01/10 15:41:18 WebSocket read error: websocket: close 1006 (abnormal closure): unexpected EOF
+2026/01/10 15:41:18 Signaling connection closed
+2026/01/10 15:41:18 Broadcast failed: write tcp [::1]:57000->[::1]:8080: write: broken pipe
+2026/01/10 15:41:18 Broadcast failed: write tcp [::1]:57000->[::1]:8080: write: broken pipe
+2026/01/10 15:41:18 Broadcast failed: write tcp [::1]:57000->[::1]:8080: write: broken pipe
+2026/01/10 15:41:18 Broadcast failed: write tcp [::1]:57000->[::1]:8080: write: broken pipe
+2026/01/10 15:41:21 Broadcasting stream-removed: video0
+2026/01/10 15:41:21 Broadcast failed: write tcp [::1]:57000->[::1]:8080: write: broken pipe

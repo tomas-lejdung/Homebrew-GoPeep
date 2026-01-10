@@ -290,10 +290,8 @@ type model struct {
 	wsDisconnected   *bool // Pointer so goroutine can set it
 
 	// Components (persistent across source switches)
-	server     *sig.Server
-	wsConn     *websocket.Conn // Remote signal server connection
-	isRemote   bool            // Using remote signal server
-	roomSecret string          // Secret token for sharer authentication (remote mode)
+	wsConn     *websocket.Conn // Signal server connection
+	roomSecret string          // Secret token for sharer authentication
 
 	// Server started flag
 	serverStarted bool
@@ -508,11 +506,6 @@ func (m *model) findSourceIndex() int {
 }
 
 func initialModel(config Config) model {
-	// Set default signal URL if not in local mode and not already set
-	if config.SignalURL == "" && !config.LocalMode {
-		config.SignalURL = DefaultSignalServer
-	}
-
 	// Initialize available codecs
 	InitAvailableCodecs()
 
@@ -565,18 +558,9 @@ func (m model) Init() tea.Cmd {
 		tea.SetWindowTitle("GoPeep - Screen Sharing"),
 	}
 
-	// Generate room code on startup
-	if !m.config.LocalMode && m.config.SignalURL != "" {
-		// Remote mode: request from server
-		signalURL := normalizeSignalURL(m.config.SignalURL)
-		cmds = append(cmds, requestRoomCodeFromServer(signalURL))
-	} else {
-		// Local mode: generate immediately
-		cmds = append(cmds, func() tea.Msg {
-			code := sig.GenerateRoomCode()
-			return roomCodeReceivedMsg{roomCode: code}
-		})
-	}
+	// Request room code from signal server
+	signalURL := normalizeSignalURL(m.config.SignalURL)
+	cmds = append(cmds, requestRoomCodeFromServer(signalURL))
 
 	return tea.Batch(cmds...)
 }
@@ -672,21 +656,14 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case roomCodeReceivedMsg:
 		if msg.err != nil {
-			if m.config.LocalMode {
-				// Local mode: generate locally
-				m.roomCode = sig.GenerateRoomCode()
-				log.Printf("Generated local room code: %s", m.roomCode)
-			} else {
-				// Remote mode: server MUST provide the room code - show error
-				log.Printf("Failed to get room code from server: %v", msg.err)
-				m.lastError = fmt.Sprintf("Server error: %v (is the server updated?)", msg.err)
-				return m, nil
-			}
-		} else {
-			m.roomCode = msg.roomCode
-			m.roomSecret = msg.roomSecret
-			log.Printf("Received room code from server: %s", m.roomCode)
+			// Server must provide room code - show error
+			log.Printf("Failed to get room code from server: %v", msg.err)
+			m.lastError = fmt.Sprintf("Server error: %v", msg.err)
+			return m, nil
 		}
+		m.roomCode = msg.roomCode
+		m.roomSecret = msg.roomSecret
+		log.Printf("Received room code from server: %s", m.roomCode)
 
 		// Initialize server synchronously (not in a Cmd - Bubbletea model changes don't persist in goroutines)
 		if err := m.initMultiServer(); err != nil {
@@ -705,11 +682,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showStats = true // Show stats by default when sharing starts
 		m.syncOverlay()    // Update overlay state (now sharing)
 		// Notify viewers that sharer has started (so they can rejoin)
-		if m.server != nil && m.roomCode != "" {
+		if m.wsConn != nil && m.roomCode != "" {
 			log.Printf("Broadcasting sharer-started to room %s", m.roomCode)
-			m.server.BroadcastToViewers(m.roomCode, sig.SignalMessage{Type: "sharer-started"})
-		} else {
-			log.Printf("Cannot broadcast sharer-started: server=%v roomCode=%s", m.server != nil, m.roomCode)
+			m.wsConn.WriteJSON(sig.SignalMessage{Type: "sharer-started"})
 		}
 		// If in auto-share mode, start fast tick for rapid focus detection
 		if m.autoShareEnabled {
@@ -796,7 +771,7 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		}
 
 		// Check for WebSocket disconnection and trigger reconnection
-		if m.isRemote && m.serverStarted && m.wsDisconnected != nil && *m.wsDisconnected && !m.reconnecting {
+		if m.serverStarted && m.wsDisconnected != nil && *m.wsDisconnected && !m.reconnecting {
 			*m.wsDisconnected = false
 			m.reconnecting = true
 			m.reconnectAttempt = 1
@@ -1075,8 +1050,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Close peer connections so viewers reconnect with fresh state
 		if m.sharing {
 			// Notify viewers that sharer has stopped so they reset and wait
-			if m.server != nil && m.roomCode != "" {
-				m.server.BroadcastToViewers(m.roomCode, sig.SignalMessage{Type: "sharer-stopped"})
+			if m.wsConn != nil && m.roomCode != "" {
+				m.wsConn.WriteJSON(sig.SignalMessage{Type: "sharer-stopped"})
 			}
 			m.stopCapture(false)
 			m.selectedWindows = make(map[uint32]bool)
@@ -1174,15 +1149,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.password = ""
 		}
 		// If server is already started, update the room password
-		if m.serverStarted {
-			if m.server != nil {
-				// Local mode - direct update
-				m.server.UpdateRoomPassword(m.roomCode, m.password)
-			} else if m.isRemote && m.wsConn != nil {
-				// Remote mode - send password-update message
-				pwMsg := sig.SignalMessage{Type: "password-update", Password: m.password, Secret: m.roomSecret}
-				m.wsConn.WriteJSON(pwMsg)
-			}
+		if m.serverStarted && m.wsConn != nil {
+			pwMsg := sig.SignalMessage{Type: "password-update", Password: m.password, Secret: m.roomSecret}
+			m.wsConn.WriteJSON(pwMsg)
 		}
 		return m, nil
 
@@ -1614,7 +1583,6 @@ func (m *model) initRemoteSignaling() error {
 	}
 
 	m.wsConn = conn
-	m.isRemote = true
 
 	// Initialize disconnect flag if needed
 	if m.wsDisconnected == nil {
@@ -1858,30 +1826,10 @@ func (m *model) initMultiServer() error {
 		return fmt.Errorf("failed to initialize track slots: %v", err)
 	}
 
-	// Try remote signal server first
-	if !m.config.LocalMode && m.config.SignalURL != "" {
-		if err := m.initRemoteSignaling(); err == nil {
-			m.serverStarted = true
-			return nil
-		}
+	// Connect to signal server
+	if err := m.initRemoteSignaling(); err != nil {
+		return fmt.Errorf("failed to connect to signal server: %v", err)
 	}
-
-	// Local mode
-	m.isRemote = false
-	m.server = sig.NewServer()
-	addr := fmt.Sprintf(":%d", m.config.Port)
-
-	go func() {
-		m.server.StartServer(addr)
-	}()
-
-	time.Sleep(100 * time.Millisecond)
-
-	localIP := getLocalIP()
-	m.shareURL = fmt.Sprintf("http://%s:%d/%s", localIP, m.config.Port, m.roomCode)
-
-	// Set up signaling for multi-window
-	setupLocalSignaling(m.server, m.peerManager, m.roomCode, m.password)
 
 	m.serverStarted = true
 	return nil
@@ -2011,12 +1959,6 @@ func (m model) View() string {
 		b.WriteString("\n")
 	} else if m.roomCode != "" {
 		// Show room code even before streaming starts
-		if m.config.LocalMode {
-			b.WriteString(dimStyle.Render("[LOCAL]"))
-		} else {
-			b.WriteString(selectedStyle.Render("[INTERNET]"))
-		}
-		b.WriteString("  ")
 		b.WriteString(statusStyle.Render("Room: "))
 		b.WriteString(normalStyle.Render(m.roomCode))
 		b.WriteString("  ")
@@ -2054,15 +1996,11 @@ func (m model) View() string {
 func (m model) renderSharingStatus() string {
 	var b strings.Builder
 
-	// Mode indicator
+	// Mode indicator (only show when reconnecting)
 	if m.reconnecting {
 		b.WriteString(errorStyle.Render(fmt.Sprintf("[RECONNECTING %d/%d]", m.reconnectAttempt, m.maxReconnects)))
-	} else if m.isRemote {
-		b.WriteString(selectedStyle.Render("[INTERNET]"))
-	} else {
-		b.WriteString(dimStyle.Render("[LOCAL]"))
+		b.WriteString("  ")
 	}
-	b.WriteString("  ")
 
 	// Room code and URL (always show once server started)
 	b.WriteString(statusStyle.Render("Room: "))

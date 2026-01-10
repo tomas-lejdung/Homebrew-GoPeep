@@ -5,7 +5,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"net"
 	"sync"
 
 	"github.com/gorilla/websocket"
@@ -17,6 +16,9 @@ import (
 // DefaultSignalServer is the default remote signal server for P2P initialization
 const DefaultSignalServer = "wss://gopeep.tineestudio.se"
 
+// LocalSignalServer is the URL for local signal server
+const LocalSignalServer = "ws://localhost:8080"
+
 // Config holds runtime configuration
 type Config struct {
 	ServeMode   bool
@@ -25,7 +27,6 @@ type Config struct {
 	FPS         int
 	Quality     string
 	SignalURL   string
-	LocalMode   bool // Force local-only mode (no remote signal server)
 	Help        bool
 
 	// TURN server configuration
@@ -37,6 +38,7 @@ type Config struct {
 
 func parseFlags() Config {
 	config := Config{}
+	var localMode bool
 
 	flag.BoolVar(&config.ServeMode, "serve", false, "Run as signal server only")
 	flag.BoolVar(&config.ServeMode, "s", false, "Run as signal server only (shorthand)")
@@ -52,7 +54,7 @@ func parseFlags() Config {
 	flag.StringVar(&config.Quality, "quality", "med", "Encoding quality (low|med|hi)")
 
 	flag.StringVar(&config.SignalURL, "signal", "", "Custom signal server URL (overrides default)")
-	flag.BoolVar(&config.LocalMode, "local", false, "Force local-only mode (skip remote signal server)")
+	flag.BoolVar(&localMode, "local", false, "Use local signal server (ws://localhost:8080)")
 
 	// TURN server flags
 	flag.StringVar(&config.TURNServer, "turn", "", "TURN server URL (e.g., turn:turn.example.com:3478)")
@@ -65,6 +67,11 @@ func parseFlags() Config {
 
 	flag.Parse()
 
+	// --local sets SignalURL to local server
+	if localMode {
+		config.SignalURL = LocalSignalServer
+	}
+
 	return config
 }
 
@@ -76,15 +83,14 @@ Usage: gopeep [options]
 By default, GoPeep connects to the remote signal server at:
   ` + DefaultSignalServer + `
 
-This allows P2P connections over the internet. If the remote server is
-unreachable, it automatically falls back to local-only mode.
+This allows P2P connections over the internet.
 
 Options:
   --list, -l             List available windows and exit
-  --local                Force local-only mode (skip remote signal server)
+  --local                Use local signal server (` + LocalSignalServer + `)
   --signal <url>         Custom signal server URL (overrides default)
   --serve, -s            Run as signal server only
-  --port, -p <port>      Local server port (default: 8080)
+  --port, -p <port>      Signal server port (default: 8080)
   --fps <rate>           Target framerate (default: 30)
   --quality <preset>     Encoding quality: low, medium, high, ultra, extreme, insane, max
   --help, -h             Show help
@@ -105,10 +111,10 @@ Quality Presets:
   max      20 Mbps    - Maximum quality
 
 Examples:
-  gopeep                     # TUI mode, uses remote signal server
-  gopeep --local             # TUI mode, local network only
+  gopeep                     # Uses remote signal server
+  gopeep --serve             # Run local signal server
+  gopeep --local             # Connect to local signal server
   gopeep --list              # List available windows
-  gopeep --serve             # Run signal server only (for self-hosting)
 
 TUI Controls:
   Tab / ← →     Switch between Sources and Quality columns
@@ -142,9 +148,8 @@ func main() {
 		return
 	}
 
-	// Determine signal URL: custom > default > local fallback
-	if config.SignalURL == "" && !config.LocalMode {
-		// Use default signal server
+	// Determine signal URL: use default if not specified
+	if config.SignalURL == "" {
 		config.SignalURL = DefaultSignalServer
 	}
 
@@ -184,23 +189,6 @@ func runSignalServer(port int) {
 	if err := server.StartServer(addr); err != nil {
 		log.Fatalf("Server error: %v", err)
 	}
-}
-
-func getLocalIP() string {
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return "localhost"
-	}
-
-	for _, addr := range addrs {
-		if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
-			if ipnet.IP.To4() != nil {
-				return ipnet.IP.String()
-			}
-		}
-	}
-
-	return "localhost"
 }
 
 // buildStreamsInfo converts tracks to StreamInfo slice
@@ -363,13 +351,6 @@ func setupSignaling(sharer sig.Sharer, pm *PeerManager) {
 
 		log.Printf("Signaling connection closed")
 	}()
-}
-
-// setupLocalSignaling sets up signaling for local embedded server mode
-func setupLocalSignaling(server *sig.Server, pm *PeerManager, roomCode string, password string) sig.Sharer {
-	sharer := server.RegisterLocalSharer(roomCode, password)
-	setupSignaling(sharer, pm)
-	return sharer
 }
 
 // setupRemoteSignaling sets up signaling for remote WebSocket mode

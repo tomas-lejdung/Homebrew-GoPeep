@@ -1,7 +1,7 @@
 package signal
 
-// Sharer abstracts signaling transport for both local and remote modes.
-// LocalSharer (embedded server) and RemoteSharer (WebSocket) both implement this interface.
+// Sharer abstracts the signaling transport for WebRTC negotiation.
+// RemoteSharer implements this interface for WebSocket-based signaling.
 type Sharer interface {
 	// SendToViewer sends a message to a specific peer
 	SendToViewer(peerID string, msg SignalMessage)
