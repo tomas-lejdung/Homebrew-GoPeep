@@ -1994,6 +1994,7 @@
       let streamsInfo = []; // Info from sharer (video0, video1, etc.)
       let viewerFocusedIndex = null; // What the viewer has selected (index)
       let sharerFocusedIndex = null; // What the sharer has focused (index from OS)
+      let isRenegotiating = false; // Track if we're in renegotiation (e.g., codec change)
 
       // Layout state
       let currentLayout = "focus"; // 'focus', 'grid', or 'row'
@@ -2308,10 +2309,10 @@
         // Always wait for fresh dimensions via loadedmetadata
         // Don't trust current videoWidth/videoHeight - they may be stale
         const onMetadataLoaded = () => {
-          mainVideo.removeEventListener('loadedmetadata', onMetadataLoaded);
+          mainVideo.removeEventListener("loadedmetadata", onMetadataLoaded);
           updatePanZoomState();
         };
-        mainVideo.addEventListener('loadedmetadata', onMetadataLoaded);
+        mainVideo.addEventListener("loadedmetadata", onMetadataLoaded);
 
         // Fallback timeout in case loadedmetadata already fired or doesn't fire
         setTimeout(updatePanZoomState, 150);
@@ -2330,12 +2331,18 @@
         );
 
         // If we have streams-info but no streams yet, try to get them from the PeerConnection
-        // This handles the case where ontrack didn't fire (e.g., renegotiation with same tracks)
-        if (streamsInfo.length > 0 && Object.keys(streams).length === 0 && pc) {
+        // Only do this for initial connection (viewerFocusedIndex is null)
+        // During renegotiation (codec change), skip this - ontrack will handle it
+        // This prevents populating streams with old tracks during codec change
+        if (
+          streamsInfo.length > 0 &&
+          Object.keys(streams).length === 0 &&
+          pc &&
+          viewerFocusedIndex === null
+        ) {
           console.log(
             "No streams stored but have streams-info, checking PeerConnection receivers",
           );
-          const receivers = pc.getReceivers();
           const transceivers = pc.getTransceivers();
 
           for (let i = 0; i < transceivers.length && i < 4; i++) {
@@ -2408,7 +2415,12 @@
 
         // Update status when sharer has started (streams-info with actual streams)
         // The waiting overlay will be hidden when actual video arrives via ontrack
-        if (streamsInfo.length > 0 && !mainVideo.srcObject) {
+        // Skip during renegotiation since we were already connected
+        if (
+          streamsInfo.length > 0 &&
+          !mainVideo.srcObject &&
+          !isRenegotiating
+        ) {
           setStatus("Receiving stream...", "connecting");
         }
 
@@ -2688,6 +2700,9 @@
           return;
         }
 
+        // Mark that we're renegotiating to prevent status flickering
+        isRenegotiating = true;
+
         console.log(
           "Processing renegotiation offer, current signaling state:",
           pc.signalingState,
@@ -2778,15 +2793,12 @@
           );
           console.log("Renegotiation answer sent successfully");
 
-          // Restore focus to previous index if valid (will be applied when ontrack fires)
-          if (previousFocusIndex !== null) {
-            console.log(
-              "Will restore focus to index",
-              previousFocusIndex,
-              "when track arrives",
-            );
-            // viewerFocusedIndex is kept so ontrack knows which stream to display
-          }
+          // Clear renegotiating flag after a short delay
+          // ontrack will fire and handle displaying the new tracks
+          setTimeout(() => {
+            isRenegotiating = false;
+            console.log("Renegotiation complete, waiting for ontrack events");
+          }, 100);
         } catch (e) {
           console.error("Renegotiation failed:", e);
           console.error("PC state:", pc.signalingState, pc.connectionState);
