@@ -1313,13 +1313,15 @@ func (o *Overlay) runLoop() {
 }
 
 // platformStart initializes the macOS overlay and starts the game loop.
-// Called from the main goroutine which runs on the main OS thread.
+// In the current architecture this is typically called from a background goroutine
+// (e.g. the one running RunTUI), while the main goroutine runs the main run loop.
 func (o *Overlay) platformStart() error {
 	globalMu.Lock()
 	globalOverlay = o
 	globalMu.Unlock()
 
-	// Create overlay on main thread (this function is called from main goroutine)
+	// Create the overlay; the C implementation will dispatch NSWindow work to the
+	// main queue if this is not already running on the main thread.
 	C.createOverlay()
 
 	// Start the game loop in a separate goroutine

@@ -1,22 +1,127 @@
-2026/01/10 17:42:21 === GoPeep started at 2026-01-10T17:42:21+01:00 ===
-2026/01/10 17:42:21 Received room code from server: AMPLE-CROWN-066
-2026/01/10 17:42:21 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP9
-2026/01/10 17:42:21 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/10 17:42:21 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/10 17:42:21 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/10 17:42:21 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/10 17:42:21 InitializeTrackSlots: All 4 track slots ready
-2026/01/10 17:42:24 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/10 17:42:24 ActivateSlot: Activated video0 for window 349313 (Ghostty - ./gopeep --local)
-2026/01/10 17:42:25 Broadcasting sharer-started to room AMPLE-CROWN-066
-2026/01/10 17:42:25 Renegotiating with 0 peers
-2026/01/10 17:42:25 sendLoop: Writing frame 1 to track video0 (windowID=349313, streamID=gopeep-stream-0)
-2026/01/10 17:42:27 sendLoop: Writing frame 101 to track video0 (windowID=349313, streamID=gopeep-stream-0)
-2026/01/10 17:42:28 sendLoop: Writing frame 201 to track video0 (windowID=349313, streamID=gopeep-stream-0)
-2026/01/10 17:42:29 TUI: Removing window 349313 (no sources selected)
-2026/01/10 17:42:29 Removing window dynamically: video0 (windowID=349313, fastPath=true)
-2026/01/10 17:42:29 DeactivateSlot: Deactivated video0
-2026/01/10 17:42:29 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
-2026/01/10 17:42:29 Broadcasting stream-deactivated: video0 (fast path)
-2026/01/10 17:42:30 WebSocket read error: read tcp [::1]:56648->[::1]:8080: use of closed network connection
-2026/01/10 17:42:30 Signaling connection closed
+2026/01/10 17:46:50 === GoPeep started at 2026-01-10T17:46:50+01:00 ===
+2026/01/10 17:46:50 Received room code from server: VAST-GARDEN-643
+2026/01/10 17:46:50 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP9
+2026/01/10 17:46:50 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/10 17:46:50 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/10 17:46:50 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/10 17:46:50 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/10 17:46:50 InitializeTrackSlots: All 4 track slots ready
+2026/01/10 17:46:51 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/10 17:46:51 Peer viewer-1 connection state: connecting
+2026/01/10 17:46:52 Peer viewer-1 connection state: connected
+2026/01/10 17:46:54 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/10 17:46:54 ActivateSlot: Activated video0 for window 350848 (OpenCode - OpenCode)
+2026/01/10 17:46:55 Broadcasting sharer-started to room VAST-GARDEN-643
+2026/01/10 17:46:55 Renegotiating with 1 peers
+2026/01/10 17:46:55 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/10 17:46:55 Renegotiation: peer viewer-1 connection state: connected
+2026/01/10 17:46:55 Renegotiation: ICE gathering complete for viewer-1
+2026/01/10 17:46:55 Renegotiation: sending offer to peer viewer-1 (SDP length: 16892)
+2026/01/10 17:46:55 Renegotiation: sending offer to peer viewer-1
+2026/01/10 17:46:55 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/10 17:46:55 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/10 17:46:55 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/10 17:46:55 sendLoop: Writing frame 1 to track video0 (windowID=350848, streamID=gopeep-stream-0)
+2026/01/10 17:46:56 SetCodec: Changing codec from vp9 to vp8
+2026/01/10 17:46:56 SetCodec: Using slots path - recreating slots with new codec
+2026/01/10 17:46:56 Removed track video0 from peer viewer-1
+2026/01/10 17:46:56 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/10 17:46:56 Removed track video1 from peer viewer-1
+2026/01/10 17:46:56 Removed track video2 from peer viewer-1
+2026/01/10 17:46:56 Removed track video3 from peer viewer-1
+2026/01/10 17:46:56 RecreateSlots: Recreating 4 track slots with new codec video/VP8
+2026/01/10 17:46:56 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/10 17:46:56 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/10 17:46:56 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/10 17:46:56 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/10 17:46:56 RecreateSlots: Restored active slot 0 for window 350848 (OpenCode)
+2026/01/10 17:46:56 RecreateSlots: Completed - 1 active slots restored
+2026/01/10 17:46:56 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/10 17:46:56 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
+2026/01/10 17:46:56 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
+2026/01/10 17:46:56 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/10 17:46:56 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/10 17:46:56 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/10 17:46:56 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/10 17:46:56 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/10 17:46:56 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/10 17:46:56 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/10 17:46:56 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/10 17:46:56 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/10 17:46:56 SetCodec: Created pipeline for slot video0 (window 350848)
+2026/01/10 17:46:56 SetCodec: Triggering renegotiation for 1 pipelines
+2026/01/10 17:46:56 SetCodec: Successfully changed codec to vp8 with 1 pipelines
+2026/01/10 17:46:56 Renegotiating with 1 peers
+2026/01/10 17:46:56 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/10 17:46:56 Renegotiation: peer viewer-1 connection state: connected
+2026/01/10 17:46:56 Renegotiation: ICE gathering complete for viewer-1
+2026/01/10 17:46:56 Renegotiation: sending offer to peer viewer-1 (SDP length: 31216)
+2026/01/10 17:46:56 Renegotiation: sending offer to peer viewer-1
+2026/01/10 17:46:56 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/10 17:46:56 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/10 17:46:56 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/10 17:46:56 sendLoop: Writing frame 1 to track video0 (windowID=350848, streamID=gopeep-stream-0)
+2026/01/10 17:46:59 Broadcasting stream-removed: video0
+2026/01/10 17:46:59 Closing peer connection: viewer-1
+2026/01/10 17:46:59 Peer viewer-1 connection state: closed
+2026/01/10 17:47:03 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/10 17:47:03 ActivateSlot: Activated video0 for window 350848 (OpenCode - OpenCode)
+2026/01/10 17:47:05 Broadcasting sharer-started to room VAST-GARDEN-643
+2026/01/10 17:47:05 Renegotiating with 0 peers
+2026/01/10 17:47:05 Sending reoffer to existing viewer: viewer-1
+2026/01/10 17:47:05 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/10 17:47:05 Peer viewer-1 connection state: connecting
+2026/01/10 17:47:05 sendLoop: Writing frame 1 to track video0 (windowID=350848, streamID=gopeep-stream-0)
+2026/01/10 17:47:06 Peer viewer-1 connection state: connected
+2026/01/10 17:47:10 SetCodec: Changing codec from vp8 to vp9
+2026/01/10 17:47:10 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/10 17:47:10 SetCodec: Using slots path - recreating slots with new codec
+2026/01/10 17:47:10 Removed track video0 from peer viewer-1
+2026/01/10 17:47:10 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/10 17:47:10 Removed track video1 from peer viewer-1
+2026/01/10 17:47:10 Removed track video2 from peer viewer-1
+2026/01/10 17:47:10 Removed track video3 from peer viewer-1
+2026/01/10 17:47:10 RecreateSlots: Recreating 4 track slots with new codec video/VP9
+2026/01/10 17:47:10 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/10 17:47:10 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/10 17:47:10 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/10 17:47:10 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/10 17:47:10 RecreateSlots: Restored active slot 0 for window 350848 (OpenCode)
+2026/01/10 17:47:10 RecreateSlots: Completed - 1 active slots restored
+2026/01/10 17:47:10 AddTrackToAllPeers: Adding track video0 to 1 peer connections
+2026/01/10 17:47:10 AddTrackToAllPeers: Adding track video0 to peer viewer-1 (state: connected)
+2026/01/10 17:47:10 AddTrackToAllPeers: Successfully added track video0 to peer viewer-1
+2026/01/10 17:47:10 AddTrackToAllPeers: Adding track video1 to 1 peer connections
+2026/01/10 17:47:10 AddTrackToAllPeers: Adding track video1 to peer viewer-1 (state: connected)
+2026/01/10 17:47:10 AddTrackToAllPeers: Successfully added track video1 to peer viewer-1
+2026/01/10 17:47:10 AddTrackToAllPeers: Adding track video2 to 1 peer connections
+2026/01/10 17:47:10 AddTrackToAllPeers: Adding track video2 to peer viewer-1 (state: connected)
+2026/01/10 17:47:10 AddTrackToAllPeers: Successfully added track video2 to peer viewer-1
+2026/01/10 17:47:10 AddTrackToAllPeers: Adding track video3 to 1 peer connections
+2026/01/10 17:47:10 AddTrackToAllPeers: Adding track video3 to peer viewer-1 (state: connected)
+2026/01/10 17:47:10 AddTrackToAllPeers: Successfully added track video3 to peer viewer-1
+2026/01/10 17:47:10 SetCodec: Created pipeline for slot video0 (window 350848)
+2026/01/10 17:47:10 SetCodec: Triggering renegotiation for 1 pipelines
+2026/01/10 17:47:10 SetCodec: Successfully changed codec to vp9 with 1 pipelines
+2026/01/10 17:47:10 Renegotiating with 1 peers
+2026/01/10 17:47:10 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/10 17:47:10 Renegotiation: peer viewer-1 connection state: connected
+2026/01/10 17:47:10 Renegotiation: ICE gathering complete for viewer-1
+2026/01/10 17:47:10 Renegotiation: sending offer to peer viewer-1 (SDP length: 31216)
+2026/01/10 17:47:10 Renegotiation: sending offer to peer viewer-1
+2026/01/10 17:47:10 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/10 17:47:10 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/10 17:47:10 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/10 17:47:10 sendLoop: Writing frame 1 to track video0 (windowID=350848, streamID=gopeep-stream-0)
+2026/01/10 17:47:11 Track video0 quality mode set to quality
+2026/01/10 17:47:11 Streamer quality mode: quality
+2026/01/10 17:47:12 sendLoop: Writing frame 101 to track video0 (windowID=350848, streamID=gopeep-stream-0)
+2026/01/10 17:47:14 Track video0 quality mode set to performance
+2026/01/10 17:47:14 Streamer quality mode: performance
+2026/01/10 17:47:14 sendLoop: Writing frame 201 to track video0 (windowID=350848, streamID=gopeep-stream-0)
+2026/01/10 17:47:16 sendLoop: Writing frame 301 to track video0 (windowID=350848, streamID=gopeep-stream-0)
+2026/01/10 17:47:18 Peer viewer-1 connection state: disconnected
+2026/01/10 17:47:18 Peer viewer-1 connection state: closed
+2026/01/10 17:47:18 Broadcasting stream-removed: video0
+2026/01/10 17:47:18 WebSocket read error: read tcp [::1]:57034->[::1]:8080: use of closed network connection
+2026/01/10 17:47:18 Signaling connection closed
