@@ -3364,8 +3364,7 @@
               if (
                 pc &&
                 (pc.connectionState === "connected" ||
-                  pc.connectionState === "connecting" ||
-                  pc.connectionState === "new")
+                  pc.connectionState === "connecting")
               ) {
                 console.log("Already have peer connection, not rejoining");
                 setStatus("Connected", "connected");
