@@ -1,73 +1,116 @@
-2026/01/10 15:42:24 === GoPeep started at 2026-01-10T15:42:24+01:00 ===
-2026/01/10 15:42:24 Received room code from server: TRUE-DOME-053
-2026/01/10 15:42:24 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP9
-2026/01/10 15:42:24 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/10 15:42:24 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/10 15:42:24 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/10 15:42:24 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/10 15:42:24 InitializeTrackSlots: All 4 track slots ready
-2026/01/10 15:42:25 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/10 15:42:25 Peer viewer-1 connection state: connecting
-2026/01/10 15:42:26 Peer viewer-1 connection state: connected
-2026/01/10 15:42:28 Overlay: Dynamically adding window 349325 (Ghostty - ./gopeep --serve) to sources
-2026/01/10 15:42:28 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/10 15:42:29 ActivateSlot: Activated video0 for window 349325 (Ghostty - ./gopeep --serve)
-2026/01/10 15:42:29 Broadcasting sharer-started to room TRUE-DOME-053
-2026/01/10 15:42:29 Renegotiating with 1 peers
-2026/01/10 15:42:29 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/10 15:42:29 Renegotiation: peer viewer-1 connection state: connected
-2026/01/10 15:42:29 Renegotiation: ICE gathering complete for viewer-1
-2026/01/10 15:42:29 Renegotiation: sending offer to peer viewer-1 (SDP length: 16892)
-2026/01/10 15:42:29 Renegotiation: sending offer to peer viewer-1
-2026/01/10 15:42:29 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
-2026/01/10 15:42:30 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/10 15:42:30 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/10 15:42:30 sendLoop: Writing frame 1 to track video0 (windowID=349325, streamID=gopeep-stream-0)
-2026/01/10 15:42:31 sendLoop: Writing frame 101 to track video0 (windowID=349325, streamID=gopeep-stream-0)
-2026/01/10 15:42:33 Broadcasting stream-removed: video0
-2026/01/10 15:42:33 Closing peer connection: viewer-1
-2026/01/10 15:42:33 Peer viewer-1 connection state: closed
-2026/01/10 15:42:35 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/10 15:42:35 ActivateSlot: Activated video0 for window 349325 (Ghostty - ./gopeep --serve)
-2026/01/10 15:42:37 Broadcasting sharer-started to room TRUE-DOME-053
-2026/01/10 15:42:37 Renegotiating with 0 peers
-2026/01/10 15:42:37 Sending reoffer to existing viewer: viewer-1
-2026/01/10 15:42:37 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/10 15:42:37 Peer viewer-1 connection state: connecting
-2026/01/10 15:42:37 sendLoop: Writing frame 1 to track video0 (windowID=349325, streamID=gopeep-stream-0)
-2026/01/10 15:42:38 Peer viewer-1 connection state: connected
-2026/01/10 15:42:39 sendLoop: Writing frame 101 to track video0 (windowID=349325, streamID=gopeep-stream-0)
-2026/01/10 15:42:41 TUI: Removing window 349325 for fullscreen switch
-2026/01/10 15:42:41 Removing window dynamically: video0 (windowID=349325, fastPath=true)
-2026/01/10 15:42:43 DeactivateSlot: Deactivated video0
-2026/01/10 15:42:43 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
-2026/01/10 15:42:43 Broadcasting stream-deactivated: video0 (fast path)
-2026/01/10 15:42:43 TUI: Adding display capture
-2026/01/10 15:42:43 AddDisplayDynamic: Using fast path (pre-allocated slots)
-2026/01/10 15:42:43 ActivateSlot: Activated video0 for window 0 (Display - Fullscreen)
-2026/01/10 15:42:44 AddDisplayDynamic: Notifying stream activated video0 (NO renegotiation)
-2026/01/10 15:42:44 Broadcasting stream-activated: video0 (fast path)
-2026/01/10 15:42:44 Added display dynamically: video0 (fastPath=true)
-2026/01/10 15:42:44 sendLoop: Writing frame 1 to track video0 (windowID=0, streamID=gopeep-stream-0)
-2026/01/10 15:42:47 Broadcasting stream-removed: video0
-2026/01/10 15:42:47 Closing peer connection: viewer-1
-2026/01/10 15:42:47 Peer viewer-1 connection state: closed
-2026/01/10 15:42:51 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/10 15:42:51 ActivateSlot: Activated video0 for window 312846 (Arc - Tower/UpdateContainer)
-2026/01/10 15:42:58 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/10 15:42:59 Broadcasting sharer-started to room TRUE-DOME-053
-2026/01/10 15:42:59 Renegotiating with 0 peers
-2026/01/10 15:42:59 Sending reoffer to existing viewer: viewer-1
-2026/01/10 15:42:59 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/10 15:42:59 Peer viewer-1 connection state: connecting
-2026/01/10 15:42:59 sendLoop: Writing frame 1 to track video0 (windowID=312846, streamID=gopeep-stream-0)
-2026/01/10 15:43:00 Peer viewer-1 connection state: connected
-2026/01/10 15:43:01 sendLoop: Writing frame 101 to track video0 (windowID=312846, streamID=gopeep-stream-0)
-2026/01/10 15:43:03 sendLoop: Writing frame 201 to track video0 (windowID=312846, streamID=gopeep-stream-0)
-2026/01/10 15:43:04 sendLoop: Writing frame 301 to track video0 (windowID=312846, streamID=gopeep-stream-0)
-2026/01/10 15:43:10 sendLoop: Writing frame 401 to track video0 (windowID=312846, streamID=gopeep-stream-0)
-2026/01/10 15:43:10 Peer viewer-1 connection state: disconnected
-2026/01/10 15:43:10 Peer viewer-1 connection state: closed
-2026/01/10 15:43:13 Broadcasting stream-removed: video0
-2026/01/10 15:43:13 WebSocket read error: read tcp [::1]:57206->[::1]:8080: use of closed network connection
-2026/01/10 15:43:13 Signaling connection closed
+2026/01/10 16:01:35 === GoPeep started at 2026-01-10T16:01:35+01:00 ===
+2026/01/10 16:01:35 Received room code from server: INNER-STONE-255
+2026/01/10 16:01:35 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP9
+2026/01/10 16:01:35 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/10 16:01:35 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/10 16:01:35 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/10 16:01:35 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/10 16:01:35 InitializeTrackSlots: All 4 track slots ready
+2026/01/10 16:01:36 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/10 16:01:36 Peer viewer-1 connection state: connecting
+2026/01/10 16:01:37 Peer viewer-1 connection state: connected
+2026/01/10 16:01:38 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/10 16:01:38 ActivateSlot: Activated video0 for window 349313 (Ghostty - ./gopeep --local)
+2026/01/10 16:01:39 Broadcasting sharer-started to room INNER-STONE-255
+2026/01/10 16:01:39 Renegotiating with 1 peers
+2026/01/10 16:01:39 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/10 16:01:39 Renegotiation: peer viewer-1 connection state: connected
+2026/01/10 16:01:39 Renegotiation: ICE gathering complete for viewer-1
+2026/01/10 16:01:39 Renegotiation: sending offer to peer viewer-1 (SDP length: 16888)
+2026/01/10 16:01:39 Renegotiation: sending offer to peer viewer-1
+2026/01/10 16:01:39 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/10 16:01:39 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/10 16:01:39 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/10 16:01:39 sendLoop: Writing frame 1 to track video0 (windowID=349313, streamID=gopeep-stream-0)
+2026/01/10 16:01:41 TUI: Adding window dynamically: 325008 (Julia Hellberg)
+2026/01/10 16:01:41 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/10 16:01:41 ActivateSlot: Activated video1 for window 325008 (Messages - Julia Hellberg)
+2026/01/10 16:01:41 sendLoop: Writing frame 101 to track video0 (windowID=349313, streamID=gopeep-stream-0)
+2026/01/10 16:01:42 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/10 16:01:42 Broadcasting stream-activated: video1 (fast path)
+2026/01/10 16:01:42 Added window dynamically: video1 (windowID=325008, fastPath=true)
+2026/01/10 16:01:42 sendLoop: Writing frame 1 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/10 16:01:43 sendLoop: Writing frame 201 to track video0 (windowID=349313, streamID=gopeep-stream-0)
+2026/01/10 16:01:44 TUI: Removing window dynamically: 325008
+2026/01/10 16:01:44 Removing window dynamically: video1 (windowID=325008, fastPath=true)
+2026/01/10 16:01:44 DeactivateSlot: Deactivated video1
+2026/01/10 16:01:44 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/10 16:01:44 Broadcasting stream-deactivated: video1 (fast path)
+2026/01/10 16:01:44 TUI: Adding window dynamically: 325008 (Julia Hellberg)
+2026/01/10 16:01:44 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/10 16:01:44 ActivateSlot: Activated video1 for window 325008 (Messages - Julia Hellberg)
+2026/01/10 16:01:45 sendLoop: Writing frame 301 to track video0 (windowID=349313, streamID=gopeep-stream-0)
+2026/01/10 16:01:45 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/10 16:01:45 Broadcasting stream-activated: video1 (fast path)
+2026/01/10 16:01:45 Added window dynamically: video1 (windowID=325008, fastPath=true)
+2026/01/10 16:01:46 sendLoop: Writing frame 1 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/10 16:01:47 sendLoop: Writing frame 401 to track video0 (windowID=349313, streamID=gopeep-stream-0)
+2026/01/10 16:01:47 TUI: Adding window dynamically: 345947 (OpenCode)
+2026/01/10 16:01:47 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/10 16:01:47 ActivateSlot: Activated video2 for window 345947 (OpenCode - OpenCode)
+2026/01/10 16:01:47 sendLoop: Writing frame 101 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/10 16:01:48 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/10 16:01:48 Broadcasting stream-activated: video2 (fast path)
+2026/01/10 16:01:48 Added window dynamically: video2 (windowID=345947, fastPath=true)
+2026/01/10 16:01:48 sendLoop: Writing frame 1 to track video2 (windowID=345947, streamID=gopeep-stream-2)
+2026/01/10 16:01:49 sendLoop: Writing frame 501 to track video0 (windowID=349313, streamID=gopeep-stream-0)
+2026/01/10 16:01:49 sendLoop: Writing frame 201 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/10 16:01:50 TUI: Removing window dynamically: 345947
+2026/01/10 16:01:50 Removing window dynamically: video2 (windowID=345947, fastPath=true)
+2026/01/10 16:01:50 DeactivateSlot: Deactivated video2
+2026/01/10 16:01:50 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/10 16:01:50 Broadcasting stream-deactivated: video2 (fast path)
+2026/01/10 16:01:51 sendLoop: Writing frame 601 to track video0 (windowID=349313, streamID=gopeep-stream-0)
+2026/01/10 16:01:51 TUI: Adding window dynamically: 345947 (OpenCode)
+2026/01/10 16:01:51 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/10 16:01:51 ActivateSlot: Activated video2 for window 345947 (OpenCode - OpenCode)
+2026/01/10 16:01:51 sendLoop: Writing frame 301 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/10 16:01:52 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/10 16:01:52 Broadcasting stream-activated: video2 (fast path)
+2026/01/10 16:01:52 Added window dynamically: video2 (windowID=345947, fastPath=true)
+2026/01/10 16:01:52 sendLoop: Writing frame 1 to track video2 (windowID=345947, streamID=gopeep-stream-2)
+2026/01/10 16:01:53 sendLoop: Writing frame 701 to track video0 (windowID=349313, streamID=gopeep-stream-0)
+2026/01/10 16:01:53 sendLoop: Writing frame 401 to track video1 (windowID=325008, streamID=gopeep-stream-1)
+2026/01/10 16:01:54 TUI: Removing window 349313 for fullscreen switch
+2026/01/10 16:01:54 Removing window dynamically: video0 (windowID=349313, fastPath=true)
+2026/01/10 16:01:54 DeactivateSlot: Deactivated video0
+2026/01/10 16:01:54 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/10 16:01:54 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/10 16:01:54 TUI: Removing window 325008 for fullscreen switch
+2026/01/10 16:01:54 Removing window dynamically: video1 (windowID=325008, fastPath=true)
+2026/01/10 16:01:54 DeactivateSlot: Deactivated video1
+2026/01/10 16:01:54 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/10 16:01:54 Broadcasting stream-deactivated: video1 (fast path)
+2026/01/10 16:01:54 TUI: Removing window 345947 for fullscreen switch
+2026/01/10 16:01:54 Removing window dynamically: video2 (windowID=345947, fastPath=true)
+2026/01/10 16:01:54 DeactivateSlot: Deactivated video2
+2026/01/10 16:01:54 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/10 16:01:54 Broadcasting stream-deactivated: video2 (fast path)
+2026/01/10 16:01:54 TUI: Adding display capture
+2026/01/10 16:01:54 AddDisplayDynamic: Using fast path (pre-allocated slots)
+2026/01/10 16:01:54 ActivateSlot: Activated video0 for window 0 (Display - Fullscreen)
+2026/01/10 16:01:55 AddDisplayDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/10 16:01:55 Broadcasting stream-activated: video0 (fast path)
+2026/01/10 16:01:55 Added display dynamically: video0 (fastPath=true)
+2026/01/10 16:01:55 sendLoop: Writing frame 1 to track video0 (windowID=0, streamID=gopeep-stream-0)
+2026/01/10 16:01:56 TUI: Removing display capture
+2026/01/10 16:01:56 Removing window dynamically: video0 (windowID=0, fastPath=true)
+2026/01/10 16:01:56 DeactivateSlot: Deactivated video0
+2026/01/10 16:01:56 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/10 16:01:56 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/10 16:01:56 TUI: Adding window dynamically: 345947 (OpenCode)
+2026/01/10 16:01:56 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/10 16:01:56 ActivateSlot: Activated video0 for window 345947 (OpenCode - OpenCode)
+2026/01/10 16:01:57 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/10 16:01:57 Broadcasting stream-activated: video0 (fast path)
+2026/01/10 16:01:57 Added window dynamically: video0 (windowID=345947, fastPath=true)
+2026/01/10 16:01:57 sendLoop: Writing frame 1 to track video0 (windowID=345947, streamID=gopeep-stream-0)
+2026/01/10 16:01:58 TUI: Removing window 345947 (no sources selected)
+2026/01/10 16:01:58 Removing window dynamically: video0 (windowID=345947, fastPath=true)
+2026/01/10 16:01:58 DeactivateSlot: Deactivated video0
+2026/01/10 16:01:58 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/10 16:01:58 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/10 16:02:07 Peer viewer-1 connection state: disconnected
+2026/01/10 16:02:07 Peer viewer-1 connection state: closed
+2026/01/10 16:02:07 WebSocket read error: read tcp [::1]:60207->[::1]:8080: use of closed network connection
+2026/01/10 16:02:07 Signaling connection closed

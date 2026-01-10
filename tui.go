@@ -291,6 +291,7 @@ type model struct {
 
 	// Components (persistent across source switches)
 	wsConn     *websocket.Conn // Signal server connection
+	sharer     sig.Sharer      // Signaling interface (mutex-protected writes)
 	roomSecret string          // Secret token for sharer authentication
 
 	// Server started flag
@@ -682,9 +683,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.showStats = true // Show stats by default when sharing starts
 		m.syncOverlay()    // Update overlay state (now sharing)
 		// Notify viewers that sharer has started (so they can rejoin)
-		if m.wsConn != nil && m.roomCode != "" {
+		if m.sharer != nil && m.roomCode != "" {
 			log.Printf("Broadcasting sharer-started to room %s", m.roomCode)
-			m.wsConn.WriteJSON(sig.SignalMessage{Type: "sharer-started"})
+			m.sharer.SendToAllViewers(sig.SignalMessage{Type: "sharer-started"})
 		}
 		// If in auto-share mode, start fast tick for rapid focus detection
 		if m.autoShareEnabled {
@@ -1050,8 +1051,8 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		// Close peer connections so viewers reconnect with fresh state
 		if m.sharing {
 			// Notify viewers that sharer has stopped so they reset and wait
-			if m.wsConn != nil && m.roomCode != "" {
-				m.wsConn.WriteJSON(sig.SignalMessage{Type: "sharer-stopped"})
+			if m.sharer != nil && m.roomCode != "" {
+				m.sharer.SendToAllViewers(sig.SignalMessage{Type: "sharer-stopped"})
 			}
 			m.stopCapture(false)
 			m.selectedWindows = make(map[uint32]bool)
@@ -1149,9 +1150,9 @@ func (m model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			m.password = ""
 		}
 		// If server is already started, update the room password
-		if m.serverStarted && m.wsConn != nil {
+		if m.serverStarted && m.sharer != nil {
 			pwMsg := sig.SignalMessage{Type: "password-update", Password: m.password, Secret: m.roomSecret}
-			m.wsConn.WriteJSON(pwMsg)
+			m.sharer.SendToAllViewers(pwMsg)
 		}
 		return m, nil
 
@@ -1592,7 +1593,7 @@ func (m *model) initRemoteSignaling() error {
 
 	// Set up signaling via WebSocket with disconnect callback
 	disconnectFlag := m.wsDisconnected
-	setupRemoteSignaling(conn, m.peerManager, func() {
+	m.sharer = setupRemoteSignaling(conn, m.peerManager, func() {
 		*disconnectFlag = true
 	})
 
