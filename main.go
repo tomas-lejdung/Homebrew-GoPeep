@@ -5,11 +5,21 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"runtime"
 	"sync"
 
 	"github.com/gorilla/websocket"
+	"github.com/tomaslejdung/gopeep/pkg/overlay"
 	sig "github.com/tomaslejdung/gopeep/pkg/signal"
 )
+
+func init() {
+	// Lock main goroutine to the main OS thread BEFORE main() runs.
+	// This must happen in init() because Go's scheduler may move goroutines
+	// between threads, and we need to ensure we stay on thread 0 (macOS main thread)
+	// for AppKit/NSWindow operations to work correctly.
+	runtime.LockOSThread()
+}
 
 // Note: TUI mode uses RunTUI() from tui.go
 
@@ -153,10 +163,36 @@ func main() {
 		config.SignalURL = DefaultSignalServer
 	}
 
-	// TUI mode (the only interactive mode now)
-	if err := RunTUI(config); err != nil {
-		log.Fatalf("TUI error: %v", err)
+	// Check screen recording permission on main thread (required for AppKit APIs)
+	if !HasScreenRecordingPermission() {
+		fmt.Println("Screen Recording permission required.")
+		fmt.Println("Please grant permission in:")
+		fmt.Println("  System Preferences > Security & Privacy > Privacy > Screen Recording")
+		fmt.Println()
+		fmt.Println("After granting permission, restart gopeep.")
+		return
 	}
+
+	// TUI mode - run TUI in background, main run loop on main thread
+	// This is required because macOS AppKit needs the main thread to service
+	// the main dispatch queue for overlay window operations.
+	done := make(chan error, 1)
+	go func() {
+		done <- RunTUI(config)
+	}()
+
+	// Run the macOS main run loop on the main thread (this goroutine).
+	// This services dispatch_async calls to the main queue.
+	// It will be stopped when the TUI exits.
+	go func() {
+		err := <-done
+		overlay.StopMainRunLoop()
+		if err != nil {
+			log.Fatalf("TUI error: %v", err)
+		}
+	}()
+
+	overlay.RunMainRunLoop()
 }
 
 func listWindowsAndExit() {

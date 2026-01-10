@@ -84,7 +84,6 @@ type Overlay struct {
 
 	// Game loop state
 	running atomic.Bool   // thread-safe flag for loop control
-	ready   chan struct{} // signals overlay is created and ready
 	stopped chan struct{} // signals game loop has exited
 }
 
