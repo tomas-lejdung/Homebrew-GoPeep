@@ -9,13 +9,14 @@ import (
 	"time"
 
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 	"github.com/tomaslejdung/gopeep/internal/app"
 	"github.com/tomaslejdung/gopeep/internal/capture"
 	"github.com/tomaslejdung/gopeep/internal/config"
 	"github.com/tomaslejdung/gopeep/internal/encoding"
-	"github.com/tomaslejdung/gopeep/internal/webrtc"
 	"github.com/tomaslejdung/gopeep/internal/ui/overlay"
 	"github.com/tomaslejdung/gopeep/internal/ui/settings"
+	"github.com/tomaslejdung/gopeep/internal/webrtc"
 )
 
 // Message types, SourceItem, and column constants are in types.go
@@ -437,290 +438,472 @@ func (m Model) renderSharingStatus() string {
 		b.WriteString(normalStyle.Render(m.sources[m.selectedSource].DisplayName))
 		b.WriteString("  ")
 		b.WriteString(dimStyle.Render("please wait..."))
-	} else if m.appCore.IsSharing() {
-		b.WriteString(statusStyle.Render("Streaming: "))
-		if m.appCore.GetStreamer() != nil {
-			count := m.appCore.GetStreamer().GetActiveStreamCount()
-			if count == 1 {
-				// Show source name for single stream
-				tracks := m.appCore.GetStreamer().GetStreamingWindowIDs()
-				if tracks[0] {
-					b.WriteString(normalStyle.Render("Fullscreen"))
-				} else {
-					for _, source := range m.sources {
-						if source.Window != nil && tracks[source.Window.ID] {
-							b.WriteString(normalStyle.Render(source.DisplayName))
-							break
-						}
-					}
-				}
+	} else if m.appCore.IsSharing() && m.appCore.GetStreamer() != nil {
+		// Multi-window sharing
+		streams := m.appCore.GetStreamer().GetStreamsInfo()
+		b.WriteString(statusStyle.Render("Sharing: "))
+		b.WriteString(selectedStyle.Render(fmt.Sprintf("%d windows", len(streams))))
+		if m.appCore.IsAdaptiveBitrate() {
+			b.WriteString(dimStyle.Render(" [adaptive]"))
+		}
+		b.WriteString("  ")
+
+		// Quality
+		b.WriteString(statusStyle.Render("Quality: "))
+		b.WriteString(normalStyle.Render(config.QualityPresets[m.selectedQuality].Name))
+		b.WriteString("  ")
+
+		// Viewer count
+		b.WriteString(statusStyle.Render("Viewers: "))
+		if m.appCore.GetViewerCount() == 0 {
+			b.WriteString(dimStyle.Render("waiting..."))
+		} else {
+			b.WriteString(viewerStyle.Render(fmt.Sprintf("%d", m.appCore.GetViewerCount())))
+		}
+	} else if m.appCore.IsSharing() && m.selectedSource >= 0 && m.selectedSource < len(m.sources) {
+		// Currently sharing single window
+		source := m.sources[m.selectedSource]
+		b.WriteString(statusStyle.Render("Sharing: "))
+		b.WriteString(selectedStyle.Render(truncate(source.DisplayName, 30)))
+		b.WriteString("  ")
+
+		// Quality
+		b.WriteString(statusStyle.Render("Quality: "))
+		b.WriteString(normalStyle.Render(config.QualityPresets[m.selectedQuality].Name))
+		b.WriteString("  ")
+
+		// Codec with hardware indicator
+		b.WriteString(statusStyle.Render("Codec: "))
+		if m.selectedCodec >= 0 && m.selectedCodec < len(config.AvailableCodecs) {
+			codec := config.AvailableCodecs[m.selectedCodec]
+			if codec.IsHardware {
+				b.WriteString(selectedStyle.Render(codec.Name + " [HW]"))
 			} else {
-				b.WriteString(normalStyle.Render(fmt.Sprintf("%d windows", count)))
+				b.WriteString(normalStyle.Render(codec.Name))
 			}
 		}
 		b.WriteString("  ")
+
+		// Viewer count
 		b.WriteString(statusStyle.Render("Viewers: "))
-		b.WriteString(viewerStyle.Render(fmt.Sprintf("%d", m.appCore.GetViewerCount())))
-		if m.appCore.GetStartTime().IsZero() == false {
-			b.WriteString("  ")
-			b.WriteString(dimStyle.Render(formatDuration(time.Since(m.appCore.GetStartTime()))))
+		if m.appCore.GetViewerCount() == 0 {
+			b.WriteString(dimStyle.Render("waiting..."))
+		} else {
+			b.WriteString(viewerStyle.Render(fmt.Sprintf("%d", m.appCore.GetViewerCount())))
 		}
+	} else {
+		b.WriteString(dimStyle.Render("Select a source to start sharing"))
 	}
+	b.WriteString("\n")
 
 	return b.String()
 }
 
 func (m Model) renderColumns() string {
-	var b strings.Builder
+	// Render sources column
+	sourcesContent := m.renderSourcesList()
 
-	// Sources column
-	sources := m.renderSourcesList()
+	// Render quality, FPS and codec as a combined right panel
+	qualityContent := m.renderQualityList()
+	fpsContent := m.renderFPSList()
+	codecContent := m.renderCodecList()
 
-	// Settings column (quality, fps, codec stacked)
-	settingsCol := m.renderSettingsColumn()
+	// Create boxes with appropriate styles based on active column
+	var sourcesBox string
+	rightPanelContent := qualityContent + "\n\n" + fpsContent + "\n\n" + codecContent
 
-	// Simple side-by-side layout
-	srcLines := strings.Split(sources, "\n")
-	settingsLines := strings.Split(settingsCol, "\n")
+	sourcesTitle := " Sources "
+	rightTitle := " Settings "
+	viewersTitle := " Viewers "
 
-	maxLines := len(srcLines)
-	if len(settingsLines) > maxLines {
-		maxLines = len(settingsLines)
+	isRightPanelActive := m.activeColumn == columnQuality || m.activeColumn == columnFPS || m.activeColumn == columnCodec
+
+	if m.activeColumn == columnSources {
+		sourcesBox = activeBoxStyle.Width(44).Render(
+			boxTitleStyle.Render(sourcesTitle) + "\n" + sourcesContent,
+		)
+	} else {
+		sourcesBox = inactiveBoxStyle.Width(44).Render(
+			boxTitleDimStyle.Render(sourcesTitle) + "\n" + sourcesContent,
+		)
 	}
 
-	for i := 0; i < maxLines; i++ {
-		srcLine := ""
-		if i < len(srcLines) {
-			srcLine = srcLines[i]
-		}
-		settingsLine := ""
-		if i < len(settingsLines) {
-			settingsLine = settingsLines[i]
-		}
-
-		// Pad source column to consistent width
-		padded := srcLine
-		for len(padded) < 50 {
-			padded += " "
-		}
-
-		b.WriteString(padded)
-		b.WriteString("  ")
-		b.WriteString(settingsLine)
-		b.WriteString("\n")
+	var rightBox string
+	if isRightPanelActive {
+		rightBox = activeBoxStyle.Width(28).Render(
+			boxTitleStyle.Render(rightTitle) + "\n" + rightPanelContent,
+		)
+	} else {
+		rightBox = inactiveBoxStyle.Width(28).Render(
+			boxTitleDimStyle.Render(rightTitle) + "\n" + rightPanelContent,
+		)
 	}
 
-	return b.String()
-}
-
-func (m Model) renderSettingsColumn() string {
-	var b strings.Builder
-
-	// Quality
-	b.WriteString(m.renderQualityList())
-	b.WriteString("\n")
-
-	// FPS
-	b.WriteString(m.renderFPSList())
-	b.WriteString("\n")
-
-	// Codec
-	b.WriteString(m.renderCodecList())
-
-	// Viewers if sharing
-	if m.appCore.IsSharing() && m.appCore.GetPeerManager() != nil {
-		b.WriteString("\n")
-		b.WriteString(m.renderViewerList())
+	// Add viewers column when sharing
+	if m.appCore.IsSharing() {
+		viewersContent := m.renderViewerList()
+		viewerBoxStyle := inactiveBoxStyle.Copy().
+			BorderForeground(lipgloss.Color("11"))
+		viewersBox := viewerBoxStyle.Width(22).Render(
+			viewerStyle.Render(viewersTitle) + "\n" + viewersContent,
+		)
+		return lipgloss.JoinHorizontal(lipgloss.Top, sourcesBox, " ", rightBox, " ", viewersBox)
 	}
 
-	return b.String()
+	// Join columns horizontally
+	return lipgloss.JoinHorizontal(lipgloss.Top, sourcesBox, " ", rightBox)
 }
 
 func (m Model) renderSourcesList() string {
 	var b strings.Builder
-	b.WriteString(headerStyle.Render("Sources"))
-	b.WriteString("\n")
 
-	for i, source := range m.sources {
-		cursor := "  "
-		if i == m.sourceCursor && m.activeColumn == columnSources {
-			cursor = "> "
+	// Show header based on mode
+	if m.appCore.IsAutoShareEnabled() {
+		// Auto-share mode: show badge and auto-managed window count
+		if m.appCore.GetSelectedCount() > 0 {
+			modeText := fmt.Sprintf("AUTO-SHARE: %d/%d windows", m.appCore.GetSelectedCount(), capture.MaxCaptureInstances)
+			b.WriteString(selectedStyle.Render(modeText))
+		} else {
+			b.WriteString(selectedStyle.Render("AUTO-SHARE MODE"))
 		}
-
-		// Determine selection state
-		isSelected := false
-		if source.IsFullscreen {
-			isSelected = m.appCore.IsFullscreenSelected()
-		} else if source.Window != nil {
-			isSelected = m.appCore.IsWindowSelected(source.Window.ID)
-		}
-
-		// Format display name with selection indicator
-		name := source.DisplayName
-		if !source.IsFullscreen {
-			// Add window number
-			windowNum := 0
-			for j, s := range m.sources {
-				if !s.IsFullscreen {
-					windowNum++
-					if j == i {
-						name = fmt.Sprintf("[%d] %s", windowNum, truncate(source.DisplayName, 35))
-						break
-					}
-				}
-			}
-		}
-
-		style := normalStyle
-		if isSelected {
-			style = selectedStyle
-			name = "✓ " + name
-		}
-
-		b.WriteString(cursor)
-		b.WriteString(style.Render(name))
+		b.WriteString("\n")
+		b.WriteString(dimStyle.Render("Windows auto-managed (Shift+A to exit)"))
+		b.WriteString("\n")
+	} else if m.appCore.GetSelectedCount() > 0 {
+		// Normal mode with selections
+		modeText := fmt.Sprintf("Selected: %d/%d windows", m.appCore.GetSelectedCount(), capture.MaxCaptureInstances)
+		b.WriteString(selectedStyle.Render(modeText))
+		b.WriteString("\n")
+	} else {
+		b.WriteString(dimStyle.Render("Use SPACE to select windows (up to 4)"))
 		b.WriteString("\n")
 	}
 
-	return b.String()
+	if len(m.sources) == 0 {
+		b.WriteString(dimStyle.Render("No sources available"))
+		return b.String()
+	}
+
+	windowNum := 0 // Counter for window numbers (1-9)
+	for i, source := range m.sources {
+		cursor := "  "
+		if m.activeColumn == columnSources && i == m.sourceCursor {
+			cursor = "> "
+		}
+
+		// Format label with appropriate shortcut key
+		var label string
+		var isSelected bool
+
+		if source.IsFullscreen {
+			// Fullscreen option with checkbox
+			checkbox := "[ ]"
+			if m.appCore.IsFullscreenSelected() {
+				checkbox = "[x]"
+				isSelected = true
+			}
+			label = fmt.Sprintf("%s [F] %s", checkbox, source.DisplayName)
+		} else {
+			// Window with checkbox
+			windowNum++
+			checkbox := "[ ]"
+			if source.Window != nil && m.appCore.IsWindowSelected(source.Window.ID) {
+				checkbox = "[x]"
+				isSelected = true
+			}
+			// Check if this window has OS focus
+			hasFocus := source.Window != nil && source.Window.ID == m.appCore.GetOSFocusedWindowID()
+			focusIndicator := ""
+			if hasFocus {
+				focusIndicator = " *" // Asterisk indicates OS focus
+			}
+			if windowNum <= 9 {
+				label = fmt.Sprintf("%s [%d] %s%s", checkbox, windowNum, truncate(source.DisplayName, 26), focusIndicator)
+			} else {
+				label = fmt.Sprintf("%s [ ] %s%s", checkbox, truncate(source.DisplayName, 26), focusIndicator)
+			}
+		}
+
+		// Style based on selection state
+		var line string
+		isSharing := m.appCore.IsSharing() && i == m.selectedSource
+		isStarting := m.appCore.IsStarting() && i == m.selectedSource
+
+		if isSelected {
+			line = selectedStyle.Render(cursor + label)
+		} else if isSharing {
+			line = selectedStyle.Render(cursor + label)
+		} else if isStarting {
+			line = normalStyle.Render(cursor + label)
+		} else if m.activeColumn == columnSources && i == m.sourceCursor {
+			line = normalStyle.Render(cursor + label)
+		} else {
+			line = dimStyle.Render(cursor + label)
+		}
+
+		b.WriteString(line)
+		if isSharing {
+			b.WriteString(dimStyle.Render(" *"))
+		} else if isStarting {
+			b.WriteString(dimStyle.Render(" ..."))
+		}
+		b.WriteString("\n")
+	}
+
+	return strings.TrimSuffix(b.String(), "\n")
 }
 
 func (m Model) renderQualityList() string {
 	var b strings.Builder
-	b.WriteString(headerStyle.Render("Quality"))
+
+	b.WriteString(dimStyle.Render("--- Quality ---"))
 	b.WriteString("\n")
 
 	for i, preset := range config.QualityPresets {
 		cursor := "  "
-		if i == m.qualityCursor && m.activeColumn == columnQuality {
+		if m.activeColumn == columnQuality && i == m.qualityCursor {
 			cursor = "> "
 		}
 
-		style := normalStyle
-		if i == m.selectedQuality {
-			style = selectedStyle
+		// Format: name + description
+		label := fmt.Sprintf("%s (%s)", preset.Name, preset.Description)
+
+		// Style based on selection state
+		var line string
+		isSelected := i == m.selectedQuality
+
+		if isSelected {
+			line = selectedStyle.Render(cursor + label)
+		} else if m.activeColumn == columnQuality && i == m.qualityCursor {
+			line = normalStyle.Render(cursor + label)
+		} else {
+			line = dimStyle.Render(cursor + label)
 		}
 
-		b.WriteString(cursor)
-		b.WriteString(style.Render(fmt.Sprintf("%s (%d kbps)", preset.Name, preset.Bitrate)))
+		b.WriteString(line)
 		b.WriteString("\n")
 	}
 
-	return b.String()
+	return strings.TrimSuffix(b.String(), "\n")
 }
 
 func (m Model) renderFPSList() string {
 	var b strings.Builder
-	b.WriteString(headerStyle.Render("FPS"))
+
+	b.WriteString(dimStyle.Render("--- FPS ---"))
 	b.WriteString("\n")
 
 	for i, preset := range config.FPSPresets {
 		cursor := "  "
-		if i == m.fpsCursor && m.activeColumn == columnFPS {
+		if m.activeColumn == columnFPS && i == m.fpsCursor {
 			cursor = "> "
 		}
 
-		style := normalStyle
-		if i == m.selectedFPS {
-			style = selectedStyle
+		// Format: value + description
+		label := fmt.Sprintf("%s (%s)", preset.Name, preset.Description)
+
+		// Style based on selection state
+		var line string
+		isSelected := i == m.selectedFPS
+
+		if isSelected {
+			line = selectedStyle.Render(cursor + label)
+		} else if m.activeColumn == columnFPS && i == m.fpsCursor {
+			line = normalStyle.Render(cursor + label)
+		} else {
+			line = dimStyle.Render(cursor + label)
 		}
 
-		b.WriteString(cursor)
-		b.WriteString(style.Render(fmt.Sprintf("%d fps", preset.Value)))
+		b.WriteString(line)
 		b.WriteString("\n")
 	}
 
-	return b.String()
+	return strings.TrimSuffix(b.String(), "\n")
 }
 
 func (m Model) renderCodecList() string {
 	var b strings.Builder
-	b.WriteString(headerStyle.Render("Codec"))
+
+	b.WriteString(dimStyle.Render("--- Codec ---"))
 	b.WriteString("\n")
 
 	for i, codec := range config.AvailableCodecs {
 		cursor := "  "
-		if i == m.codecCursor && m.activeColumn == columnCodec {
+		if m.activeColumn == columnCodec && i == m.codecCursor {
 			cursor = "> "
 		}
 
-		style := normalStyle
-		if i == m.selectedCodec {
-			style = selectedStyle
+		// Format: name + description + hardware indicator
+		hwIndicator := ""
+		if codec.IsHardware {
+			hwIndicator = " [HW]"
+		}
+		label := fmt.Sprintf("%s (%s)%s", codec.Name, codec.Description, hwIndicator)
+
+		// Style based on selection state
+		var line string
+		isSelected := i == m.selectedCodec
+
+		if isSelected {
+			line = selectedStyle.Render(cursor + label)
+		} else if m.activeColumn == columnCodec && i == m.codecCursor {
+			line = normalStyle.Render(cursor + label)
+		} else {
+			line = dimStyle.Render(cursor + label)
 		}
 
-		b.WriteString(cursor)
-		b.WriteString(style.Render(codec.Name))
+		b.WriteString(line)
 		b.WriteString("\n")
 	}
 
-	return b.String()
+	return strings.TrimSuffix(b.String(), "\n")
 }
 
 func (m Model) renderViewerList() string {
-	var b strings.Builder
-	b.WriteString(headerStyle.Render("Viewers"))
-	b.WriteString("\n")
+	var content strings.Builder
 
-	count := m.appCore.GetViewerCount()
-	if count == 0 {
-		b.WriteString(dimStyle.Render("  No viewers"))
-	} else {
-		b.WriteString(viewerStyle.Render(fmt.Sprintf("  %d connected", count)))
+	// Get viewer info from peer manager
+	var viewers []webrtc.ViewerInfo
+	if m.appCore.GetPeerManager() != nil {
+		viewers = m.appCore.GetPeerManager().GetViewerInfo()
 	}
-	b.WriteString("\n")
 
-	return b.String()
+	// Count display
+	countStr := fmt.Sprintf("(%d)", len(viewers))
+	content.WriteString(dimStyle.Render(countStr))
+	content.WriteString("\n")
+
+	if len(viewers) == 0 {
+		content.WriteString(dimStyle.Render("Waiting..."))
+	} else {
+		// Render each viewer on its own line
+		for _, v := range viewers {
+			var line string
+			switch v.State {
+			case "connected":
+				connTime := time.Since(v.ConnectedAt).Truncate(time.Second)
+				connType := ""
+				if v.ConnectionType == "relay" {
+					connType = " TURN"
+				} else if v.ConnectionType == "direct" {
+					connType = " P2P"
+				}
+				line = fmt.Sprintf("%s%s %s", v.PeerID, connType, formatDuration(connTime))
+				content.WriteString(viewerStyle.Render(line))
+			case "connecting":
+				line = fmt.Sprintf("%s ...", v.PeerID)
+				content.WriteString(dimStyle.Render(line))
+			default:
+				line = fmt.Sprintf("%s [%s]", v.PeerID, v.State)
+				content.WriteString(dimStyle.Render(line))
+			}
+			content.WriteString("\n")
+		}
+	}
+
+	return strings.TrimSuffix(content.String(), "\n")
 }
 
 func (m Model) renderStats() string {
 	var b strings.Builder
-	b.WriteString(headerStyle.Render("Stats"))
-	b.WriteString("\n")
 
+	// Stats box style
+	statsBoxStyle := lipgloss.NewStyle().
+		Border(lipgloss.RoundedBorder()).
+		BorderForeground(lipgloss.Color("8")).
+		Padding(0, 1).
+		Width(74)
+
+	var content strings.Builder
+	content.WriteString(boxTitleDimStyle.Render(" Streams "))
+	content.WriteString("\n")
+
+	// Uptime
+	uptime := time.Since(m.appCore.GetStartTime()).Truncate(time.Second)
+	content.WriteString(dimStyle.Render("Uptime: "))
+	content.WriteString(normalStyle.Render(formatDuration(uptime)))
+	content.WriteString("\n")
+
+	// Per-stream stats in compact format
 	if len(m.streamStats) == 0 {
-		b.WriteString(dimStyle.Render("  No active streams"))
-		return b.String()
-	}
+		content.WriteString(dimStyle.Render("No active streams"))
+	} else {
+		var totalFrames, totalBytes uint64
 
-	for _, stat := range m.streamStats {
-		name := stat.AppName
-		if name == "" {
-			name = "Display"
+		for i, stat := range m.streamStats {
+			totalFrames += stat.Frames
+			totalBytes += stat.Bytes
+
+			appName := stat.AppName
+			if appName == "" {
+				appName = "Display"
+			}
+			appName = truncate(appName, 12)
+
+			resStr := fmt.Sprintf("%dx%d", stat.Width, stat.Height)
+			bitrateStr := fmt.Sprintf("%.1fMbps", stat.Bitrate/1000)
+			dataStr := formatBytes(stat.Bytes)
+
+			focusMarker := ""
+			if stat.IsFocused {
+				focusMarker = " *"
+			}
+
+			line := fmt.Sprintf("%d: %-12s %s | %s | %s%s",
+				i+1, appName, resStr, bitrateStr, dataStr, focusMarker)
+
+			if stat.IsFocused {
+				content.WriteString(selectedStyle.Render(line))
+			} else {
+				content.WriteString(normalStyle.Render(line))
+			}
+			content.WriteString("\n")
 		}
-		b.WriteString(fmt.Sprintf("  %s: %.0f fps, %.0f kbps\n",
-			truncate(name, 20),
-			stat.FPS,
-			stat.Bitrate))
+
+		// Totals line
+		content.WriteString(dimStyle.Render(fmt.Sprintf("Total: %s frames, %s",
+			formatNumber(int(totalFrames)), formatBytes(totalBytes))))
 	}
 
+	b.WriteString(statsBoxStyle.Render(content.String()))
 	return b.String()
 }
 
 func (m Model) renderHelp() string {
 	var b strings.Builder
+	sep := keySepStyle.Render(" │ ")
 
-	// Key hints
-	hints := []string{
-		"↑/↓ navigate",
-		"SPACE select",
-		"ENTER start",
-		"s stop",
-		"r refresh",
-		"c copy URL",
-		"Ctrl+C quit",
+	// Line 1: Regular keybinds (actions)
+	var actions []string
+
+	actions = append(actions, keyStyle.Render("tab")+helpStyle.Render(" columns"))
+	actions = append(actions, keyStyle.Render("↑↓")+helpStyle.Render(" select"))
+	actions = append(actions, keyStyle.Render("space")+helpStyle.Render(" toggle"))
+	actions = append(actions, keyStyle.Render("enter")+helpStyle.Render(" start"))
+	actions = append(actions, keyStyle.Render("f")+helpStyle.Render(" fullscreen"))
+
+	if m.appCore.IsServerStarted() {
+		actions = append(actions, keyStyle.Render("c")+helpStyle.Render(" copy"))
 	}
-	b.WriteString(dimStyle.Render(strings.Join(hints, "  ")))
 
-	// Toggle indicators
+	if m.appCore.IsSharing() {
+		actions = append(actions, keyStyle.Render("s")+helpStyle.Render(" stop"))
+	}
+
+	actions = append(actions, keyStyle.Render("r")+helpStyle.Render(" refresh"))
+	actions = append(actions, keyStyle.Render("^c")+helpStyle.Render(" quit"))
+
+	b.WriteString(strings.Join(actions, sep))
+
+	// Line 2: Toggles with state indicators
 	var toggles []string
 
-	// Adaptive bitrate toggle
+	// Adaptive bitrate toggle (only before sharing)
 	if !m.appCore.IsSharing() && !m.appCore.IsStarting() {
 		toggles = append(toggles, m.renderToggle("a", "adaptive", m.appCore.IsAdaptiveBitrate()))
 	}
 
-	// Quality mode toggle
+	// Quality mode toggle - shows current mode (quality ON = quality mode, OFF = performance mode)
 	if m.appCore.IsQualityMode() {
 		toggles = append(toggles, m.renderToggle("q", "quality", true))
 	} else {
@@ -730,7 +913,7 @@ func (m Model) renderHelp() string {
 	// Password toggle
 	toggles = append(toggles, m.renderToggle("p", "password", m.appCore.IsPasswordEnabled()))
 
-	// Stats toggle
+	// Stats toggle (only when sharing)
 	if m.appCore.IsSharing() {
 		toggles = append(toggles, m.renderToggle("i", "stats", m.showStats))
 	}
@@ -739,7 +922,7 @@ func (m Model) renderHelp() string {
 	toggles = append(toggles, m.renderToggle("A", "auto", m.appCore.IsAutoShareEnabled()))
 
 	if len(toggles) > 0 {
-		b.WriteString("\n\n")
+		b.WriteString("\n")
 		b.WriteString(strings.Join(toggles, "   "))
 	}
 
