@@ -1,58 +1,29 @@
 package main
 
 import (
-	"sync"
-
 	"github.com/tomaslejdung/gopeep/pkg/overlay"
 )
 
 // OverlayController implements overlay.Controller interface.
-// It provides a thread-safe way to query the TUI model state from the overlay.
+// It queries AppCore directly for state, avoiding state mirroring.
 type OverlayController struct {
-	mu sync.RWMutex
-
-	// State mirrors from the TUI model (updated via Sync method)
-	selectedWindows    map[uint32]bool
-	sharing            bool
-	autoShareMode      bool
-	viewerCount        int
-	fullscreenSelected bool
+	appCore *AppCore
 }
 
-// NewOverlayController creates a new overlay controller.
-func NewOverlayController() *OverlayController {
+// NewOverlayController creates a new overlay controller that queries AppCore.
+func NewOverlayController(appCore *AppCore) *OverlayController {
 	return &OverlayController{
-		selectedWindows: make(map[uint32]bool),
+		appCore: appCore,
 	}
-}
-
-// Sync updates the controller state from the TUI model.
-// Call this whenever the TUI state changes.
-func (c *OverlayController) Sync(selectedWindows map[uint32]bool, sharing bool, autoShareMode bool, viewerCount int, fullscreenSelected bool) {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	// Copy the map to avoid race conditions
-	c.selectedWindows = make(map[uint32]bool)
-	for k, v := range selectedWindows {
-		c.selectedWindows[k] = v
-	}
-	c.sharing = sharing
-	c.autoShareMode = autoShareMode
-	c.viewerCount = viewerCount
-	c.fullscreenSelected = fullscreenSelected
 }
 
 // GetWindowState implements overlay.Controller.
 func (c *OverlayController) GetWindowState(windowID uint32) overlay.WindowState {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	if !c.selectedWindows[windowID] {
+	if !c.appCore.IsWindowSelected(windowID) {
 		return overlay.StateNotSelected
 	}
 
-	if c.sharing {
+	if c.appCore.IsSharing() {
 		return overlay.StateSharing
 	}
 
@@ -61,16 +32,12 @@ func (c *OverlayController) GetWindowState(windowID uint32) overlay.WindowState 
 
 // IsManualMode implements overlay.Controller.
 func (c *OverlayController) IsManualMode() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-
-	return !c.autoShareMode
+	return !c.appCore.IsAutoShareEnabled()
 }
 
 // GetFocusedWindow implements overlay.Controller.
-// It uses the same focus detection as the TUI (GetFocusedWindow from capture_multi_darwin.go)
+// It uses the existing focus detection (GetFocusedWindow from capture_multi_darwin.go)
 func (c *OverlayController) GetFocusedWindow() *overlay.FocusedWindowInfo {
-	// Call the existing focus detection (no lock needed, it's independent)
 	info := GetFocusedWindow()
 	if info == nil {
 		return nil
@@ -87,28 +54,20 @@ func (c *OverlayController) GetFocusedWindow() *overlay.FocusedWindowInfo {
 
 // GetSelectedWindowCount implements overlay.Controller.
 func (c *OverlayController) GetSelectedWindowCount() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return len(c.selectedWindows)
+	return c.appCore.GetSelectedCount()
 }
 
 // IsSharing implements overlay.Controller.
 func (c *OverlayController) IsSharing() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.sharing
+	return c.appCore.IsSharing()
 }
 
 // GetViewerCount implements overlay.Controller.
 func (c *OverlayController) GetViewerCount() int {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.viewerCount
+	return c.appCore.GetViewerCount()
 }
 
 // IsFullscreenSelected implements overlay.Controller.
 func (c *OverlayController) IsFullscreenSelected() bool {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
-	return c.fullscreenSelected
+	return c.appCore.IsFullscreenSelected()
 }

@@ -88,6 +88,9 @@ func requestRoomCodeFromServer(signalURL string) tea.Cmd {
 
 // Model
 type model struct {
+	// AppCore holds shared state that both TUI and Overlay need
+	appCore *AppCore
+
 	// Config
 	config Config
 
@@ -200,7 +203,7 @@ func (m *model) findSourceIndex() int {
 	return -1
 }
 
-func initialModel(config Config) model {
+func initialModel(config Config, appCore *AppCore) model {
 	// Initialize available codecs
 	InitAvailableCodecs()
 
@@ -229,6 +232,7 @@ func initialModel(config Config) model {
 	}
 
 	return model{
+		appCore:         appCore,
 		config:          config,
 		sourceCursor:    0,
 		selectedSource:  -1,
@@ -963,12 +967,18 @@ func (m model) handleOverlayToggle(windowID uint32) (tea.Model, tea.Cmd) {
 // syncOverlay updates the overlay controller with current state.
 // The overlay handles its own focus detection via a background thread.
 func (m *model) syncOverlay() {
-	if m.overlayController != nil {
-		m.overlayController.Sync(m.selectedWindows, m.sharing, m.autoShareEnabled, m.viewerCount, m.fullscreenSelected)
+	// Sync model state to AppCore - the overlay queries AppCore directly
+	if m.appCore != nil {
+		m.appCore.SetSelectedWindows(m.selectedWindows)
+		m.appCore.SetFullscreenSelected(m.fullscreenSelected)
+		m.appCore.SetSharing(m.sharing)
+		m.appCore.SetAutoShareEnabled(m.autoShareEnabled)
+		m.appCore.SetViewerCount(m.viewerCount)
+		m.appCore.SetStreamer(m.streamer)
+		m.appCore.SetPeerManager(m.peerManager)
 	}
 	// Note: The overlay now runs its own update loop via background thread,
-	// so we don't need to call Refresh() here. The overlay queries state
-	// through the controller callbacks (goGetWindowState, goIsManualMode).
+	// and queries state through AppCore (via OverlayController).
 }
 
 // getSelectedCodecType returns the currently selected codec type
@@ -2293,12 +2303,15 @@ func RunTUI(config Config) error {
 	// Restore logging on exit
 	defer log.SetOutput(os.Stderr)
 
-	// Create overlay controller and overlay
-	overlayCtrl := NewOverlayController()
+	// Create AppCore - the shared state owner
+	appCore := NewAppCore(config)
+
+	// Create overlay controller (queries AppCore directly) and overlay
+	overlayCtrl := NewOverlayController(appCore)
 	overlayInstance := overlay.New(overlayCtrl)
 
-	// Create the initial model with overlay
-	m := initialModel(config)
+	// Create the initial model with AppCore and overlay
+	m := initialModel(config, appCore)
 	m.overlay = overlayInstance
 	m.overlayController = overlayCtrl
 
