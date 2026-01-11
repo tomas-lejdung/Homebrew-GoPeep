@@ -36,6 +36,10 @@ var (
 	helpStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("8"))
 
+	headerStyle = lipgloss.NewStyle().
+			Bold(true).
+			Foreground(lipgloss.Color("14"))
+
 	// Keybind styles
 	keyStyle = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("14")) // Cyan for keys
