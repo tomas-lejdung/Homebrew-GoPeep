@@ -102,9 +102,6 @@ func (mpm *PeerManager) RecreateSlots(newCodec CodecType) ([]SlotInfo, error) {
 	mimeType := mpm.getMimeType()
 	log.Printf("RecreateSlots: Recreating 4 track slots with new codec %s", mimeType)
 
-	// Clear tracks map (will be repopulated for active slots)
-	mpm.tracks = make(map[string]*StreamTrackInfo)
-
 	// Recreate all 4 slots with new codec
 	for i := 0; i < 4; i++ {
 		trackID := fmt.Sprintf("video%d", i)
@@ -144,7 +141,6 @@ func (mpm *PeerManager) RecreateSlots(newCodec CodecType) ([]SlotInfo, error) {
 			Height:     active.height,
 			IsFocused:  active.isFocused,
 		}
-		mpm.tracks[slot.TrackID] = slot.Info
 
 		result = append(result, SlotInfo{
 			TrackID:    slot.TrackID,
@@ -193,6 +189,14 @@ func (mpm *PeerManager) ActivateSlot(windowID uint32, windowName, appName string
 		return nil, fmt.Errorf("no available track slots (max 4 windows)")
 	}
 
+	// Check if this is the first active slot (will be focused by default)
+	activeCount := 0
+	for i := 0; i < 4; i++ {
+		if mpm.slots[i] != nil && mpm.slots[i].Active {
+			activeCount++
+		}
+	}
+
 	// Activate the slot
 	slot.Active = true
 	slot.Info = &StreamTrackInfo{
@@ -203,11 +207,8 @@ func (mpm *PeerManager) ActivateSlot(windowID uint32, windowName, appName string
 		Track:      slot.Track,
 		Width:      width,
 		Height:     height,
-		IsFocused:  len(mpm.tracks) == 0, // First active slot is focused by default
+		IsFocused:  activeCount == 0, // First active slot is focused by default
 	}
-
-	// Also add to tracks map for backward compatibility with existing code
-	mpm.tracks[slot.TrackID] = slot.Info
 
 	log.Printf("ActivateSlot: Activated %s for window %d (%s - %s)", slot.TrackID, windowID, appName, windowName)
 	return slot, nil
@@ -228,7 +229,6 @@ func (mpm *PeerManager) DeactivateSlot(trackID string) error {
 
 			slot.Active = false
 			slot.Info = nil
-			delete(mpm.tracks, trackID)
 
 			log.Printf("DeactivateSlot: Deactivated %s", trackID)
 			return nil
@@ -285,7 +285,13 @@ func (mpm *PeerManager) NotifyStreamDeactivated(trackID string) {
 func (mpm *PeerManager) GetTrackInfo(trackID string) *StreamTrackInfo {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
-	return mpm.tracks[trackID]
+	for i := 0; i < 4; i++ {
+		slot := mpm.slots[i]
+		if slot != nil && slot.TrackID == trackID && slot.Active {
+			return slot.Info
+		}
+	}
+	return nil
 }
 
 // GetSlot returns the TrackSlot at the given index (0-3)
@@ -298,87 +304,42 @@ func (mpm *PeerManager) GetSlot(index int) *TrackSlot {
 	return mpm.slots[index]
 }
 
-// AddTrack creates a new video track for a window
+// AddTrack creates a new video track for a window.
+// This is a legacy function - use ActivateSlot for the fast path.
 func (mpm *PeerManager) AddTrack(windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
-	mpm.mu.Lock()
-	// Generate track ID using monotonic counter (never reuses IDs)
-	trackID := fmt.Sprintf("video%d", mpm.trackCounter)
-	mpm.trackCounter++
-	mpm.mu.Unlock()
-	return mpm.addTrackWithID(trackID, windowID, windowName, appName)
-}
-
-// AddTrackWithID creates a track with a specific ID (used for codec changes to preserve track IDs)
-func (mpm *PeerManager) AddTrackWithID(trackID string, windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
-	return mpm.addTrackWithID(trackID, windowID, windowName, appName)
-}
-
-// addTrackWithID is the internal implementation for adding tracks
-func (mpm *PeerManager) addTrackWithID(trackID string, windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
-	mpm.mu.Lock()
-	defer mpm.mu.Unlock()
-
-	// Check if already have a track for this window
-	for _, t := range mpm.tracks {
-		if t.WindowID == windowID {
-			return nil, fmt.Errorf("track already exists for window %d", windowID)
-		}
-	}
-
-	// Check if track ID already exists
-	if _, exists := mpm.tracks[trackID]; exists {
-		return nil, fmt.Errorf("track ID %s already exists", trackID)
-	}
-
-	// Determine MIME type
-	var mimeType string
-	switch mpm.codecType {
-	case CodecVP9:
-		mimeType = webrtc.MimeTypeVP9
-	case CodecH264:
-		mimeType = webrtc.MimeTypeH264
-	default:
-		mimeType = webrtc.MimeTypeVP8
-	}
-
-	// Create video track
-	track, err := webrtc.NewTrackLocalStaticSample(
-		webrtc.RTPCodecCapability{MimeType: mimeType},
-		trackID,
-		fmt.Sprintf("gopeep-%d", windowID),
-	)
+	// Delegate to ActivateSlot which uses pre-allocated slots
+	slot, err := mpm.ActivateSlot(windowID, windowName, appName, 0, 0)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create video track: %w", err)
+		return nil, err
 	}
-
-	info := &StreamTrackInfo{
-		TrackID:    trackID,
-		WindowID:   windowID,
-		WindowName: windowName,
-		AppName:    appName,
-		Track:      track,
-		IsFocused:  len(mpm.tracks) == 0, // First track is focused by default
-	}
-
-	mpm.tracks[trackID] = info
-	return info, nil
+	return slot.Info, nil
 }
 
-// RemoveTrack removes a video track
+// AddTrackWithID creates a track with a specific ID.
+// This is a legacy function - use ActivateSlot for the fast path.
+func (mpm *PeerManager) AddTrackWithID(trackID string, windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
+	// Since slots have fixed IDs, we can't create a specific ID
+	// Just delegate to ActivateSlot
+	slot, err := mpm.ActivateSlot(windowID, windowName, appName, 0, 0)
+	if err != nil {
+		return nil, err
+	}
+	return slot.Info, nil
+}
+
+// RemoveTrack removes a video track.
+// This is a legacy function - use DeactivateSlot for the fast path.
 func (mpm *PeerManager) RemoveTrack(trackID string) {
-	mpm.mu.Lock()
-	defer mpm.mu.Unlock()
-	delete(mpm.tracks, trackID)
+	mpm.DeactivateSlot(trackID)
 }
 
 // RemoveAllTracks removes all video tracks (used for FPS/settings restart)
 func (mpm *PeerManager) RemoveAllTracks() {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
-	mpm.tracks = make(map[string]*StreamTrackInfo)
 	mpm.trackCounter = 0 // Reset counter so track IDs start fresh on restart
 
-	// Also deactivate all slots so they can be reused
+	// Deactivate all slots so they can be reused
 	for i := 0; i < 4; i++ {
 		if mpm.slots[i] != nil {
 			mpm.slots[i].Active = false
@@ -387,21 +348,30 @@ func (mpm *PeerManager) RemoveAllTracks() {
 	}
 }
 
-// GetTracks returns all current tracks in sorted order by TrackID
+// GetTracks returns all active tracks in sorted order by TrackID.
+// Tracks are now stored in slots - this iterates active slots.
 func (mpm *PeerManager) GetTracks() []*StreamTrackInfo {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
 
-	// Collect and sort track IDs to ensure consistent ordering
-	trackIDs := make([]string, 0, len(mpm.tracks))
-	for id := range mpm.tracks {
-		trackIDs = append(trackIDs, id)
+	// Collect track IDs from active slots
+	trackIDs := make([]string, 0, 4)
+	trackMap := make(map[string]*StreamTrackInfo)
+	for i := 0; i < 4; i++ {
+		slot := mpm.slots[i]
+		if slot != nil && slot.Active && slot.Info != nil {
+			trackIDs = append(trackIDs, slot.TrackID)
+			trackMap[slot.TrackID] = slot.Info
+		}
 	}
+
+	// Sort for consistent ordering
 	sort.Strings(trackIDs)
 
-	tracks := make([]*StreamTrackInfo, 0, len(mpm.tracks))
+	// Build result slice in sorted order
+	tracks := make([]*StreamTrackInfo, 0, len(trackIDs))
 	for _, id := range trackIDs {
-		tracks = append(tracks, mpm.tracks[id])
+		tracks = append(tracks, trackMap[id])
 	}
 	return tracks
 }
@@ -412,12 +382,15 @@ func (mpm *PeerManager) SetFocusedWindow(windowID uint32) string {
 	defer mpm.mu.Unlock()
 
 	var focusedTrackID string
-	for _, t := range mpm.tracks {
-		if t.WindowID == windowID {
-			t.IsFocused = true
-			focusedTrackID = t.TrackID
-		} else {
-			t.IsFocused = false
+	for i := 0; i < 4; i++ {
+		slot := mpm.slots[i]
+		if slot != nil && slot.Active && slot.Info != nil {
+			if slot.Info.WindowID == windowID {
+				slot.Info.IsFocused = true
+				focusedTrackID = slot.TrackID
+			} else {
+				slot.Info.IsFocused = false
+			}
 		}
 	}
 	return focusedTrackID
@@ -428,9 +401,10 @@ func (mpm *PeerManager) GetFocusedTrack() *StreamTrackInfo {
 	mpm.mu.RLock()
 	defer mpm.mu.RUnlock()
 
-	for _, t := range mpm.tracks {
-		if t.IsFocused {
-			return t
+	for i := 0; i < 4; i++ {
+		slot := mpm.slots[i]
+		if slot != nil && slot.Active && slot.Info != nil && slot.Info.IsFocused {
+			return slot.Info
 		}
 	}
 	return nil

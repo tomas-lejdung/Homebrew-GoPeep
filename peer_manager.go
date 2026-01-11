@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
-	"sort"
 	"sync"
 	"time"
 
@@ -14,18 +13,17 @@ import (
 
 // PeerManager manages WebRTC connections with multiple video tracks
 type PeerManager struct {
-	config         webrtc.Configuration
-	iceConfig      ICEConfig
-	codecType      CodecType
-	tracks         map[string]*StreamTrackInfo // trackID -> track info
-	connections    map[string]*PeerInfo        // peerID -> peer info with senders
-	viewerStates   map[string]*ViewerInfo
-	trackCounter   int // Monotonically increasing track counter
-	mu             sync.RWMutex
-	renegMu        sync.Mutex // Mutex to serialize renegotiations
-	onICE          func(peerID string, candidate string)
-	onConnected    func(peerID string)
-	onDisconnect   func(peerID string)
+	config       webrtc.Configuration
+	iceConfig    ICEConfig
+	codecType    CodecType
+	connections  map[string]*PeerInfo   // peerID -> peer info with senders
+	viewerStates map[string]*ViewerInfo
+	trackCounter int // Monotonically increasing track counter (for legacy AddTrack only)
+	mu           sync.RWMutex
+	renegMu      sync.Mutex // Mutex to serialize renegotiations
+	onICE        func(peerID string, candidate string)
+	onConnected  func(peerID string)
+	onDisconnect func(peerID string)
 	onFocusChange  func(trackID string)                            // Called when focus changes to a new track
 	onSizeChange   func(trackID string, width, height int)         // Called when focused track dimensions change
 	onCursorUpdate func(trackID string, x, y float64, inView bool) // Called with cursor position updates
@@ -35,7 +33,7 @@ type PeerManager struct {
 	onStreamAdded   func(info sig.StreamInfo)
 	onStreamRemoved func(trackID string)
 
-	// Pre-allocated track slots for instant window sharing
+	// Pre-allocated track slots - THE single source of truth for tracks
 	slots      [4]*TrackSlot // Pre-allocated track slots (matches MaxCaptureInstances)
 	slotsReady bool          // Whether slots have been initialized
 
@@ -77,7 +75,6 @@ func NewPeerManager(iceConfig ICEConfig, codecType CodecType) (*PeerManager, err
 		},
 		iceConfig:    iceConfig,
 		codecType:    codecType,
-		tracks:       make(map[string]*StreamTrackInfo),
 		connections:  make(map[string]*PeerInfo),
 		viewerStates: make(map[string]*ViewerInfo),
 	}, nil
@@ -180,21 +177,18 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 		}
 	} else {
 		// Legacy mode: add only active tracks (requires renegotiation for new windows)
-		log.Printf("CreateOffer: Using legacy mode (only active tracks)")
-		trackIDs := make([]string, 0, len(mpm.tracks))
-		for id := range mpm.tracks {
-			trackIDs = append(trackIDs, id)
-		}
-		sort.Strings(trackIDs)
-
-		for _, id := range trackIDs {
-			trackInfo := mpm.tracks[id]
-			sender, err := pc.AddTrack(trackInfo.Track)
-			if err != nil {
-				pc.Close()
-				return "", fmt.Errorf("failed to add video track %s: %w", trackInfo.TrackID, err)
+		// This path is rarely hit since slots are initialized before viewers connect
+		log.Printf("CreateOffer: Using legacy mode (only active tracks from slots)")
+		for i := 0; i < 4; i++ {
+			slot := mpm.slots[i]
+			if slot != nil && slot.Active && slot.Info != nil {
+				sender, err := pc.AddTrack(slot.Track)
+				if err != nil {
+					pc.Close()
+					return "", fmt.Errorf("failed to add video track %s: %w", slot.TrackID, err)
+				}
+				peerInfo.Senders[slot.TrackID] = sender
 			}
-			peerInfo.Senders[id] = sender
 		}
 	}
 
