@@ -1,4 +1,4 @@
-package main
+package streaming
 
 import (
 	"fmt"
@@ -8,11 +8,14 @@ import (
 	"time"
 
 	"github.com/pion/webrtc/v3/pkg/media"
+	"github.com/tomaslejdung/gopeep/internal/capture"
+	"github.com/tomaslejdung/gopeep/internal/encoding"
+	"github.com/tomaslejdung/gopeep/internal/webrtc"
 )
 
 // capturedFrame holds a frame ready for encoding
 type capturedFrame struct {
-	frame         *BGRAFrame
+	frame         *capture.BGRAFrame
 	frameDuration time.Duration
 }
 
@@ -24,9 +27,9 @@ type encodedFrame struct {
 
 // StreamPipeline manages capture-encode-stream for a single window
 type StreamPipeline struct {
-	trackInfo    *StreamTrackInfo
-	capture      *CaptureInstance
-	encoder      VideoEncoder
+	trackInfo    *webrtc.StreamTrackInfo
+	capture      *capture.CaptureInstance
+	encoder      encoding.VideoEncoder
 	running      bool
 	stopChan     chan struct{}
 	fpsChanged   chan int // Signal to update FPS in run loop
@@ -64,8 +67,8 @@ type StreamPipeline struct {
 	pendingSizeHeight  int
 }
 
-// run is the main pipeline loop that captures, encodes, and sends frames
-func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange func(trackID string, width, height int)) {
+// Run is the main pipeline loop that captures, encodes, and sends frames
+func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, onSizeChange func(trackID string, width, height int)) {
 	p.wg.Add(1)
 	defer p.wg.Done()
 
@@ -142,13 +145,13 @@ func (p *StreamPipeline) run(pm *PeerManager, mc *MultiCapture, onSizeChange fun
 
 			// Check if window has been resized and update stream configuration
 			if p.capture != nil && p.trackInfo.WindowID != 0 {
-				go func(capture *CaptureInstance, windowID uint32) {
-					actualW, actualH, err := mc.GetWindowSize(capture)
+				go func(cap *capture.CaptureInstance, windowID uint32) {
+					actualW, actualH, err := mc.GetWindowSize(cap)
 					if err == nil && actualW > 0 && actualH > 0 {
-						configW, configH, err := mc.GetConfigSize(capture)
+						configW, configH, err := mc.GetConfigSize(cap)
 						if err == nil && (configW != actualW || configH != actualH) {
 							log.Printf("Window resized: config %dx%d -> actual %dx%d, updating stream", configW, configH, actualW, actualH)
-							if err := mc.UpdateStreamSize(capture, actualW, actualH); err != nil {
+							if err := mc.UpdateStreamSize(cap, actualW, actualH); err != nil {
 								log.Printf("Failed to update stream size: %v", err)
 							}
 						}
@@ -302,13 +305,13 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 }
 
 // GetStats returns current statistics for this pipeline
-func (p *StreamPipeline) GetStats() StreamPipelineStats {
+func (p *StreamPipeline) GetStats() webrtc.StreamPipelineStats {
 	p.mu.Lock()
 	fps := p.currentFPS
 	bitrate := p.currentBitrate
 	p.mu.Unlock()
 
-	return StreamPipelineStats{
+	return webrtc.StreamPipelineStats{
 		TrackID:   p.trackInfo.TrackID,
 		AppName:   p.trackInfo.AppName,
 		Width:     p.trackInfo.Width,
@@ -321,8 +324,8 @@ func (p *StreamPipeline) GetStats() StreamPipelineStats {
 	}
 }
 
-// stop stops the pipeline completely (encoder and capture)
-func (p *StreamPipeline) stop() {
+// Stop stops the pipeline completely (encoder and capture)
+func (p *StreamPipeline) Stop() {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -335,9 +338,9 @@ func (p *StreamPipeline) stop() {
 	p.encoder.Stop()
 }
 
-// stopEncoderOnly stops the encoder and run loop but keeps capture alive for reuse
+// StopEncoderOnly stops the encoder and run loop but keeps capture alive for reuse
 // It waits for the run loop to fully exit before returning
-func (p *StreamPipeline) stopEncoderOnly() {
+func (p *StreamPipeline) StopEncoderOnly() {
 	p.mu.Lock()
 	if !p.running {
 		p.mu.Unlock()
@@ -411,7 +414,7 @@ func (p *StreamPipeline) SetBitrate(focusBitrate, bgBitrate int) {
 }
 
 // SetFPS updates the FPS for this pipeline (requires capture restart)
-func (p *StreamPipeline) SetFPS(newFPS int, mc *MultiCapture, codecType CodecType) error {
+func (p *StreamPipeline) SetFPS(newFPS int, mc *capture.MultiCapture, codecType encoding.CodecType) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
@@ -447,8 +450,10 @@ func (p *StreamPipeline) SetFPS(newFPS int, mc *MultiCapture, codecType CodecTyp
 	}
 
 	// Create new encoder with new FPS
-	factory := NewEncoderFactory()
-	p.encoder, err = factory.CreateEncoder(codecType, newFPS, p.bitrate)
+	p.encoder, err = encoding.NewEncoder(codecType, encoding.EncoderConfig{
+		FPS:     newFPS,
+		Bitrate: p.bitrate,
+	})
 	if err != nil {
 		p.fps = oldFPS
 		return fmt.Errorf("failed to create encoder with new FPS: %w", err)
@@ -497,4 +502,28 @@ func (p *StreamPipeline) SetQualityMode(enabled bool) {
 			log.Printf("Track %s quality mode set to %s", p.trackInfo.TrackID, mode)
 		}
 	}
+}
+
+// GetTrackInfo returns the track info for this pipeline
+func (p *StreamPipeline) GetTrackInfo() *webrtc.StreamTrackInfo {
+	return p.trackInfo
+}
+
+// GetCapture returns the capture instance for this pipeline
+func (p *StreamPipeline) GetCapture() *capture.CaptureInstance {
+	return p.capture
+}
+
+// SetEncoder sets a new encoder for this pipeline
+func (p *StreamPipeline) SetEncoder(encoder encoding.VideoEncoder) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.encoder = encoder
+}
+
+// SetTrackInfo sets the track info for this pipeline
+func (p *StreamPipeline) SetTrackInfo(info *webrtc.StreamTrackInfo) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	p.trackInfo = info
 }

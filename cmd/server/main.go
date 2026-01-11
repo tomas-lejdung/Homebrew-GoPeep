@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/tomaslejdung/gopeep/pkg/signal"
+	"github.com/tomaslejdung/gopeep/internal/signal"
 )
 
 func main() {

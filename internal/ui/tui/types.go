@@ -1,9 +1,12 @@
-package main
+package tui
 
 import (
 	"time"
 
 	"github.com/gorilla/websocket"
+	"github.com/tomaslejdung/gopeep/internal/capture"
+	"github.com/tomaslejdung/gopeep/internal/streaming"
+	"github.com/tomaslejdung/gopeep/internal/webrtc"
 )
 
 // reconnectMsg indicates the WebSocket needs reconnection
@@ -36,7 +39,7 @@ type roomCodeReceivedMsg struct {
 
 // windowsUpdatedMsg contains updated window list
 type windowsUpdatedMsg struct {
-	windows []WindowInfo
+	windows []capture.WindowInfo
 }
 
 // viewerCountMsg contains the current viewer count
@@ -47,8 +50,8 @@ type tickMsg time.Time
 
 // captureStartedMsg indicates capture started successfully (unified for single/multi)
 type captureStartedMsg struct {
-	streamer    *Streamer
-	peerManager *PeerManager
+	Streamer    *streaming.Streamer
+	PeerManager *webrtc.PeerManager
 }
 
 // captureErrorMsg indicates capture failed to start
@@ -73,7 +76,7 @@ type fastTickMsg time.Time
 // SourceItem represents a selectable source (fullscreen or window)
 type SourceItem struct {
 	IsFullscreen bool
-	Window       *WindowInfo // nil for fullscreen
+	Window       *capture.WindowInfo // nil for fullscreen
 	DisplayName  string
 }
 

@@ -1,4 +1,4 @@
-package main
+package webrtc
 
 import (
 	"encoding/json"
@@ -7,13 +7,13 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pion/webrtc/v3"
-	sig "github.com/tomaslejdung/gopeep/pkg/signal"
+	pwebrtc "github.com/pion/webrtc/v3"
+	sig "github.com/tomaslejdung/gopeep/internal/signal"
 )
 
 // PeerManager manages WebRTC connections with multiple video tracks
 type PeerManager struct {
-	config       webrtc.Configuration
+	config       pwebrtc.Configuration
 	iceConfig    ICEConfig
 	codecType    CodecType
 	connections  map[string]*PeerInfo   // peerID -> peer info with senders
@@ -45,31 +45,31 @@ type PeerManager struct {
 // NewPeerManager creates a new multi-track peer manager
 func NewPeerManager(iceConfig ICEConfig, codecType CodecType) (*PeerManager, error) {
 	// Build ICE servers list
-	iceServers := make([]webrtc.ICEServer, 0)
+	iceServers := make([]pwebrtc.ICEServer, 0)
 
 	if !iceConfig.ForceRelay {
-		iceServers = append(iceServers, defaultICEServers...)
+		iceServers = append(iceServers, DefaultICEServers...)
 	}
 
 	if iceConfig.TURNServer != "" {
-		turnServer := webrtc.ICEServer{
+		turnServer := pwebrtc.ICEServer{
 			URLs: []string{iceConfig.TURNServer},
 		}
 		if iceConfig.TURNUser != "" {
 			turnServer.Username = iceConfig.TURNUser
 			turnServer.Credential = iceConfig.TURNPass
-			turnServer.CredentialType = webrtc.ICECredentialTypePassword
+			turnServer.CredentialType = pwebrtc.ICECredentialTypePassword
 		}
 		iceServers = append(iceServers, turnServer)
 	}
 
-	iceTransportPolicy := webrtc.ICETransportPolicyAll
+	iceTransportPolicy := pwebrtc.ICETransportPolicyAll
 	if iceConfig.ForceRelay {
-		iceTransportPolicy = webrtc.ICETransportPolicyRelay
+		iceTransportPolicy = pwebrtc.ICETransportPolicyRelay
 	}
 
 	return &PeerManager{
-		config: webrtc.Configuration{
+		config: pwebrtc.Configuration{
 			ICEServers:         iceServers,
 			ICETransportPolicy: iceTransportPolicy,
 		},
@@ -82,14 +82,7 @@ func NewPeerManager(iceConfig ICEConfig, codecType CodecType) (*PeerManager, err
 
 // getMimeType returns the MIME type for the current codec
 func (mpm *PeerManager) getMimeType() string {
-	switch mpm.codecType {
-	case CodecVP9:
-		return webrtc.MimeTypeVP9
-	case CodecH264:
-		return webrtc.MimeTypeH264
-	default:
-		return webrtc.MimeTypeVP8
-	}
+	return GetMimeType(mpm.codecType)
 }
 
 // SetICECallback sets callback for ICE candidates
@@ -145,7 +138,7 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 	defer mpm.mu.Unlock()
 
 	// Create peer connection
-	pc, err := webrtc.NewPeerConnection(mpm.config)
+	pc, err := pwebrtc.NewPeerConnection(mpm.config)
 	if err != nil {
 		return "", fmt.Errorf("failed to create peer connection: %w", err)
 	}
@@ -153,7 +146,7 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 	// Create PeerInfo to track senders
 	peerInfo := &PeerInfo{
 		PC:      pc,
-		Senders: make(map[string]*webrtc.RTPSender),
+		Senders: make(map[string]*pwebrtc.RTPSender),
 	}
 
 	// Add tracks to the peer connection
@@ -193,7 +186,7 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 	}
 
 	// Handle ICE candidates
-	pc.OnICECandidate(func(candidate *webrtc.ICECandidate) {
+	pc.OnICECandidate(func(candidate *pwebrtc.ICECandidate) {
 		if candidate == nil || mpm.onICE == nil {
 			return
 		}
@@ -211,13 +204,13 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 	}
 
 	// Handle connection state
-	pc.OnConnectionStateChange(func(state webrtc.PeerConnectionState) {
+	pc.OnConnectionStateChange(func(state pwebrtc.PeerConnectionState) {
 		log.Printf("Peer %s connection state: %s", peerID, state.String())
 
 		mpm.mu.Lock()
 		if info, ok := mpm.viewerStates[peerID]; ok {
 			info.State = state.String()
-			if state == webrtc.PeerConnectionStateConnected {
+			if state == pwebrtc.PeerConnectionStateConnected {
 				info.ConnectedAt = time.Now()
 				info.ConnectionType = mpm.detectConnectionType(pc)
 			}
@@ -225,11 +218,11 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 		mpm.mu.Unlock()
 
 		switch state {
-		case webrtc.PeerConnectionStateConnected:
+		case pwebrtc.PeerConnectionStateConnected:
 			if mpm.onConnected != nil {
 				mpm.onConnected(peerID)
 			}
-		case webrtc.PeerConnectionStateDisconnected, webrtc.PeerConnectionStateFailed, webrtc.PeerConnectionStateClosed:
+		case pwebrtc.PeerConnectionStateDisconnected, pwebrtc.PeerConnectionStateFailed, pwebrtc.PeerConnectionStateClosed:
 			if mpm.onDisconnect != nil {
 				mpm.onDisconnect(peerID)
 			}
@@ -252,7 +245,7 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 	}
 
 	// Wait for ICE gathering
-	gatherComplete := webrtc.GatheringCompletePromise(pc)
+	gatherComplete := pwebrtc.GatheringCompletePromise(pc)
 	<-gatherComplete
 
 	// Store connection with sender info
@@ -271,8 +264,8 @@ func (mpm *PeerManager) HandleAnswer(peerID string, sdp string) error {
 		return fmt.Errorf("peer not found: %s", peerID)
 	}
 
-	answer := webrtc.SessionDescription{
-		Type: webrtc.SDPTypeAnswer,
+	answer := pwebrtc.SessionDescription{
+		Type: pwebrtc.SDPTypeAnswer,
 		SDP:  sdp,
 	}
 
@@ -289,7 +282,7 @@ func (mpm *PeerManager) AddICECandidate(peerID string, candidateJSON string) err
 		return fmt.Errorf("peer not found: %s", peerID)
 	}
 
-	var candidate webrtc.ICECandidateInit
+	var candidate pwebrtc.ICECandidateInit
 	if err := json.Unmarshal([]byte(candidateJSON), &candidate); err != nil {
 		return fmt.Errorf("failed to parse ICE candidate: %w", err)
 	}
@@ -298,21 +291,21 @@ func (mpm *PeerManager) AddICECandidate(peerID string, candidateJSON string) err
 }
 
 // detectConnectionType checks if connection is direct or relayed
-func (mpm *PeerManager) detectConnectionType(pc *webrtc.PeerConnection) string {
+func (mpm *PeerManager) detectConnectionType(pc *pwebrtc.PeerConnection) string {
 	stats := pc.GetStats()
 
 	for _, stat := range stats {
-		if candidatePair, ok := stat.(webrtc.ICECandidatePairStats); ok {
-			if candidatePair.State == webrtc.StatsICECandidatePairStateSucceeded {
+		if candidatePair, ok := stat.(pwebrtc.ICECandidatePairStats); ok {
+			if candidatePair.State == pwebrtc.StatsICECandidatePairStateSucceeded {
 				for _, s := range stats {
-					if localCandidate, ok := s.(webrtc.ICECandidateStats); ok {
+					if localCandidate, ok := s.(pwebrtc.ICECandidateStats); ok {
 						if localCandidate.ID == candidatePair.LocalCandidateID {
 							switch localCandidate.CandidateType {
-							case webrtc.ICECandidateTypeRelay:
+							case pwebrtc.ICECandidateTypeRelay:
 								return "relay"
-							case webrtc.ICECandidateTypeHost:
+							case pwebrtc.ICECandidateTypeHost:
 								return "direct"
-							case webrtc.ICECandidateTypeSrflx, webrtc.ICECandidateTypePrflx:
+							case pwebrtc.ICECandidateTypeSrflx, pwebrtc.ICECandidateTypePrflx:
 								return "direct"
 							}
 						}
@@ -481,19 +474,19 @@ func (mpm *PeerManager) renegotiatePeer(peerID string) {
 	}
 
 	// Check if already renegotiating
-	if peerInfo.renegotiating {
+	if peerInfo.Renegotiating {
 		mpm.mu.Unlock()
 		log.Printf("Renegotiation: peer %s already renegotiating, skipping", peerID)
 		return
 	}
-	peerInfo.renegotiating = true
+	peerInfo.Renegotiating = true
 	mpm.mu.Unlock()
 
 	// Ensure we clear the flag when done
 	defer func() {
 		mpm.mu.Lock()
 		if pi, ok := mpm.connections[peerID]; ok {
-			pi.renegotiating = false
+			pi.Renegotiating = false
 		}
 		mpm.mu.Unlock()
 	}()
@@ -502,18 +495,18 @@ func (mpm *PeerManager) renegotiatePeer(peerID string) {
 	signalingState := peerInfo.PC.SignalingState()
 	log.Printf("Renegotiation: peer %s signaling state: %s", peerID, signalingState.String())
 
-	if signalingState != webrtc.SignalingStateStable {
+	if signalingState != pwebrtc.SignalingStateStable {
 		log.Printf("Renegotiation: peer %s not in stable state, waiting...", peerID)
 		// Wait for state to become stable (with timeout)
 		deadline := time.Now().Add(5 * time.Second)
 		for time.Now().Before(deadline) {
 			time.Sleep(100 * time.Millisecond)
 			signalingState = peerInfo.PC.SignalingState()
-			if signalingState == webrtc.SignalingStateStable {
+			if signalingState == pwebrtc.SignalingStateStable {
 				break
 			}
 		}
-		if signalingState != webrtc.SignalingStateStable {
+		if signalingState != pwebrtc.SignalingStateStable {
 			log.Printf("Renegotiation: peer %s still not stable after wait, skipping (state: %s)", peerID, signalingState.String())
 			return
 		}
@@ -523,7 +516,7 @@ func (mpm *PeerManager) renegotiatePeer(peerID string) {
 	connState := peerInfo.PC.ConnectionState()
 	log.Printf("Renegotiation: peer %s connection state: %s", peerID, connState.String())
 
-	if connState != webrtc.PeerConnectionStateConnected {
+	if connState != pwebrtc.PeerConnectionStateConnected {
 		log.Printf("Renegotiation: peer %s not connected, skipping", peerID)
 		return
 	}
@@ -541,7 +534,7 @@ func (mpm *PeerManager) renegotiatePeer(peerID string) {
 	}
 
 	// Wait for ICE gathering to complete with timeout
-	gatherComplete := webrtc.GatheringCompletePromise(peerInfo.PC)
+	gatherComplete := pwebrtc.GatheringCompletePromise(peerInfo.PC)
 	select {
 	case <-gatherComplete:
 		log.Printf("Renegotiation: ICE gathering complete for %s", peerID)
@@ -567,8 +560,8 @@ func (mpm *PeerManager) HandleRenegotiateAnswer(peerID string, sdp string) error
 		return fmt.Errorf("peer not found: %s", peerID)
 	}
 
-	answer := webrtc.SessionDescription{
-		Type: webrtc.SDPTypeAnswer,
+	answer := pwebrtc.SessionDescription{
+		Type: pwebrtc.SDPTypeAnswer,
 		SDP:  sdp,
 	}
 

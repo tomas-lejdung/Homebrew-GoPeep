@@ -1,4 +1,4 @@
-package main
+package config
 
 import (
 	"strconv"
@@ -12,7 +12,7 @@ type FPSPreset struct {
 	Description string
 }
 
-// FPS presets from lowest to highest
+// FPSPresets from lowest to highest
 var FPSPresets = []FPSPreset{
 	{Value: 15, Name: "15", Description: "low power"},
 	{Value: 30, Name: "30", Description: "standard"},

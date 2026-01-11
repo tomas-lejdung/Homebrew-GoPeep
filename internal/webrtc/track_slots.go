@@ -1,12 +1,12 @@
-package main
+package webrtc
 
 import (
 	"fmt"
 	"log"
 	"sort"
 
-	"github.com/pion/webrtc/v3"
-	sig "github.com/tomaslejdung/gopeep/pkg/signal"
+	pwebrtc "github.com/pion/webrtc/v3"
+	sig "github.com/tomaslejdung/gopeep/internal/signal"
 )
 
 // InitializeTrackSlots creates all 4 track slots upfront for instant window sharing.
@@ -27,8 +27,8 @@ func (mpm *PeerManager) InitializeTrackSlots() error {
 		streamID := fmt.Sprintf("gopeep-stream-%d", i) // Unique stream ID per slot
 
 		// Create the WebRTC track
-		track, err := webrtc.NewTrackLocalStaticSample(
-			webrtc.RTPCodecCapability{MimeType: mimeType},
+		track, err := pwebrtc.NewTrackLocalStaticSample(
+			pwebrtc.RTPCodecCapability{MimeType: mimeType},
 			trackID,
 			streamID,
 		)
@@ -108,8 +108,8 @@ func (mpm *PeerManager) RecreateSlots(newCodec CodecType) ([]SlotInfo, error) {
 		streamID := fmt.Sprintf("gopeep-stream-%d", i)
 
 		// Create new WebRTC track with new codec
-		track, err := webrtc.NewTrackLocalStaticSample(
-			webrtc.RTPCodecCapability{MimeType: mimeType},
+		track, err := pwebrtc.NewTrackLocalStaticSample(
+			pwebrtc.RTPCodecCapability{MimeType: mimeType},
 			trackID,
 			streamID,
 		)

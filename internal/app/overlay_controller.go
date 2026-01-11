@@ -1,7 +1,8 @@
-package main
+package app
 
 import (
-	"github.com/tomaslejdung/gopeep/pkg/overlay"
+	"github.com/tomaslejdung/gopeep/internal/capture"
+	"github.com/tomaslejdung/gopeep/internal/ui/overlay"
 )
 
 // OverlayController implements overlay.Controller interface.
@@ -36,9 +37,9 @@ func (c *OverlayController) IsManualMode() bool {
 }
 
 // GetFocusedWindow implements overlay.Controller.
-// It uses the existing focus detection (GetFocusedWindow from capture_multi_darwin.go)
+// It uses the existing focus detection (GetFocusedWindow from capture package)
 func (c *OverlayController) GetFocusedWindow() *overlay.FocusedWindowInfo {
-	info := GetFocusedWindow()
+	info := capture.GetFocusedWindow()
 	if info == nil {
 		return nil
 	}
