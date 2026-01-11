@@ -6,7 +6,9 @@
       "Bash(go test:*)",
       "Bash(go fmt:*)",
       "Bash(grep:*)",
-      "Bash(go doc:*)"
+      "Bash(go doc:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)"
     ]
   }
 }
