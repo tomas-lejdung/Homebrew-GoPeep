@@ -8,8 +8,7 @@ COPY go.mod go.sum ./
 RUN go mod download
 
 # Copy source code
-COPY *.go ./
-COPY pkg/ ./pkg/
+COPY internal/ ./internal/
 COPY cmd/ ./cmd/
 
 # Build static binary for the signal server
