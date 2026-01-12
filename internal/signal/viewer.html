@@ -172,12 +172,12 @@
         padding: 0;
       }
 
-      /* Thumbnails bar - compact floating pill */
+      /* Thumbnails bar - compact floating pill, centered above control bar */
       #thumbnails-bar {
         display: none;
         position: fixed;
-        bottom: calc(12px + env(safe-area-inset-bottom, 0px));
-        left: calc(12px + env(safe-area-inset-left, 0px));
+        bottom: calc(100px + env(safe-area-inset-bottom, 0px));
+        left: 50%;
         padding: 8px;
         background: rgba(9, 9, 11, 0.5);
         backdrop-filter: blur(12px) saturate(150%);
@@ -189,7 +189,7 @@
         align-items: center;
         z-index: 100;
         opacity: 0;
-        transform: translateY(20px);
+        transform: translateX(-50%) translateY(20px);
         transition:
           opacity var(--transition-normal),
           transform var(--transition-normal);
@@ -205,7 +205,7 @@
       #thumbnails-bar.visible {
         display: flex;
         opacity: 1;
-        transform: translateY(0);
+        transform: translateX(-50%) translateY(0);
       }
 
       .thumbnail-container {
@@ -789,6 +789,8 @@
         /* Base styles - positioning controlled by ID selectors */
         transform-origin: 0 0;
         transition: none;
+        will-change: transform;
+        backface-visibility: hidden;
       }
 
       .pan-zoom-content.animating {
@@ -2004,6 +2006,12 @@
         startY: 0,
         lastX: 0,
         lastY: 0,
+        // Cached dimensions for performance (avoid getBoundingClientRect in move handler)
+        containerWidth: 0,
+        containerHeight: 0,
+        maxX: 0,
+        maxY: 0,
+        rafId: null,
       };
       let canPan = false; // True when content is larger than viewport
       let minimapUpdateInterval = null;
@@ -4467,44 +4475,72 @@
           mainVideo.videoWidth &&
           mainVideo.videoHeight
         ) {
-          const containerRect = mainVideoContainer.getBoundingClientRect();
           const videoWidth = mainVideo.videoWidth;
           const videoHeight = mainVideo.videoHeight;
 
+          // Use cached dimensions during panning to avoid expensive getBoundingClientRect
+          let containerWidth, containerHeight;
+          if (panZoomState.isPanning && panZoomState.containerWidth > 0) {
+            containerWidth = panZoomState.containerWidth;
+            containerHeight = panZoomState.containerHeight;
+          } else {
+            const containerRect = mainVideoContainer.getBoundingClientRect();
+            containerWidth = containerRect.width;
+            containerHeight = containerRect.height;
+          }
+
           // Only center if video is SMALLER than viewport
           // For large videos, start at (0,0) and allow panning
-          const fitsX = videoWidth <= containerRect.width;
-          const fitsY = videoHeight <= containerRect.height;
+          const fitsX = videoWidth <= containerWidth;
+          const fitsY = videoHeight <= containerHeight;
 
-          const centerX = fitsX ? (containerRect.width - videoWidth) / 2 : 0;
-          const centerY = fitsY ? (containerRect.height - videoHeight) / 2 : 0;
+          const centerX = fitsX ? (containerWidth - videoWidth) / 2 : 0;
+          const centerY = fitsY ? (containerHeight - videoHeight) / 2 : 0;
 
           // Apply centering (for small) + pan offset (for large)
           const x = centerX + panZoomState.translateX;
           const y = centerY + panZoomState.translateY;
-          panZoomContent.style.transform = `translate(${x}px, ${y}px)`;
+          // Use translate3d for GPU compositing
+          panZoomContent.style.transform = `translate3d(${x}px, ${y}px, 0)`;
         } else {
           panZoomContent.style.transform = "";
         }
       }
 
+      // Cache for minimap to avoid recalculating on every frame
+      let minimapCache = { width: 0, height: 0, aspectRatio: 0 };
+
       function updateMinimap() {
         if (!canPan || !mainVideo.videoWidth) return;
 
         const video = mainVideo;
-        const containerRect = mainVideoContainer.getBoundingClientRect();
-        // Use intrinsic video dimensions
         const videoWidth = video.videoWidth;
         const videoHeight = video.videoHeight;
 
-        // Update minimap canvas size to match video aspect ratio
+        // Use cached container dimensions during panning
+        let containerWidth, containerHeight;
+        if (panZoomState.isPanning && panZoomState.containerWidth > 0) {
+          containerWidth = panZoomState.containerWidth;
+          containerHeight = panZoomState.containerHeight;
+        } else {
+          const containerRect = mainVideoContainer.getBoundingClientRect();
+          containerWidth = containerRect.width;
+          containerHeight = containerRect.height;
+        }
+
+        // Only update canvas size if aspect ratio changed
         const aspectRatio = videoWidth / videoHeight;
         const minimapWidth = 120;
-        const minimapHeight = minimapWidth / aspectRatio;
+        const minimapHeight = Math.round(minimapWidth / aspectRatio);
 
-        minimapCanvas.width = minimapWidth;
-        minimapCanvas.height = minimapHeight;
-        minimapCanvas.style.height = minimapHeight + "px";
+        if (minimapCache.aspectRatio !== aspectRatio) {
+          minimapCanvas.width = minimapWidth;
+          minimapCanvas.height = minimapHeight;
+          minimapCanvas.style.height = minimapHeight + "px";
+          minimapCache.aspectRatio = aspectRatio;
+          minimapCache.width = minimapWidth;
+          minimapCache.height = minimapHeight;
+        }
 
         // Draw video frame to minimap
         const ctx = minimapCanvas.getContext("2d");
@@ -4517,8 +4553,8 @@
         // Viewport position on video: 0 = top-left, negative pan shows more content
         const viewportX = Math.max(0, -panZoomState.translateX) * scaleX;
         const viewportY = Math.max(0, -panZoomState.translateY) * scaleY;
-        const viewportW = containerRect.width * scaleX;
-        const viewportH = containerRect.height * scaleY;
+        const viewportW = containerWidth * scaleX;
+        const viewportH = containerHeight * scaleY;
 
         minimapViewport.style.left = viewportX + "px";
         minimapViewport.style.top = viewportY + "px";
@@ -4547,6 +4583,13 @@
       function handlePanStart(e) {
         if (!canPan) return;
 
+        // Cache dimensions at pan start (avoid getBoundingClientRect in move handler)
+        const containerRect = mainVideoContainer.getBoundingClientRect();
+        panZoomState.containerWidth = containerRect.width;
+        panZoomState.containerHeight = containerRect.height;
+        panZoomState.maxX = Math.max(0, mainVideo.videoWidth - containerRect.width);
+        panZoomState.maxY = Math.max(0, mainVideo.videoHeight - containerRect.height);
+
         panZoomState.isPanning = true;
         panZoomContainer.classList.add("panning");
 
@@ -4561,22 +4604,25 @@
         if (!panZoomState.isPanning) return;
 
         const point = e.touches ? e.touches[0] : e;
-        const containerRect = mainVideoContainer.getBoundingClientRect();
 
-        const maxX = Math.max(0, mainVideo.videoWidth - containerRect.width);
-        const maxY = Math.max(0, mainVideo.videoHeight - containerRect.height);
-
+        // Use cached bounds for performance
         panZoomState.translateX = Math.max(
-          -maxX,
+          -panZoomState.maxX,
           Math.min(0, point.clientX - panZoomState.startX),
         );
         panZoomState.translateY = Math.max(
-          -maxY,
+          -panZoomState.maxY,
           Math.min(0, point.clientY - panZoomState.startY),
         );
 
-        applyPanZoomTransform();
-        updateMinimap();
+        // Throttle visual update to animation frame
+        if (!panZoomState.rafId) {
+          panZoomState.rafId = requestAnimationFrame(() => {
+            applyPanZoomTransform();
+            updateMinimap();
+            panZoomState.rafId = null;
+          });
+        }
 
         e.preventDefault();
       }
@@ -4584,6 +4630,13 @@
       function handlePanEnd(e) {
         panZoomState.isPanning = false;
         panZoomContainer.classList.remove("panning");
+
+        // Cancel pending RAF and do final update
+        if (panZoomState.rafId) {
+          cancelAnimationFrame(panZoomState.rafId);
+          panZoomState.rafId = null;
+        }
+        applyPanZoomTransform();
       }
 
       // Set up pan/zoom listeners
