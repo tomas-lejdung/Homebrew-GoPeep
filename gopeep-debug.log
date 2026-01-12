@@ -1,377 +1,68 @@
-2026/01/11 21:16:19 === GoPeep started at 2026-01-11T21:16:19+01:00 ===
-2026/01/11 21:16:19 Received room code from server: WILD-JUNGLE-165
-2026/01/11 21:16:19 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/H264
-2026/01/11 21:16:19 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/11 21:16:19 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/11 21:16:19 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/11 21:16:19 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/11 21:16:19 InitializeTrackSlots: All 4 track slots ready
-2026/01/11 21:16:22 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/11 21:16:22 Peer viewer-1 connection state: connecting
-2026/01/11 21:16:23 Peer viewer-1 connection state: connected
-2026/01/11 21:16:25 Overlay: Dynamically adding window 353511 (OpenCode - OpenCode) to sources
-2026/01/11 21:16:25 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/11 21:16:25 ActivateSlot: Activated video0 for window 353511 (OpenCode - OpenCode)
-2026/01/11 21:16:26 Overlay: Dynamically adding window 352464 (Ghostty - ~/localdev/gopeep) to sources
-2026/01/11 21:16:26 Quick Share: Starting with 2 windows, fullscreen=false
-2026/01/11 21:16:26 Broadcasting sharer-started to room WILD-JUNGLE-165
-2026/01/11 21:16:26 Renegotiating with 1 peers
-2026/01/11 21:16:26 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/11 21:16:26 Renegotiation: peer viewer-1 connection state: connected
-2026/01/11 21:16:26 Renegotiation: ICE gathering complete for viewer-1
-2026/01/11 21:16:26 Renegotiation: sending offer to peer viewer-1 (SDP length: 16884)
-2026/01/11 21:16:26 Renegotiation: sending offer to peer viewer-1
-2026/01/11 21:16:26 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
-2026/01/11 21:16:26 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/11 21:16:26 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/11 21:16:27 VideoToolbox: First frame encoded successfully, size=70486 bytes, keyframe=1
-2026/01/11 21:16:27 sendLoop: Writing frame 1 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:28 Overlay: Dynamically adding window 312846 (Arc - Codex) to sources
-2026/01/11 21:16:28 TUI: Adding window dynamically: 352464 (~/localdev/gopeep)
-2026/01/11 21:16:28 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/11 21:16:28 ActivateSlot: Activated video1 for window 352464 (Ghostty - ~/localdev/gopeep)
-2026/01/11 21:16:28 sendLoop: Writing frame 101 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:29 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
-2026/01/11 21:16:29 Broadcasting stream-activated: video1 (fast path)
-2026/01/11 21:16:29 Added window dynamically: video1 (windowID=352464, fastPath=true)
-2026/01/11 21:16:29 TUI: Adding window dynamically: 312846 (Codex)
-2026/01/11 21:16:29 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/11 21:16:29 ActivateSlot: Activated video2 for window 312846 (Arc - Codex)
-2026/01/11 21:16:29 VideoToolbox: First frame encoded successfully, size=87399 bytes, keyframe=1
-2026/01/11 21:16:29 sendLoop: Writing frame 1 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:30 sendLoop: Writing frame 201 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:30 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
-2026/01/11 21:16:30 Broadcasting stream-activated: video2 (fast path)
-2026/01/11 21:16:30 Added window dynamically: video2 (windowID=312846, fastPath=true)
-2026/01/11 21:16:30 VideoToolbox: First frame encoded successfully, size=48136 bytes, keyframe=1
-2026/01/11 21:16:30 sendLoop: Writing frame 1 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:31 sendLoop: Writing frame 101 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:32 sendLoop: Writing frame 301 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:32 sendLoop: Writing frame 101 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:33 sendLoop: Writing frame 201 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=183, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=185, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=187, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=189, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 sendLoop: Writing frame 401 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=191, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=193, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=195, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=197, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=199, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 sendLoop: Writing frame 201 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=201, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=203, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=207, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=209, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=211, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=213, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=283, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=215, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=285, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=217, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=287, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:34 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=219, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=289, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=221, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=291, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=293, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=226, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=228, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=298, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=231, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=300, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=232, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 sendLoop: Writing frame 301 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=234, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/11 21:16:35 Peer viewer-2 connection state: connecting
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=247, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=249, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=321, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=251, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=323, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=253, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=325, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=255, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=328, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:35 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=258, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=259, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=261, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 sendLoop: Writing frame 501 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=263, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=265, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=267, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=269, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=347, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=271, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=349, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=273, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=275, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=353, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=354, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=277, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=279, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=281, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 Peer viewer-2 connection state: connected
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=283, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=285, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=287, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=289, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=291, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:36 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=293, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=295, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=297, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=299, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 sendLoop: Writing frame 301 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=301, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=392, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=303, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=305, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=307, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 sendLoop: Writing frame 401 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=309, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=311, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=313, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=315, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=319, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=321, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=323, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=325, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=327, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:37 sendLoop: Writing frame 601 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:37 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=329, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=331, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=333, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=335, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=337, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=339, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=341, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=343, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=453, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=345, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=454, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=347, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=456, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=349, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=351, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=460, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=353, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=356, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=358, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=360, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=362, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=364, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:38 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=366, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=369, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=383, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 sendLoop: Writing frame 501 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=385, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=393, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=395, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=398, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 sendLoop: Writing frame 401 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=401, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 sendLoop: Writing frame 701 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=405, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=407, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:39 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=409, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=411, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=413, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=415, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=544, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=417, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=546, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=419, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=547, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=421, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=549, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=423, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=552, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=425, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=554, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=427, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=556, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=429, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=433, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=435, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=566, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=437, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=567, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=439, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=570, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=441, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=572, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=443, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:40 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=574, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=445, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=576, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=447, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=578, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=449, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=580, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=451, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=582, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=453, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=584, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=455, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=586, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 Peer viewer-1 connection state: disconnected
-2026/01/11 21:16:41 Peer viewer-1 connection state: closed
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=457, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=588, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=590, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=461, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=592, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=462, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=594, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): VideoToolbox H.264 encoding failed: frame=595, dimensions=1148x900, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=466, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 sendLoop: Writing frame 601 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=472, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 sendLoop: Writing frame 801 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=474, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 SetCodec: Changing codec from h264 to vp9
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): VideoToolbox H.264 encoding failed: frame=476, dimensions=2560x1408, keyframe=false, hw=true
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video0 (error #3): encoder not initialized
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video1 (error #2): encoder not initialized
-2026/01/11 21:16:41 SetCodec: Using slots path - recreating slots with new codec
-2026/01/11 21:16:41 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
-2026/01/11 21:16:41 Removed track video0 from peer viewer-2
-2026/01/11 21:16:41 Removed track video1 from peer viewer-2
-2026/01/11 21:16:41 Removed track video2 from peer viewer-2
-2026/01/11 21:16:41 Removed track video3 from peer viewer-2
-2026/01/11 21:16:41 RecreateSlots: Recreating 4 track slots with new codec video/VP9
-2026/01/11 21:16:41 RecreateSlots: Recreated slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/11 21:16:41 RecreateSlots: Recreated slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/11 21:16:41 RecreateSlots: Recreated slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/11 21:16:41 RecreateSlots: Recreated slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/11 21:16:41 RecreateSlots: Restored active slot 0 for window 353511 (OpenCode)
-2026/01/11 21:16:41 RecreateSlots: Restored active slot 1 for window 352464 (~/localdev/gopeep)
-2026/01/11 21:16:41 RecreateSlots: Restored active slot 2 for window 312846 (Codex)
-2026/01/11 21:16:41 RecreateSlots: Completed - 3 active slots restored
-2026/01/11 21:16:41 AddTrackToAllPeers: Adding track video0 to 1 peer connections
-2026/01/11 21:16:41 AddTrackToAllPeers: Adding track video0 to peer viewer-2 (state: connected)
-2026/01/11 21:16:41 AddTrackToAllPeers: Successfully added track video0 to peer viewer-2
-2026/01/11 21:16:41 AddTrackToAllPeers: Adding track video1 to 1 peer connections
-2026/01/11 21:16:41 AddTrackToAllPeers: Adding track video1 to peer viewer-2 (state: connected)
-2026/01/11 21:16:41 AddTrackToAllPeers: Successfully added track video1 to peer viewer-2
-2026/01/11 21:16:41 AddTrackToAllPeers: Adding track video2 to 1 peer connections
-2026/01/11 21:16:41 AddTrackToAllPeers: Adding track video2 to peer viewer-2 (state: connected)
-2026/01/11 21:16:41 AddTrackToAllPeers: Successfully added track video2 to peer viewer-2
-2026/01/11 21:16:41 AddTrackToAllPeers: Adding track video3 to 1 peer connections
-2026/01/11 21:16:41 AddTrackToAllPeers: Adding track video3 to peer viewer-2 (state: connected)
-2026/01/11 21:16:41 AddTrackToAllPeers: Successfully added track video3 to peer viewer-2
-2026/01/11 21:16:41 SetCodec: Created pipeline for slot video0 (window 353511)
-2026/01/11 21:16:41 SetCodec: Created pipeline for slot video1 (window 352464)
-2026/01/11 21:16:41 SetCodec: Created pipeline for slot video2 (window 312846)
-2026/01/11 21:16:41 SetCodec: Triggering renegotiation for 3 pipelines
-2026/01/11 21:16:41 SetCodec: Successfully changed codec to vp9 with 3 pipelines
-2026/01/11 21:16:41 Renegotiating with 1 peers
-2026/01/11 21:16:41 Renegotiation: peer viewer-2 signaling state: stable
-2026/01/11 21:16:41 Renegotiation: peer viewer-2 connection state: connected
-2026/01/11 21:16:41 Renegotiation: ICE gathering complete for viewer-2
-2026/01/11 21:16:41 Renegotiation: sending offer to peer viewer-2 (SDP length: 31216)
-2026/01/11 21:16:41 Renegotiation: sending offer to peer viewer-2
-2026/01/11 21:16:41 Renegotiation: sent streams-info with 3 tracks to peer viewer-2
-2026/01/11 21:16:41 Renegotiation: received answer from peer viewer-2, setting remote description
-2026/01/11 21:16:41 Renegotiation: complete for peer viewer-2, signaling state: stable, connection state: connected
-2026/01/11 21:16:41 sendLoop: Writing frame 1 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:41 sendLoop: Writing frame 1 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:41 sendLoop: Writing frame 1 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:43 sendLoop: Writing frame 101 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:43 sendLoop: Writing frame 101 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:43 sendLoop: Writing frame 101 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:45 sendLoop: Writing frame 201 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:45 sendLoop: Writing frame 201 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:45 sendLoop: Writing frame 201 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:47 sendLoop: Writing frame 301 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:47 sendLoop: Writing frame 301 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:47 sendLoop: Writing frame 301 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:48 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/11 21:16:48 Peer viewer-3 connection state: connecting
-2026/01/11 21:16:49 Peer viewer-3 connection state: connected
-2026/01/11 21:16:49 sendLoop: Writing frame 401 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:49 sendLoop: Writing frame 401 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:49 sendLoop: Writing frame 401 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:51 sendLoop: Writing frame 501 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:51 sendLoop: Writing frame 501 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:51 sendLoop: Writing frame 501 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:53 sendLoop: Writing frame 601 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:53 sendLoop: Writing frame 601 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:53 sendLoop: Writing frame 601 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:54 sendLoop: Writing frame 701 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:54 Peer viewer-2 connection state: disconnected
-2026/01/11 21:16:54 Peer viewer-2 connection state: closed
-2026/01/11 21:16:54 sendLoop: Writing frame 701 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:55 sendLoop: Writing frame 701 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:56 sendLoop: Writing frame 801 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:56 sendLoop: Writing frame 801 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:57 sendLoop: Writing frame 801 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:16:58 sendLoop: Writing frame 901 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:16:59 sendLoop: Writing frame 901 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:16:59 sendLoop: Writing frame 901 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:00 sendLoop: Writing frame 1001 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:00 sendLoop: Writing frame 1001 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:01 sendLoop: Writing frame 1001 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:02 sendLoop: Writing frame 1101 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:02 sendLoop: Writing frame 1101 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:02 sendLoop: Writing frame 1101 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:04 sendLoop: Writing frame 1201 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:04 sendLoop: Writing frame 1201 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:04 sendLoop: Writing frame 1201 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:06 sendLoop: Writing frame 1301 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:06 sendLoop: Writing frame 1301 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:06 sendLoop: Writing frame 1301 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:08 Track video0 quality mode set to quality
-2026/01/11 21:17:08 Track video1 quality mode set to quality
-2026/01/11 21:17:08 Track video2 quality mode set to quality
-2026/01/11 21:17:08 Streamer quality mode: quality
-2026/01/11 21:17:08 sendLoop: Writing frame 1401 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:08 sendLoop: Writing frame 1401 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:08 sendLoop: Writing frame 1401 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:10 sendLoop: Writing frame 1501 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:10 sendLoop: Writing frame 1501 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:10 sendLoop: Writing frame 1501 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:12 sendLoop: Writing frame 1601 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:12 sendLoop: Writing frame 1601 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:12 sendLoop: Writing frame 1601 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:14 sendLoop: Writing frame 1701 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:14 sendLoop: Writing frame 1701 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:14 sendLoop: Writing frame 1701 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:15 sendLoop: Writing frame 1801 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:16 sendLoop: Writing frame 1801 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:16 sendLoop: Writing frame 1801 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:17 sendLoop: Writing frame 1901 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:18 sendLoop: Writing frame 1901 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:18 sendLoop: Writing frame 1901 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:19 sendLoop: Writing frame 2001 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:20 sendLoop: Writing frame 2001 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:20 sendLoop: Writing frame 2001 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:21 sendLoop: Writing frame 2101 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:21 sendLoop: Writing frame 2101 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:22 sendLoop: Writing frame 2101 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:22 Track video0 quality mode set to performance
-2026/01/11 21:17:22 Track video1 quality mode set to performance
-2026/01/11 21:17:22 Track video2 quality mode set to performance
-2026/01/11 21:17:22 Streamer quality mode: performance
-2026/01/11 21:17:23 sendLoop: Writing frame 2201 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:23 sendLoop: Writing frame 2201 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:23 sendLoop: Writing frame 2201 to track video2 (windowID=312846, streamID=gopeep-stream-2)
-2026/01/11 21:17:25 sendLoop: Writing frame 2301 to track video0 (windowID=353511, streamID=gopeep-stream-0)
-2026/01/11 21:17:25 sendLoop: Writing frame 2301 to track video1 (windowID=352464, streamID=gopeep-stream-1)
-2026/01/11 21:17:25 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
-2026/01/11 21:17:25 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
-2026/01/11 21:17:25 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
-2026/01/11 21:17:25 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
-2026/01/11 21:17:25 encodeLoop: Encode failed for track video1 (error #2): encoder not initialized
-2026/01/11 21:17:25 encodeLoop: Encode failed for track video2 (error #2): encoder not initialized
-2026/01/11 21:17:25 Broadcasting stream-removed: video0
-2026/01/11 21:17:25 Broadcasting stream-removed: video1
-2026/01/11 21:17:25 Broadcasting stream-removed: video2
-2026/01/11 21:17:25 Peer viewer-3 connection state: closed
-2026/01/11 21:17:25 WebSocket read error: read tcp [::1]:60204->[::1]:8080: use of closed network connection
-2026/01/11 21:17:25 Signaling connection closed
+2026/01/12 23:36:48 === GoPeep started at 2026-01-12T23:36:48+01:00 ===
+2026/01/12 23:36:48 Received room code from server: LOUD-CAVE-434
+2026/01/12 23:36:48 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/12 23:36:48 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/12 23:36:48 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/12 23:36:48 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/12 23:36:48 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/12 23:36:48 InitializeTrackSlots: All 4 track slots ready
+2026/01/12 23:36:49 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/12 23:36:49 Peer viewer-1 connection state: connecting
+2026/01/12 23:36:50 Peer viewer-1 connection state: connected
+2026/01/12 23:36:51 Overlay: Dynamically adding window 249101 (Spotify - Spotify Premium) to sources
+2026/01/12 23:36:51 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/12 23:36:51 ActivateSlot: Activated video0 for window 249101 (Spotify - Spotify Premium)
+2026/01/12 23:36:52 Overlay: Dynamically adding window 312846 (Arc - UI) to sources
+2026/01/12 23:36:52 Quick Share: Starting with 2 windows, fullscreen=false
+2026/01/12 23:36:52 Broadcasting sharer-started to room LOUD-CAVE-434
+2026/01/12 23:36:52 Renegotiating with 1 peers
+2026/01/12 23:36:52 Renegotiation: peer viewer-1 signaling state: stable
+2026/01/12 23:36:52 Renegotiation: peer viewer-1 connection state: connected
+2026/01/12 23:36:52 Renegotiation: ICE gathering complete for viewer-1
+2026/01/12 23:36:52 Renegotiation: sending offer to peer viewer-1 (SDP length: 16888)
+2026/01/12 23:36:52 Renegotiation: sending offer to peer viewer-1
+2026/01/12 23:36:52 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
+2026/01/12 23:36:52 Renegotiation: received answer from peer viewer-1, setting remote description
+2026/01/12 23:36:52 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
+2026/01/12 23:36:53 sendLoop: Writing frame 1 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:36:54 sendLoop: Writing frame 101 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:36:56 sendLoop: Writing frame 201 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:36:58 sendLoop: Writing frame 301 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:00 sendLoop: Writing frame 401 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:01 TUI: Adding window dynamically: 312846 (UI)
+2026/01/12 23:37:01 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/12 23:37:01 ActivateSlot: Activated video1 for window 312846 (Arc - UI)
+2026/01/12 23:37:02 sendLoop: Writing frame 501 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:02 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/12 23:37:02 Broadcasting stream-activated: video1 (fast path)
+2026/01/12 23:37:02 Added window dynamically: video1 (windowID=312846, fastPath=true)
+2026/01/12 23:37:02 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:04 sendLoop: Writing frame 601 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:04 sendLoop: Writing frame 101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:06 sendLoop: Writing frame 701 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:06 sendLoop: Writing frame 201 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:07 sendLoop: Writing frame 801 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:08 sendLoop: Writing frame 301 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:09 sendLoop: Writing frame 901 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:10 sendLoop: Writing frame 401 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:11 sendLoop: Writing frame 1001 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:12 sendLoop: Writing frame 501 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:13 sendLoop: Writing frame 1101 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:14 sendLoop: Writing frame 601 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:15 sendLoop: Writing frame 1201 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:16 sendLoop: Writing frame 701 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:17 sendLoop: Writing frame 1301 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:17 sendLoop: Writing frame 801 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:19 sendLoop: Writing frame 1401 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:19 sendLoop: Writing frame 901 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:20 sendLoop: Writing frame 1501 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:21 sendLoop: Writing frame 1001 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:23 sendLoop: Writing frame 1601 to track video0 (windowID=249101, streamID=gopeep-stream-0)
+2026/01/12 23:37:23 sendLoop: Writing frame 1101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
+2026/01/12 23:37:25 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/12 23:37:25 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/12 23:37:25 Broadcasting stream-removed: video0
+2026/01/12 23:37:25 Broadcasting stream-removed: video1
+2026/01/12 23:37:25 Peer viewer-1 connection state: closed
+2026/01/12 23:37:25 WebSocket read error: read tcp [::1]:58052->[::1]:8080: use of closed network connection
+2026/01/12 23:37:25 Signaling connection closed
