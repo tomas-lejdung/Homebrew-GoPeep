@@ -1,4 +1,4 @@
-package main
+package config
 
 import "strings"
 
@@ -9,7 +9,7 @@ type QualityPreset struct {
 	Description string // short description for UI
 }
 
-// Quality presets from lowest to highest
+// QualityPresets from lowest to highest
 var QualityPresets = []QualityPreset{
 	{Name: "Low", Bitrate: 500, Description: "500 kbps"},
 	{Name: "Medium", Bitrate: 1500, Description: "1.5 Mbps"},
@@ -45,48 +45,6 @@ func QualityNameToBitrate(name string) int {
 		return preset.Bitrate
 	}
 	return QualityPresets[DefaultQualityIndex()].Bitrate
-}
-
-// QualityModeParams returns encoder parameters for quality mode based on bitrate
-// Returns: cqLevel (VP8/VP9, lower=better), crf (x264, lower=better), vtQuality (VideoToolbox, higher=better)
-func QualityModeParams(bitrate int) (cqLevel int, crf float32, vtQuality float32) {
-	switch bitrate {
-	case 500:
-		return 40, 28, 0.50
-	case 1500:
-		return 32, 24, 0.65
-	case 3000:
-		return 24, 21, 0.75
-	case 6000:
-		return 18, 18, 0.85
-	case 10000:
-		return 12, 16, 0.90
-	case 15000:
-		return 8, 14, 0.95
-	case 20000:
-		return 4, 12, 0.98
-	case 50000:
-		return 2, 10, 1.00
-	default:
-		// Interpolate for custom bitrates
-		if bitrate < 500 {
-			return 45, 30, 0.40
-		} else if bitrate < 1500 {
-			return 36, 26, 0.55
-		} else if bitrate < 3000 {
-			return 28, 22, 0.70
-		} else if bitrate < 6000 {
-			return 20, 19, 0.80
-		} else if bitrate < 10000 {
-			return 15, 17, 0.87
-		} else if bitrate < 15000 {
-			return 10, 15, 0.92
-		} else if bitrate < 20000 {
-			return 6, 13, 0.96
-		} else {
-			return 2, 10, 1.00
-		}
-	}
 }
 
 // ParseQualityFlag parses the --quality flag value and returns bitrate

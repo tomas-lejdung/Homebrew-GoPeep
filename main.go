@@ -1,16 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"runtime"
-	"sync"
 
-	"github.com/gorilla/websocket"
-	"github.com/tomaslejdung/gopeep/pkg/overlay"
-	sig "github.com/tomaslejdung/gopeep/pkg/signal"
+	"github.com/tomaslejdung/gopeep/internal/capture"
+	"github.com/tomaslejdung/gopeep/internal/config"
+	sig "github.com/tomaslejdung/gopeep/internal/signal"
+	"github.com/tomaslejdung/gopeep/internal/ui/overlay"
+	"github.com/tomaslejdung/gopeep/internal/ui/tui"
 )
 
 func init() {
@@ -21,68 +21,54 @@ func init() {
 	runtime.LockOSThread()
 }
 
-// Note: TUI mode uses RunTUI() from tui.go
+// Note: TUI mode uses tui.RunTUI() from internal/tui
 
 // DefaultSignalServer is the default remote signal server for P2P initialization
-const DefaultSignalServer = "wss://gopeep.tineestudio.se"
+const DefaultSignalServer = config.DefaultSignalServer
 
 // LocalSignalServer is the URL for local signal server
-const LocalSignalServer = "ws://localhost:8080"
+const LocalSignalServer = config.LocalSignalServer
 
-// Config holds runtime configuration
-type Config struct {
-	ServeMode   bool
-	Port        int
-	ListWindows bool
-	FPS         int
-	Quality     string
-	SignalURL   string
-	Help        bool
-
-	// TURN server configuration
-	TURNServer string
-	TURNUser   string
-	TURNPass   string
-	ForceRelay bool // Force TURN relay (no direct P2P)
-}
+// Config is aliased from the config package
+type Config = config.Config
 
 func parseFlags() Config {
-	config := Config{}
+	cfg := Config{}
 	var localMode bool
 
-	flag.BoolVar(&config.ServeMode, "serve", false, "Run as signal server only")
-	flag.BoolVar(&config.ServeMode, "s", false, "Run as signal server only (shorthand)")
+	flag.BoolVar(&cfg.ServeMode, "serve", false, "Run as signal server only")
+	flag.BoolVar(&cfg.ServeMode, "s", false, "Run as signal server only (shorthand)")
 
-	flag.IntVar(&config.Port, "port", 8080, "Signal server port")
-	flag.IntVar(&config.Port, "p", 8080, "Signal server port (shorthand)")
+	flag.IntVar(&cfg.Port, "port", 8080, "Signal server port")
+	flag.IntVar(&cfg.Port, "p", 8080, "Signal server port (shorthand)")
 
-	flag.BoolVar(&config.ListWindows, "list", false, "List available windows and exit")
-	flag.BoolVar(&config.ListWindows, "l", false, "List available windows (shorthand)")
+	flag.BoolVar(&cfg.ListWindows, "list", false, "List available windows and exit")
+	flag.BoolVar(&cfg.ListWindows, "l", false, "List available windows (shorthand)")
 
-	flag.IntVar(&config.FPS, "fps", 30, "Target framerate")
+	flag.IntVar(&cfg.FPS, "fps", 30, "Target framerate")
 
-	flag.StringVar(&config.Quality, "quality", "med", "Encoding quality (low|med|hi)")
+	flag.StringVar(&cfg.Quality, "quality", "med", "Encoding quality (low|med|hi)")
 
-	flag.StringVar(&config.SignalURL, "signal", "", "Custom signal server URL (overrides default)")
+	flag.StringVar(&cfg.SignalURL, "signal", "", "Custom signal server URL (overrides default)")
 	flag.BoolVar(&localMode, "local", false, "Use local signal server (ws://localhost:8080)")
 
 	// TURN server flags
-	flag.StringVar(&config.TURNServer, "turn", "", "TURN server URL (e.g., turn:turn.example.com:3478)")
-	flag.StringVar(&config.TURNUser, "turn-user", "", "TURN server username")
-	flag.StringVar(&config.TURNPass, "turn-pass", "", "TURN server password")
-	flag.BoolVar(&config.ForceRelay, "force-relay", false, "Force TURN relay (disable direct P2P)")
+	flag.StringVar(&cfg.TURNServer, "turn", "", "TURN server URL (e.g., turn:turn.example.com:3478)")
+	flag.StringVar(&cfg.TURNUser, "turn-user", "", "TURN server username")
+	flag.StringVar(&cfg.TURNPass, "turn-pass", "", "TURN server password")
+	flag.BoolVar(&cfg.ForceRelay, "force-relay", false, "Force TURN relay (disable direct P2P)")
 
-	flag.BoolVar(&config.Help, "help", false, "Show help")
-	flag.BoolVar(&config.Help, "h", false, "Show help (shorthand)")
+	flag.BoolVar(&cfg.Help, "help", false, "Show help")
+	flag.BoolVar(&cfg.Help, "h", false, "Show help (shorthand)")
 
 	flag.Parse()
 
 	// --local sets SignalURL to local server
 	if localMode {
-		config.SignalURL = LocalSignalServer
+		cfg.SignalURL = LocalSignalServer
 	}
 
-	return config
+	return cfg
 }
 
 func printHelp() {
@@ -139,32 +125,32 @@ TUI Controls:
 }
 
 func main() {
-	config := parseFlags()
+	cfg := parseFlags()
 
-	if config.Help {
+	if cfg.Help {
 		printHelp()
 		return
 	}
 
 	// List windows mode
-	if config.ListWindows {
+	if cfg.ListWindows {
 		listWindowsAndExit()
 		return
 	}
 
 	// Server-only mode
-	if config.ServeMode {
-		runSignalServer(config.Port)
+	if cfg.ServeMode {
+		runSignalServer(cfg.Port)
 		return
 	}
 
 	// Determine signal URL: use default if not specified
-	if config.SignalURL == "" {
-		config.SignalURL = DefaultSignalServer
+	if cfg.SignalURL == "" {
+		cfg.SignalURL = DefaultSignalServer
 	}
 
 	// Check screen recording permission on main thread (required for AppKit APIs)
-	if !HasScreenRecordingPermission() {
+	if !capture.HasScreenRecordingPermission() {
 		fmt.Println("Screen Recording permission required.")
 		fmt.Println("Please grant permission in:")
 		fmt.Println("  System Preferences > Security & Privacy > Privacy > Screen Recording")
@@ -178,7 +164,7 @@ func main() {
 	// the main dispatch queue for overlay window operations.
 	done := make(chan error, 1)
 	go func() {
-		done <- RunTUI(config)
+		done <- tui.RunTUI(cfg)
 	}()
 
 	// Run the macOS main run loop on the main thread (this goroutine).
@@ -196,7 +182,7 @@ func main() {
 }
 
 func listWindowsAndExit() {
-	windows, err := ListWindows()
+	windows, err := capture.ListWindows()
 	if err != nil {
 		log.Fatalf("Failed to list windows: %v", err)
 	}
@@ -227,172 +213,4 @@ func runSignalServer(port int) {
 	}
 }
 
-// buildStreamsInfo converts tracks to StreamInfo slice
-func buildStreamsInfo(tracks []*StreamTrackInfo) []sig.StreamInfo {
-	streams := make([]sig.StreamInfo, len(tracks))
-	for i, t := range tracks {
-		streams[i] = sig.StreamInfo{
-			TrackID:    t.TrackID,
-			WindowName: t.WindowName,
-			AppName:    t.AppName,
-			IsFocused:  t.IsFocused,
-			Width:      t.Width,
-			Height:     t.Height,
-		}
-	}
-	return streams
-}
-
-// sendOfferToViewer creates and sends an offer along with stream info to a viewer
-func sendOfferToViewer(pm *PeerManager, sharer sig.Sharer, peerID string) {
-	offer, err := pm.CreateOffer(peerID)
-	if err != nil {
-		log.Printf("Failed to create offer: %v", err)
-		return
-	}
-
-	sharer.SendToViewer(peerID, sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID})
-	sharer.SendToViewer(peerID, sig.SignalMessage{Type: "streams-info", Streams: buildStreamsInfo(pm.GetTracks())})
-}
-
-// setupSignaling is the SINGLE entry point for all signaling logic.
-// Works identically for local embedded server and remote WebSocket.
-func setupSignaling(sharer sig.Sharer, pm *PeerManager) {
-	var peerCounter int
-	var peerMu sync.Mutex
-
-	// === CALLBACK REGISTRATION (shared for all modes) ===
-
-	pm.SetICECallback(func(peerID string, candidate string) {
-		sharer.SendToViewer(peerID, sig.SignalMessage{Type: "ice", Candidate: candidate, PeerID: peerID})
-	})
-
-	pm.SetFocusChangeCallback(func(trackID string) {
-		sharer.SendToAllViewers(sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID})
-	})
-
-	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
-		sharer.SendToAllViewers(sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height})
-	})
-
-	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
-		sharer.SendToAllViewers(sig.SignalMessage{
-			Type:         "cursor-position",
-			TrackID:      trackID,
-			CursorX:      x,
-			CursorY:      y,
-			CursorInView: inView,
-		})
-	})
-
-	pm.SetRenegotiateCallback(func(peerID string, offer string) {
-		log.Printf("Renegotiation: sending offer to peer %s", peerID)
-		sharer.SendToViewer(peerID, sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID})
-		sharer.SendToViewer(peerID, sig.SignalMessage{Type: "streams-info", Streams: buildStreamsInfo(pm.GetTracks())})
-		log.Printf("Renegotiation: sent streams-info with %d tracks to peer %s", len(pm.GetTracks()), peerID)
-	})
-
-	pm.SetStreamChangeCallbacks(
-		func(info sig.StreamInfo) {
-			log.Printf("Broadcasting stream-added: %s", info.TrackID)
-			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-added", StreamAdded: &info})
-		},
-		func(trackID string) {
-			log.Printf("Broadcasting stream-removed: %s", trackID)
-			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID})
-		},
-	)
-
-	pm.SetStreamActivationCallbacks(
-		func(info sig.StreamInfo) {
-			log.Printf("Broadcasting stream-activated: %s (fast path)", info.TrackID)
-			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-activated", StreamActivated: &info})
-		},
-		func(trackID string) {
-			log.Printf("Broadcasting stream-deactivated: %s (fast path)", trackID)
-			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-deactivated", StreamDeactivated: trackID})
-		},
-	)
-
-	// === MESSAGE HANDLING LOOP (shared for all modes) ===
-
-	go func() {
-		for data := range sharer.Messages() {
-			var msg sig.SignalMessage
-			if err := json.Unmarshal(data, &msg); err != nil {
-				log.Printf("Invalid message: %v", err)
-				continue
-			}
-
-			switch msg.Type {
-			case "viewer-joined":
-				found, assignPeerID := sharer.GetUnassignedViewer()
-				if !found {
-					continue
-				}
-
-				peerMu.Lock()
-				peerCounter++
-				peerID := fmt.Sprintf("viewer-%d", peerCounter)
-				peerMu.Unlock()
-
-				assignPeerID(peerID)
-				go sendOfferToViewer(pm, sharer, peerID)
-
-			case "viewer-reoffer":
-				peerID := msg.PeerID
-				if peerID == "" {
-					log.Printf("viewer-reoffer received without peerID")
-					continue
-				}
-
-				found, assignPeerID := sharer.GetUnassignedViewer()
-				if !found {
-					log.Printf("viewer-reoffer: no unassigned viewer found for %s", peerID)
-					continue
-				}
-				assignPeerID(peerID)
-
-				log.Printf("Sending reoffer to existing viewer: %s", peerID)
-				go sendOfferToViewer(pm, sharer, peerID)
-
-			case "answer":
-				if msg.PeerID == "" {
-					continue
-				}
-				if err := pm.HandleAnswer(msg.PeerID, msg.SDP); err != nil {
-					log.Printf("Failed to handle answer for %s: %v", msg.PeerID, err)
-				}
-
-			case "ice":
-				if msg.PeerID == "" {
-					continue
-				}
-				if err := pm.AddICECandidate(msg.PeerID, msg.Candidate); err != nil {
-					log.Printf("Failed to add ICE candidate for %s: %v", msg.PeerID, err)
-				}
-
-			case "renegotiate-answer":
-				if msg.PeerID == "" {
-					continue
-				}
-				if err := pm.HandleRenegotiateAnswer(msg.PeerID, msg.SDP); err != nil {
-					log.Printf("Failed to handle renegotiate answer for %s: %v", msg.PeerID, err)
-				}
-
-			case "error":
-				log.Printf("Signal server error: %s", msg.Error)
-			}
-		}
-
-		log.Printf("Signaling connection closed")
-	}()
-}
-
-// setupRemoteSignaling sets up signaling for remote WebSocket mode
-func setupRemoteSignaling(conn *websocket.Conn, pm *PeerManager, onDisconnect func()) sig.Sharer {
-	sharer := sig.NewRemoteSharer(conn)
-	sharer.SetDisconnectHandler(onDisconnect)
-	setupSignaling(sharer, pm)
-	return sharer
-}
+// Note: Signaling functions (setupSignaling, setupRemoteSignaling) are now in internal/tui

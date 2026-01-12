@@ -6,7 +6,17 @@
       "Bash(go test:*)",
       "Bash(go fmt:*)",
       "Bash(grep:*)",
-      "Bash(go doc:*)"
+      "Bash(go doc:*)",
+      "Bash(wc:*)",
+      "Bash(find:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git status:*)",
+      "Bash(ls:*)",
+      "Bash(tree:*)",
+      "Bash(go mod graph:*)",
+      "Bash(done)",
+      "Bash(go mod tidy:*)"
     ]
   }
 }

@@ -1,4 +1,4 @@
-package main
+package capture
 
 /*
 #cgo CFLAGS: -x objective-c -fmodules
@@ -882,10 +882,6 @@ void mc_get_cursor_position(uint32_t window_id, double* out_x, double* out_y, do
         CGPoint cursorPos = CGEventGetLocation(event);
         CFRelease(event);
 
-        // Debug logging for fullscreen issues
-        // NSLog(@"Cursor check: cursor=(%.0f,%.0f) bounds=(%.0f,%.0f,%.0f,%.0f)",
-        //       cursorPos.x, cursorPos.y, bounds.origin.x, bounds.origin.y, bounds.size.width, bounds.size.height);
-
         // CGEvent coordinates are already in top-left origin (same as CGWindow)
         // Check if cursor is within window bounds
         if (cursorPos.x >= bounds.origin.x &&
@@ -906,37 +902,9 @@ import "C"
 import (
 	"fmt"
 	"sync"
-	"sync/atomic"
 	"time"
 	"unsafe"
 )
-
-// Release returns the frame buffer to the capture pool.
-// Must be called when done with zero-copy frames from GetLatestFrameBGRA.
-// Safe to call multiple times or on Go-owned frames (no-op).
-// Thread-safe: uses atomic swap to prevent double-release race conditions.
-func (f *BGRAFrame) Release() {
-	if f.slot < 0 {
-		return
-	}
-	// Atomic swap to prevent double-release if called concurrently
-	ptr := atomic.SwapPointer((*unsafe.Pointer)(unsafe.Pointer(&f.cData)), nil)
-	if ptr != nil {
-		C.mc_release_frame_buffer(C.int(f.slot), (*C.uint8_t)(ptr))
-		f.Data = nil
-		f.slot = -1
-	}
-}
-
-// MaxCaptureInstances is the maximum number of concurrent captures
-const MaxCaptureInstances = 4
-
-// CaptureInstance represents a single window capture session
-type CaptureInstance struct {
-	slot     int
-	windowID uint32
-	active   bool
-}
 
 // MultiCapture manages multiple concurrent window captures
 type MultiCapture struct {
@@ -981,7 +949,7 @@ func (mc *MultiCapture) StartWindowCapture(windowID uint32, width, height, fps i
 
 	// Check if already capturing this window
 	for _, inst := range mc.instances {
-		if inst.windowID == windowID {
+		if inst.WindowID == windowID {
 			return nil, fmt.Errorf("window %d is already being captured", windowID)
 		}
 	}
@@ -992,9 +960,9 @@ func (mc *MultiCapture) StartWindowCapture(windowID uint32, width, height, fps i
 	}
 
 	inst := &CaptureInstance{
-		slot:     int(slot),
-		windowID: windowID,
-		active:   true,
+		Slot:     int(slot),
+		WindowID: windowID,
+		Active:   true,
 	}
 	mc.instances = append(mc.instances, inst)
 
@@ -1013,7 +981,7 @@ func (mc *MultiCapture) StartDisplayCapture(width, height, fps int) (*CaptureIns
 
 	// Check if already capturing display (windowID 0)
 	for _, inst := range mc.instances {
-		if inst.windowID == 0 {
+		if inst.WindowID == 0 {
 			return nil, fmt.Errorf("display is already being captured")
 		}
 	}
@@ -1024,9 +992,9 @@ func (mc *MultiCapture) StartDisplayCapture(width, height, fps int) (*CaptureIns
 	}
 
 	inst := &CaptureInstance{
-		slot:     int(slot),
-		windowID: 0, // 0 indicates display capture
-		active:   true,
+		Slot:     int(slot),
+		WindowID: 0, // 0 indicates display capture
+		Active:   true,
 	}
 	mc.instances = append(mc.instances, inst)
 
@@ -1038,12 +1006,12 @@ func (mc *MultiCapture) StopCapture(inst *CaptureInstance) {
 	mc.mu.Lock()
 	defer mc.mu.Unlock()
 
-	if inst == nil || !inst.active {
+	if inst == nil || !inst.Active {
 		return
 	}
 
-	C.mc_stop_capture(C.int(inst.slot))
-	inst.active = false
+	C.mc_stop_capture(C.int(inst.Slot))
+	inst.Active = false
 
 	// Remove from instances list
 	for i, instance := range mc.instances {
@@ -1062,7 +1030,7 @@ func (mc *MultiCapture) StopAll() {
 	C.mc_stop_all()
 
 	for _, inst := range mc.instances {
-		inst.active = false
+		inst.Active = false
 	}
 	mc.instances = mc.instances[:0]
 }
@@ -1070,11 +1038,11 @@ func (mc *MultiCapture) StopAll() {
 // UpdateStreamSize updates the capture stream configuration with new dimensions
 // This should be called when the captured window is resized
 func (mc *MultiCapture) UpdateStreamSize(inst *CaptureInstance, newWidth, newHeight int) error {
-	if inst == nil || !inst.active {
+	if inst == nil || !inst.Active {
 		return fmt.Errorf("capture instance not active")
 	}
 
-	result := C.mc_update_stream_size(C.int(inst.slot), C.int(newWidth), C.int(newHeight))
+	result := C.mc_update_stream_size(C.int(inst.Slot), C.int(newWidth), C.int(newHeight))
 	if result != 0 {
 		return fmt.Errorf("failed to update stream size: %d", result)
 	}
@@ -1083,12 +1051,12 @@ func (mc *MultiCapture) UpdateStreamSize(inst *CaptureInstance, newWidth, newHei
 
 // GetWindowSize gets the current actual window dimensions from macOS
 func (mc *MultiCapture) GetWindowSize(inst *CaptureInstance) (width, height int, err error) {
-	if inst == nil || !inst.active {
+	if inst == nil || !inst.Active {
 		return 0, 0, fmt.Errorf("capture instance not active")
 	}
 
 	var w, h C.int
-	result := C.mc_get_window_size(C.int(inst.slot), &w, &h)
+	result := C.mc_get_window_size(C.int(inst.Slot), &w, &h)
 	if result != 0 {
 		return 0, 0, fmt.Errorf("failed to get window size")
 	}
@@ -1097,12 +1065,12 @@ func (mc *MultiCapture) GetWindowSize(inst *CaptureInstance) (width, height int,
 
 // GetConfigSize gets the current stream configuration dimensions
 func (mc *MultiCapture) GetConfigSize(inst *CaptureInstance) (width, height int, err error) {
-	if inst == nil || !inst.active {
+	if inst == nil || !inst.Active {
 		return 0, 0, fmt.Errorf("capture instance not active")
 	}
 
 	var w, h C.int
-	result := C.mc_get_config_size(C.int(inst.slot), &w, &h)
+	result := C.mc_get_config_size(C.int(inst.Slot), &w, &h)
 	if result != 0 {
 		return 0, 0, fmt.Errorf("failed to get config size")
 	}
@@ -1113,11 +1081,11 @@ func (mc *MultiCapture) GetConfigSize(inst *CaptureInstance) (width, height int,
 // IMPORTANT: Caller MUST call frame.Release() when done with the frame!
 // The frame data is backed by C memory and will be reused after Release().
 func (mc *MultiCapture) GetLatestFrameBGRA(inst *CaptureInstance, timeout time.Duration) (*BGRAFrame, error) {
-	if inst == nil || !inst.active {
+	if inst == nil || !inst.Active {
 		return nil, fmt.Errorf("capture instance not active")
 	}
 
-	frame := C.mc_get_latest_frame(C.int(inst.slot), C.int(timeout.Milliseconds()))
+	frame := C.mc_get_latest_frame(C.int(inst.Slot), C.int(timeout.Milliseconds()))
 	if frame.data == nil {
 		return nil, fmt.Errorf("no frame available")
 	}
@@ -1128,14 +1096,30 @@ func (mc *MultiCapture) GetLatestFrameBGRA(inst *CaptureInstance, timeout time.D
 	dataSize := height * bytesPerRow
 
 	// Zero-copy: wrap C memory directly with unsafe.Slice (NO allocation, NO copy!)
-	return &BGRAFrame{
+	bgraFrame := &BGRAFrame{
 		Data:   unsafe.Slice((*byte)(unsafe.Pointer(frame.data)), dataSize),
 		Width:  width,
 		Height: height,
 		Stride: bytesPerRow,
-		cData:  unsafe.Pointer(frame.data),
-		slot:   inst.slot,
-	}, nil
+		CData:  unsafe.Pointer(frame.data),
+		Slot:   inst.Slot,
+	}
+
+	// Set up the release callback
+	slot := inst.Slot
+	bgraFrame.SetReleaseFunc(func() {
+		if bgraFrame.Slot < 0 {
+			return
+		}
+		ptr := bgraFrame.AtomicSwapCData()
+		if ptr != nil {
+			C.mc_release_frame_buffer(C.int(slot), (*C.uint8_t)(ptr))
+			bgraFrame.Data = nil
+			bgraFrame.Slot = -1
+		}
+	})
+
+	return bgraFrame, nil
 }
 
 // GetTopmostWindow returns which of the given window IDs is topmost in z-order
@@ -1151,12 +1135,6 @@ func GetTopmostWindow(windowIDs []uint32) uint32 {
 	}
 
 	return uint32(C.mc_get_topmost_window(&cArray[0], C.int(len(windowIDs))))
-}
-
-// WindowBounds represents the position and size of a window on screen
-type WindowBounds struct {
-	X, Y          float64 // Position (screen coordinates, origin top-left)
-	Width, Height float64 // Size
 }
 
 // GetWindowBounds returns the bounds of a window by its ID
@@ -1178,12 +1156,6 @@ func GetWindowBounds(windowID uint32) *WindowBounds {
 		Width:  float64(w),
 		Height: float64(h),
 	}
-}
-
-// FocusedWindowInfo contains information about the OS-focused window
-type FocusedWindowInfo struct {
-	WindowID uint32
-	Bounds   WindowBounds
 }
 
 // GetFocusedWindow returns the currently OS-focused window (from frontmost app)
@@ -1208,19 +1180,6 @@ func GetFocusedWindow() *FocusedWindowInfo {
 	}
 }
 
-// ============================================================================
-// Cursor Position - Get cursor position relative to a window
-// ============================================================================
-
-// CursorPosition holds cursor coordinates relative to a window
-type CursorPosition struct {
-	X            float64 // Cursor X in window coordinates (-1 if outside window)
-	Y            float64 // Cursor Y in window coordinates (-1 if outside window)
-	WindowWidth  float64 // Window content width
-	WindowHeight float64 // Window content height
-	InWindow     bool    // Whether cursor is inside the window
-}
-
 // GetCursorPosition returns the cursor position relative to a specific window
 func GetCursorPosition(windowID uint32) CursorPosition {
 	var x, y, w, h C.double
@@ -1234,10 +1193,6 @@ func GetCursorPosition(windowID uint32) CursorPosition {
 		InWindow:     float64(x) >= 0 && float64(y) >= 0,
 	}
 }
-
-// ============================================================================
-// Focus Observer - Event-driven focus detection
-// ============================================================================
 
 // StartFocusObserver starts the NSWorkspace focus change observer
 // This provides instant notification when the user switches to a different application

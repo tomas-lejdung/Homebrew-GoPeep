@@ -1,4 +1,4 @@
-package main
+package capture
 
 /*
 #cgo CFLAGS: -x objective-c -fmodules
@@ -235,17 +235,6 @@ import (
 	"unsafe"
 )
 
-// WindowInfo represents information about a window
-type WindowInfo struct {
-	ID         uint32
-	OwnerName  string // Application name
-	WindowName string // Window title
-	X, Y       int32
-	Width      int32
-	Height     int32
-	OnScreen   bool
-}
-
 // DisplayName returns a formatted display name for the window
 func (w WindowInfo) DisplayName() string {
 	if w.WindowName != "" {
@@ -303,17 +292,6 @@ func GetWindowInfoByID(windowID uint32) *WindowInfo {
 		Height:     int32(cInfo.height),
 		OnScreen:   cInfo.on_screen != 0,
 	}
-}
-
-// BGRAFrame holds raw BGRA frame data without conversion
-type BGRAFrame struct {
-	Data   []byte
-	Width  int
-	Height int
-	Stride int
-	// Zero-copy support fields
-	cData unsafe.Pointer // Original C pointer (nil if Go-owned copy)
-	slot  int            // Capture slot for release (-1 if Go-owned)
 }
 
 // HasScreenRecordingPermission checks if screen recording is allowed

@@ -1,4 +1,4 @@
-package main
+package encoding
 
 /*
 #cgo CFLAGS: -x objective-c -fmodules
@@ -821,11 +821,9 @@ type VideoToolboxEncoder struct {
 	qualityValue        float32 // Quality value for quality mode (0.0-1.0, higher = better)
 }
 
-func init() {
-	// Override the IsVideoToolboxAvailable function
-	IsVideoToolboxAvailable = func() bool {
-		return C.is_videotoolbox_available() != 0
-	}
+// IsVideoToolboxAvailable is a function variable that can be used to check VideoToolbox availability
+var IsVideoToolboxAvailable = func() bool {
+	return C.is_videotoolbox_available() != 0
 }
 
 // NewVideoToolboxEncoder creates a new H.264 hardware encoder using VideoToolbox
