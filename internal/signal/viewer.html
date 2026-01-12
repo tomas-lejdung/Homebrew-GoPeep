@@ -2184,9 +2184,11 @@
           return;
         }
 
-        // Focus mode: Show/hide thumbnails bar (show when more than 1 stream)
+        // Focus mode: Show/hide thumbnails bar (show when more than 1 stream
+        // and the overall UI is currently visible)
         const showThumbnails = streamCount > 1;
-        thumbnailsBar.classList.toggle("visible", showThumbnails);
+        const uiVisible = document.body.classList.contains("show-ui");
+        thumbnailsBar.classList.toggle("visible", showThumbnails && uiVisible);
 
         if (!showThumbnails) {
           // Clean up all thumbnails
@@ -3813,7 +3815,8 @@
         if (layout === "focus") {
           // Switch to focus mode
           mainVideoContainer.style.display = "";
-          thumbnailsBar.classList.toggle("visible", streamOrder.length > 1);
+          const uiVisible = document.body.classList.contains("show-ui");
+          thumbnailsBar.classList.toggle("visible", streamOrder.length > 1 && uiVisible);
 
           // Ensure main video has the focused stream
           if (viewerFocusedIndex !== null && streams[viewerFocusedIndex]) {
