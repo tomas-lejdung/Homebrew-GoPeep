@@ -732,6 +732,10 @@ void mc_get_focused_window(uint32_t* out_window_id, double* out_x, double* out_y
             // Skip tiny windows
             if (bounds.size.width < 100 || bounds.size.height < 100) continue;
 
+            // Skip windows without a title (dialogs, popups, etc.)
+            NSString *windowTitle = info[(NSString *)kCGWindowName];
+            if (windowTitle == nil || windowTitle.length == 0) continue;
+
             // Found a valid focused window
             *out_window_id = windowIDNum.unsignedIntValue;
             *out_x = bounds.origin.x;
