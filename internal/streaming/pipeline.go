@@ -272,6 +272,11 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 	startTime := time.Now()
 	var ptsOffset time.Duration = 0
 
+	// Drift correction: when frames are dropped, ptsOffset falls behind real time.
+	// If drift exceeds threshold, we resync to prevent accumulating lag.
+	const maxDrift = 200 * time.Millisecond
+	var lastResyncLog time.Time
+
 	for {
 		select {
 		case <-done:
@@ -283,6 +288,25 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 
 			// Write directly to track with explicit timestamp
 			if p.trackInfo.Track != nil {
+				// Check for timestamp drift and resync if needed.
+				// Drift occurs when frames are dropped - ptsOffset doesn't advance
+				// but real time does, causing timestamps to fall behind reality.
+				actualElapsed := time.Since(startTime)
+				drift := actualElapsed - ptsOffset
+
+				if drift > maxDrift {
+					// Resync: jump ptsOffset forward to match reality
+					// This causes a one-time discontinuity but prevents accumulating lag
+					ptsOffset = actualElapsed - ef.frameDuration
+
+					// Log resync events (throttled to once per second)
+					if time.Since(lastResyncLog) > time.Second {
+						log.Printf("sendLoop: Track %s drift resync (was behind by %v)",
+							p.trackInfo.TrackID, drift)
+						lastResyncLog = time.Now()
+					}
+				}
+
 				// Calculate expected presentation time based on frame number
 				// This ensures consistent timing even if encoding delays vary
 				expectedTime := startTime.Add(ptsOffset)
