@@ -59,9 +59,8 @@ func (c *Client) handleMessage(msg SignalMessage) {
 		c.forwardToSharer(room, msg)
 	case "ice":
 		c.forwardICE(room, msg)
-	case "streams-info", "focus-change", "stream-added", "stream-removed", "stream-activated", "stream-deactivated", "size-change", "cursor-position", "sharer-started", "sharer-stopped":
-		// Forward stream metadata, cursor updates, and sharer state from sharer to all viewers
-		c.forwardToViewers(room, msg)
+	// Control messages (streams-info, focus-change, cursor-position, etc.) are now sent
+	// directly via WebRTC DataChannel - server no longer forwards them
 	case "password-update":
 		c.handlePasswordUpdate(room, msg)
 	default:

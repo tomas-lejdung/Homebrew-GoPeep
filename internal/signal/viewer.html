@@ -1987,6 +1987,7 @@
       let streamsInfo = []; // Info from sharer (video0, video1, etc.)
       let viewerFocusedIndex = null; // What the viewer has selected (index)
       let sharerFocusedIndex = null; // What the sharer has focused (index from OS)
+      let controlDC = null; // DataChannel for control messages
 
       // Layout state
       let currentLayout = "focus"; // 'focus', 'grid', or 'row'
@@ -2326,6 +2327,70 @@
         updateMultiStreamUI();
       }
 
+      // Handle control messages from either WebSocket or DataChannel
+      function handleControlMessage(msg) {
+        switch (msg.type) {
+          case "streams-info":
+            handleStreamsInfo(msg.streams || []);
+            break;
+          case "focus-change":
+            handleFocusChange(msg.focusedTrack);
+            break;
+          case "size-change":
+            handleSizeChange(msg.trackId, msg.width, msg.height);
+            break;
+          case "cursor-position":
+            handleCursorPosition(
+              msg.trackId,
+              msg.cursorX,
+              msg.cursorY,
+              msg.cursorInView,
+            );
+            break;
+          case "stream-activated":
+            console.log("Stream activated (fast path):", msg.streamActivated);
+            if (msg.streamActivated) {
+              handleStreamActivated(msg.streamActivated);
+            }
+            break;
+          case "stream-deactivated":
+            console.log("Stream deactivated (fast path):", msg.streamDeactivated);
+            if (msg.streamDeactivated) {
+              handleStreamDeactivated(msg.streamDeactivated);
+            }
+            break;
+          case "sharer-started":
+            // Received via DataChannel - we already have a working connection
+            console.log("Sharer started sharing (DataChannel)");
+            setStatus("Connected", "connected");
+            waitingEl.classList.add("hidden");
+            break;
+          case "sharer-stopped":
+            // Sharer is about to stop - reset state and show waiting
+            console.log("Sharer stopped sharing (DataChannel)");
+            setStatus("Waiting for stream", "connecting");
+            setWaitingState(
+              "Sharer Stopped",
+              "Waiting for the sharer to start sharing again...",
+            );
+            waitingEl.classList.remove("hidden");
+            streamStats.style.display = "none";
+            stopStatsCollection();
+            // Clear stream state but keep the peer connection
+            // (sharer might start sharing again without full reconnect)
+            streams = {};
+            streamOrder = [];
+            streamsInfo = [];
+            viewerFocusedIndex = null;
+            sharerFocusedIndex = null;
+            mainVideo.srcObject = null;
+            updateMultiStreamUI();
+            break;
+          default:
+            console.warn("Unknown control message:", msg.type);
+        }
+      }
+
       function handleStreamsInfo(infoArray) {
         // Store the streams info array
         streamsInfo = infoArray || [];
@@ -2344,16 +2409,29 @@
           const receivers = pc.getReceivers();
           const transceivers = pc.getTransceivers();
 
-          for (let i = 0; i < transceivers.length && i < 4; i++) {
+          let videoTrackCount = 0;
+          for (let i = 0; i < transceivers.length; i++) {
             const transceiver = transceivers[i];
             const receiver = transceiver?.receiver;
             if (receiver && receiver.track && receiver.track.kind === "video") {
               const track = receiver.track;
               const stream = new MediaStream([track]);
               const mid = transceiver.mid;
-              const midNum = mid !== null ? parseInt(mid, 10) : i;
-              const streamIndex =
-                !isNaN(midNum) && midNum >= 0 && midNum <= 3 ? midNum : i;
+              // Use mid-1 to get slot index (DataChannel has mid=0)
+              const midNum = mid !== null ? parseInt(mid, 10) : null;
+              let streamIndex;
+              if (midNum !== null && !isNaN(midNum)) {
+                streamIndex = midNum - 1; // Adjust for DataChannel
+              } else {
+                streamIndex = videoTrackCount; // Fallback to counting
+              }
+              videoTrackCount++;
+
+              // Ensure index is valid
+              if (streamIndex < 0 || streamIndex > 3) {
+                console.log("Invalid stream index:", streamIndex, "for mid:", mid);
+                continue;
+              }
 
               // Find matching streamsInfo
               const trackInfo =
@@ -2705,23 +2783,20 @@
           streamOrder,
         );
 
-        // Clear existing stream references - they will be repopulated via ontrack
-        // This is necessary for codec changes where tracks are replaced
+        // DON'T clear streams here - with pre-allocated slots, tracks are reused
+        // and ontrack won't fire again. Only clear if we actually get new tracks.
         const previousFocusIndex = viewerFocusedIndex;
         console.log(
-          "Clearing stream references for renegotiation, previous focus:",
-          previousFocusIndex,
+          "Processing renegotiation, keeping existing streams:",
+          Object.keys(streams),
+          "streamOrder:",
+          streamOrder,
         );
 
-        // Keep streamsInfo (logical stream metadata) but clear physical track references
-        for (const idx of Object.keys(streams)) {
-          streams[idx] = null;
-        }
-        streams = {};
-        streamOrder = [];
-
-        // Clear video element - will be reset when new tracks arrive
-        mainVideo.srcObject = null;
+        // We'll let ontrack update streams if new tracks arrive
+        // For pre-allocated slots with same tracks, ontrack won't fire and
+        // existing streams will be preserved
+        // Don't clear mainVideo.srcObject - keep showing current stream during renegotiation
 
         // If we're not in stable state, we need to handle this carefully
         // This can happen if we receive an offer while we have a pending local offer
@@ -3265,58 +3340,8 @@
               await handleICE(msg.candidate);
               break;
 
-            case "streams-info":
-              handleStreamsInfo(msg.streams || []);
-              break;
-
-            case "focus-change":
-              handleFocusChange(msg.focusedTrack);
-              break;
-
-            case "size-change":
-              handleSizeChange(msg.trackId, msg.width, msg.height);
-              break;
-
-            case "cursor-position":
-              handleCursorPosition(
-                msg.trackId,
-                msg.cursorX,
-                msg.cursorY,
-                msg.cursorInView,
-              );
-              break;
-
-            case "stream-added":
-              console.log("Stream added:", msg.streamAdded);
-              if (msg.streamAdded) {
-                // Add to streamsInfo - track will be associated when it arrives via ontrack
-                streamsInfo.push(msg.streamAdded);
-              }
-              break;
-
-            case "stream-removed":
-              console.log("Stream removed:", msg.streamRemoved);
-              handleStreamRemoved(msg.streamRemoved);
-              break;
-
-            case "stream-activated":
-              // Fast path: stream activated on pre-allocated slot (no renegotiation!)
-              console.log("Stream activated (fast path):", msg.streamActivated);
-              if (msg.streamActivated) {
-                handleStreamActivated(msg.streamActivated);
-              }
-              break;
-
-            case "stream-deactivated":
-              // Fast path: stream deactivated (no renegotiation!)
-              console.log(
-                "Stream deactivated (fast path):",
-                msg.streamDeactivated,
-              );
-              if (msg.streamDeactivated) {
-                handleStreamDeactivated(msg.streamDeactivated);
-              }
-              break;
+            // Note: Control messages (streams-info, focus-change, cursor-position, etc.)
+            // are now sent via DataChannel, not WebSocket. Server no longer forwards them.
 
             case "sharer-ready":
               console.log("Sharer ready - waiting for offer");
@@ -3486,8 +3511,59 @@
         streamsInfo = [];
         viewerFocusedIndex = null;
         sharerFocusedIndex = null;
+        controlDC = null;
 
         pc = new RTCPeerConnection({ iceServers });
+
+        // Handle incoming DataChannel from sharer
+        pc.ondatachannel = (event) => {
+          const dc = event.channel;
+          console.log("DataChannel received:", dc.label);
+
+          if (dc.label === "gopeep-control") {
+            controlDC = dc;
+
+            dc.onopen = () => {
+              console.log("Control DataChannel opened");
+              // DataChannel open means P2P connection is fully established
+              setStatus("Connected", "connected");
+              // If no active streams yet, show waiting state
+              if (streamOrder.length === 0) {
+                setWaitingState(
+                  "Connected",
+                  "Waiting for host to share a window...",
+                );
+                waitingEl.classList.remove("hidden");
+              } else {
+                waitingEl.classList.add("hidden");
+              }
+            };
+
+            dc.onclose = () => {
+              console.log("Control DataChannel closed");
+              controlDC = null;
+            };
+
+            dc.onerror = (err) => {
+              console.error("Control DataChannel error:", err);
+            };
+
+            dc.onmessage = (event) => {
+              try {
+                // Handle both string and ArrayBuffer data
+                let data = event.data;
+                if (data instanceof ArrayBuffer) {
+                  data = new TextDecoder().decode(data);
+                }
+                const msg = JSON.parse(data);
+                console.log("DataChannel message:", msg.type);
+                handleControlMessage(msg);
+              } catch (err) {
+                console.error("Failed to parse DataChannel message:", err, event.data);
+              }
+            };
+          }
+        };
 
         pc.ontrack = (event) => {
           const track = event.track;
@@ -3571,18 +3647,21 @@
               }
             }
 
-            // Method 2: Use transceiver mid if it maps to a valid streamsInfo entry (0-3)
-            // This works for initial connection where mids are 0,1,2,3
+            // Method 2: Use mid to determine slot index
+            // Try mid directly first (if DataChannel doesn't affect mid numbering)
+            // Then try mid-1 (if DataChannel takes mid=0)
             if (mid !== null && mid !== undefined) {
               const midNum = parseInt(mid, 10);
-              if (!isNaN(midNum) && midNum >= 0 && midNum <= 3) {
-                // Check if we have streamsInfo for this index and haven't already stored a stream here
-                const hasInfo = streamsInfo.some(
-                  (i) => i.trackId === `video${midNum}`,
-                );
-                if (hasInfo && !streams[midNum]) {
+              if (!isNaN(midNum)) {
+                // Try mid directly first
+                if (midNum >= 0 && midNum <= 3 && !streams[midNum]) {
                   streamIndex = midNum;
-                  console.log("Using transceiver mid for index:", streamIndex);
+                  console.log("Using mid directly for slot index:", streamIndex);
+                }
+                // Try mid-1 if mid didn't work (DataChannel might have mid=0)
+                else if (midNum >= 1 && midNum <= 4 && !streams[midNum - 1]) {
+                  streamIndex = midNum - 1;
+                  console.log("Using mid-1 for slot index:", streamIndex, "(mid was", midNum, ")");
                 }
               }
             }

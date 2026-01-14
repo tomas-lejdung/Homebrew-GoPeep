@@ -40,6 +40,9 @@ type PeerManager struct {
 	// Stream activation callbacks (no renegotiation needed)
 	onStreamActivated   func(info sig.StreamInfo)
 	onStreamDeactivated func(trackID string)
+
+	// DataChannel callbacks
+	onDataChannelOpen func(peerID string)
 }
 
 // NewPeerManager creates a new multi-track peer manager
@@ -148,6 +151,32 @@ func (mpm *PeerManager) CreateOffer(peerID string) (string, error) {
 		PC:      pc,
 		Senders: make(map[string]*pwebrtc.RTPSender),
 	}
+
+	// Create ordered, reliable DataChannel for control messages
+	ordered := true
+	dcOptions := &pwebrtc.DataChannelInit{
+		Ordered: &ordered,
+	}
+	dc, err := pc.CreateDataChannel("gopeep-control", dcOptions)
+	if err != nil {
+		pc.Close()
+		return "", fmt.Errorf("failed to create data channel: %w", err)
+	}
+	peerInfo.ControlDC = dc
+
+	// Set up DataChannel event handlers
+	dc.OnOpen(func() {
+		log.Printf("DataChannel opened for peer %s", peerID)
+		if mpm.onDataChannelOpen != nil {
+			mpm.onDataChannelOpen(peerID)
+		}
+	})
+	dc.OnClose(func() {
+		log.Printf("DataChannel closed for peer %s", peerID)
+	})
+	dc.OnError(func(err error) {
+		log.Printf("DataChannel error for peer %s: %v", peerID, err)
+	})
 
 	// Add tracks to the peer connection
 	// If slots are ready, add ALL pre-allocated slots (enables instant window sharing)
@@ -589,4 +618,63 @@ func (mpm *PeerManager) NotifyStreamRemoved(trackID string) {
 	if mpm.onStreamRemoved != nil {
 		mpm.onStreamRemoved(trackID)
 	}
+}
+
+// SetDataChannelOpenCallback sets callback for when DataChannel opens
+func (mpm *PeerManager) SetDataChannelOpenCallback(callback func(peerID string)) {
+	mpm.onDataChannelOpen = callback
+}
+
+// SendControlMessage sends a JSON message via DataChannel to a specific peer
+// Returns true if sent successfully, false if DataChannel is not open
+func (mpm *PeerManager) SendControlMessage(peerID string, msg interface{}) bool {
+	mpm.mu.RLock()
+	peerInfo, exists := mpm.connections[peerID]
+	mpm.mu.RUnlock()
+
+	if !exists || peerInfo.ControlDC == nil ||
+		peerInfo.ControlDC.ReadyState() != pwebrtc.DataChannelStateOpen {
+		return false
+	}
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to marshal control message: %v", err)
+		return false
+	}
+
+	if err := peerInfo.ControlDC.SendText(string(data)); err != nil {
+		log.Printf("Failed to send control message to %s: %v", peerID, err)
+		return false
+	}
+
+	return true
+}
+
+// BroadcastControlMessage sends a JSON message to all peers via DataChannel
+// Returns list of peerIDs where DataChannel was not open (need WebSocket fallback)
+func (mpm *PeerManager) BroadcastControlMessage(msg interface{}) []string {
+	mpm.mu.RLock()
+	defer mpm.mu.RUnlock()
+
+	data, err := json.Marshal(msg)
+	if err != nil {
+		log.Printf("Failed to marshal control message: %v", err)
+		return nil
+	}
+
+	var needWebSocket []string
+	dataStr := string(data)
+	for peerID, info := range mpm.connections {
+		if info.ControlDC == nil ||
+			info.ControlDC.ReadyState() != pwebrtc.DataChannelStateOpen {
+			needWebSocket = append(needWebSocket, peerID)
+			continue
+		}
+		if err := info.ControlDC.SendText(dataStr); err != nil {
+			log.Printf("Failed to send control message to %s via DC: %v", peerID, err)
+			needWebSocket = append(needWebSocket, peerID)
+		}
+	}
+	return needWebSocket
 }

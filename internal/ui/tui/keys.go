@@ -222,9 +222,9 @@ func (m Model) handleKeySpace() (tea.Model, tea.Cmd) {
 // handleKeyStop handles 's' key to stop sharing
 func (m Model) handleKeyStop() (tea.Model, tea.Cmd) {
 	if m.appCore.IsSharing() {
-		// Notify viewers that sharer has stopped so they reset and wait
-		if m.appCore.GetSharer() != nil && m.appCore.GetRoomCode() != "" {
-			m.appCore.GetSharer().SendToAllViewers(sig.SignalMessage{Type: "sharer-stopped"})
+		// Notify viewers that sharer has stopped so they reset and wait (via DataChannel)
+		if m.appCore.GetPeerManager() != nil && m.appCore.GetRoomCode() != "" {
+			m.appCore.GetPeerManager().BroadcastControlMessage(sig.SignalMessage{Type: "sharer-stopped"})
 		}
 		m.stopCapture(false)
 		m.appCore.ClearSelection()
