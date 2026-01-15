@@ -31,6 +31,7 @@ type StreamPipeline struct {
 	capture      *capture.CaptureInstance
 	encoder      encoding.VideoEncoder
 	running      bool
+	stopping     bool
 	stopChan     chan struct{}
 	fpsChanged   chan int // Signal to update FPS in run loop
 	fps          int
@@ -69,10 +70,11 @@ type StreamPipeline struct {
 
 // Run is the main pipeline loop that captures, encodes, and sends frames
 func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, onSizeChange func(trackID string, width, height int)) {
-	p.wg.Add(1)
-	defer p.wg.Done()
-
 	p.mu.Lock()
+	if p.stopping {
+		p.mu.Unlock()
+		return
+	}
 	if p.running {
 		p.mu.Unlock()
 		return
@@ -80,7 +82,10 @@ func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, o
 	p.running = true
 	p.lastStatsTime = time.Now()
 	p.lastByteCount = 0
+	p.wg.Add(3)
 	p.mu.Unlock()
+
+	defer p.wg.Done()
 
 	p.mu.Lock()
 	currentFPS := p.fps
@@ -92,10 +97,16 @@ func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, o
 	done := make(chan struct{})
 
 	// Start encoder goroutine (consumes captured frames, produces encoded frames)
-	go p.encodeLoop(done)
+	go func() {
+		defer p.wg.Done()
+		p.encodeLoop(done)
+	}()
 
 	// Start sender goroutine (consumes encoded frames, sends to WebRTC)
-	go p.sendLoop(done)
+	go func() {
+		defer p.wg.Done()
+		p.sendLoop(done)
+	}()
 
 	// Main capture loop
 	ticker := time.NewTicker(frameDuration)
@@ -264,6 +275,23 @@ func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
 	}
 }
 
+// drainCapturedFrames releases any remaining frames in the capturedFrames buffer.
+func (p *StreamPipeline) drainCapturedFrames() {
+	for {
+		select {
+		case cf, ok := <-p.capturedFrames:
+			if !ok {
+				return
+			}
+			if cf.frame != nil {
+				cf.frame.Release()
+			}
+		default:
+			return
+		}
+	}
+}
+
 // sendLoop runs in a separate goroutine, sending encoded frames to WebRTC
 func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 	frameCount := 0
@@ -359,37 +387,46 @@ func (p *StreamPipeline) GetStats() webrtc.StreamPipelineStats {
 }
 
 // Stop stops the pipeline completely (encoder and capture)
+// It waits for all goroutines to exit before returning.
 func (p *StreamPipeline) Stop() {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	alreadyStopping := p.stopping
+	if !p.stopping {
+		p.stopping = true
+		close(p.stopChan)
+	}
+	p.running = false
+	encoder := p.encoder
+	p.mu.Unlock()
 
-	if !p.running {
-		return
+	if !alreadyStopping && encoder != nil {
+		encoder.Stop()
 	}
 
-	p.running = false
-	close(p.stopChan)
-	p.encoder.Stop()
+	p.wg.Wait()
+	p.drainCapturedFrames()
 }
 
-// StopEncoderOnly stops the encoder and run loop but keeps capture alive for reuse
-// It waits for the run loop to fully exit before returning
+// StopEncoderOnly stops the encoder and run loop but keeps capture alive for reuse.
+// It waits for the run loop and goroutines to fully exit before returning.
 func (p *StreamPipeline) StopEncoderOnly() {
 	p.mu.Lock()
-	if !p.running {
-		p.mu.Unlock()
-		return
+	alreadyStopping := p.stopping
+	if !p.stopping {
+		p.stopping = true
+		close(p.stopChan)
 	}
-
 	p.running = false
-	close(p.stopChan)
-	if p.encoder != nil {
-		p.encoder.Stop()
-	}
+	encoder := p.encoder
 	p.mu.Unlock()
+
+	if !alreadyStopping && encoder != nil {
+		encoder.Stop()
+	}
 
 	// Wait for run loop to exit (outside mutex to avoid deadlock)
 	p.wg.Wait()
+	p.drainCapturedFrames()
 	// Note: capture is NOT stopped - it will be reused
 }
 
