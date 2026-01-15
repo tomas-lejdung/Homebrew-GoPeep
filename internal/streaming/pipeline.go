@@ -269,15 +269,6 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 	frameCount := 0
 	lastSendTime := time.Now()
 
-	// Get target frame duration for clamping
-	p.mu.Lock()
-	targetDuration := time.Second / time.Duration(p.fps)
-	p.mu.Unlock()
-
-	// Clamp bounds: min half frame, max 5x frame (allows catch-up without huge jumps)
-	minDuration := targetDuration / 2
-	maxDuration := targetDuration * 5
-
 	for {
 		select {
 		case <-done:
@@ -306,6 +297,14 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 			}
 
 			if p.trackInfo.Track != nil {
+				// Get current FPS for clamp bounds (may change at runtime via SetFPS)
+				p.mu.Lock()
+				currentFPS := p.fps
+				p.mu.Unlock()
+				targetDuration := time.Second / time.Duration(currentFPS)
+				minDuration := targetDuration / 2
+				maxDuration := targetDuration * 5
+
 				// Use real elapsed time as Duration (pion uses this for RTP timestamps)
 				// This keeps RTP timeline aligned with wall clock
 				elapsed := time.Since(lastSendTime)
