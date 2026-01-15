@@ -267,15 +267,16 @@ func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
 // sendLoop runs in a separate goroutine, sending encoded frames to WebRTC
 func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 	frameCount := 0
-	// Track presentation timestamp to prevent drift
-	// Without explicit PTS, WebRTC uses arrival time which causes lag accumulation
-	startTime := time.Now()
-	var ptsOffset time.Duration = 0
+	lastSendTime := time.Now()
 
-	// Drift correction: when frames are dropped, ptsOffset falls behind real time.
-	// If drift exceeds threshold, we resync to prevent accumulating lag.
-	const maxDrift = 200 * time.Millisecond
-	var lastResyncLog time.Time
+	// Get target frame duration for clamping
+	p.mu.Lock()
+	targetDuration := time.Second / time.Duration(p.fps)
+	p.mu.Unlock()
+
+	// Clamp bounds: min half frame, max 5x frame (allows catch-up without huge jumps)
+	minDuration := targetDuration / 2
+	maxDuration := targetDuration * 5
 
 	for {
 		select {
@@ -286,42 +287,52 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 				return
 			}
 
-			// Write directly to track with explicit timestamp
-			if p.trackInfo.Track != nil {
-				// Check for timestamp drift and resync if needed.
-				// Drift occurs when frames are dropped - ptsOffset doesn't advance
-				// but real time does, causing timestamps to fall behind reality.
-				actualElapsed := time.Since(startTime)
-				drift := actualElapsed - ptsOffset
-
-				if drift > maxDrift {
-					// Resync: jump ptsOffset forward to match reality
-					// This causes a one-time discontinuity but prevents accumulating lag
-					ptsOffset = actualElapsed - ef.frameDuration
-
-					// Log resync events (throttled to once per second)
-					if time.Since(lastResyncLog) > time.Second {
-						log.Printf("sendLoop: Track %s drift resync (was behind by %v)",
-							p.trackInfo.TrackID, drift)
-						lastResyncLog = time.Now()
+			// Drain channel to get newest frame, dropping stale ones
+			// This prevents accumulating latency when encoder falls behind
+			newest := ef
+			dropped := uint16(0)
+		drainLoop:
+			for {
+				select {
+				case newer, ok := <-p.encodedFrames:
+					if !ok {
+						break drainLoop
 					}
+					newest = newer
+					dropped++
+				default:
+					break drainLoop
+				}
+			}
+
+			if p.trackInfo.Track != nil {
+				// Use real elapsed time as Duration (pion uses this for RTP timestamps)
+				// This keeps RTP timeline aligned with wall clock
+				elapsed := time.Since(lastSendTime)
+
+				// Clamp to reasonable bounds to avoid jitter issues
+				sampleDuration := elapsed
+				if sampleDuration < minDuration {
+					sampleDuration = minDuration
+				}
+				if sampleDuration > maxDuration {
+					sampleDuration = maxDuration
 				}
 
-				// Calculate expected presentation time based on frame number
-				// This ensures consistent timing even if encoding delays vary
-				expectedTime := startTime.Add(ptsOffset)
-
 				p.trackInfo.Track.WriteSample(media.Sample{
-					Data:      ef.data,
-					Duration:  ef.frameDuration,
-					Timestamp: expectedTime, // Explicit PTS prevents timestamp drift
+					Data:               newest.data,
+					Duration:           sampleDuration,
+					PrevDroppedPackets: dropped,
 				})
-				ptsOffset += ef.frameDuration // Advance PTS by frame duration
+
+				lastSendTime = time.Now()
 				frameCount++
+
 				// Log every 100 frames to confirm which track is receiving data
 				if frameCount%100 == 1 {
-					log.Printf("sendLoop: Writing frame %d to track %s (windowID=%d, streamID=%s)",
-						frameCount, p.trackInfo.TrackID, p.trackInfo.WindowID, p.trackInfo.Track.StreamID())
+					log.Printf("sendLoop: Writing frame %d to track %s (windowID=%d, streamID=%s, duration=%v, dropped=%d)",
+						frameCount, p.trackInfo.TrackID, p.trackInfo.WindowID, p.trackInfo.Track.StreamID(),
+						sampleDuration, dropped)
 				}
 			}
 		}
