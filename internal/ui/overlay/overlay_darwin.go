@@ -1131,9 +1131,12 @@ static BOOL runOnMainBool(BOOL (^block)(void)) {
         return block();
     }
     __block BOOL result = NO;
-    dispatch_sync(dispatch_get_main_queue(), ^{
+    dispatch_semaphore_t sem = dispatch_semaphore_create(0);
+    dispatch_async(dispatch_get_main_queue(), ^{
         result = block();
+        dispatch_semaphore_signal(sem);
     });
+    dispatch_semaphore_wait(sem, dispatch_time(DISPATCH_TIME_NOW, 500 * NSEC_PER_MSEC));
     return result;
 }
 

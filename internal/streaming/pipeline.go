@@ -69,7 +69,11 @@ type StreamPipeline struct {
 }
 
 // Run is the main pipeline loop that captures, encodes, and sends frames
-func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, onSizeChange func(trackID string, width, height int)) {
+func (p *StreamPipeline) Run(
+	pm *webrtc.PeerManager,
+	mc *capture.MultiCapture,
+	onSizeChange func(trackID string, width, height int),
+) {
 	p.mu.Lock()
 	if p.stopping {
 		p.mu.Unlock()
@@ -82,10 +86,10 @@ func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, o
 	p.running = true
 	p.lastStatsTime = time.Now()
 	p.lastByteCount = 0
-	p.wg.Add(3)
+	p.wg.Add(1) // Track Run() itself; child goroutines use wg.Go()
 	p.mu.Unlock()
 
-	defer p.wg.Done()
+	defer p.wg.Done() // For Run() completion
 
 	p.mu.Lock()
 	currentFPS := p.fps
@@ -97,16 +101,14 @@ func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, o
 	done := make(chan struct{})
 
 	// Start encoder goroutine (consumes captured frames, produces encoded frames)
-	go func() {
-		defer p.wg.Done()
+	p.wg.Go(func() {
 		p.encodeLoop(done)
-	}()
+	})
 
 	// Start sender goroutine (consumes encoded frames, sends to WebRTC)
-	go func() {
-		defer p.wg.Done()
+	p.wg.Go(func() {
 		p.sendLoop(done)
-	}()
+	})
 
 	// Main capture loop
 	ticker := time.NewTicker(frameDuration)
@@ -161,7 +163,13 @@ func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, o
 					if err == nil && actualW > 0 && actualH > 0 {
 						configW, configH, err := mc.GetConfigSize(cap)
 						if err == nil && (configW != actualW || configH != actualH) {
-							log.Printf("Window resized: config %dx%d -> actual %dx%d, updating stream", configW, configH, actualW, actualH)
+							log.Printf(
+								"Window resized: config %dx%d -> actual %dx%d, updating stream",
+								configW,
+								configH,
+								actualW,
+								actualH,
+							)
 							if err := mc.UpdateStreamSize(cap, actualW, actualH); err != nil {
 								log.Printf("Failed to update stream size: %v", err)
 							}
@@ -254,7 +262,12 @@ func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
 				errCount := atomic.LoadUint64(&p.encodeErrors)
 				atomic.AddUint64(&p.encodeErrors, 1)
 				if errCount < 5 {
-					log.Printf("encodeLoop: Encode failed for track %s (error #%d): %v", p.trackInfo.TrackID, errCount+1, err)
+					log.Printf(
+						"encodeLoop: Encode failed for track %s (error #%d): %v",
+						p.trackInfo.TrackID,
+						errCount+1,
+						err,
+					)
 				}
 				continue
 			}
@@ -357,9 +370,15 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 
 				// Log every 100 frames to confirm which track is receiving data
 				if frameCount%100 == 1 {
-					log.Printf("sendLoop: Writing frame %d to track %s (windowID=%d, streamID=%s, duration=%v, dropped=%d)",
-						frameCount, p.trackInfo.TrackID, p.trackInfo.WindowID, p.trackInfo.Track.StreamID(),
-						sampleDuration, dropped)
+					log.Printf(
+						"sendLoop: Writing frame %d to track %s (windowID=%d, streamID=%s, duration=%v, dropped=%d)",
+						frameCount,
+						p.trackInfo.TrackID,
+						p.trackInfo.WindowID,
+						p.trackInfo.Track.StreamID(),
+						sampleDuration,
+						dropped,
+					)
 				}
 			}
 		}
@@ -485,7 +504,11 @@ func (p *StreamPipeline) SetBitrate(focusBitrate, bgBitrate int) {
 }
 
 // SetFPS updates the FPS for this pipeline (requires capture restart)
-func (p *StreamPipeline) SetFPS(newFPS int, mc *capture.MultiCapture, codecType encoding.CodecType) error {
+func (p *StreamPipeline) SetFPS(
+	newFPS int,
+	mc *capture.MultiCapture,
+	codecType encoding.CodecType,
+) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 

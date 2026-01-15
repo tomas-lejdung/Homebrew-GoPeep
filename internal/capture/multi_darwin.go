@@ -440,10 +440,11 @@ void mc_stop_capture(int slot) {
     }
 
     int wait_count = 0;
+    int in_use = 0;
     while (wait_count < 100) {
         pthread_mutex_lock(&inst->buffer_mutex);
         int active = inst->callbacks_active;
-        int in_use = 0;
+        in_use = 0;
         for (int i = 0; i < 3; i++) {
             if (inst->buffer_state[i] == BUFFER_IN_USE || inst->buffer_state[i] == BUFFER_WRITING) {
                 in_use = 1;
@@ -458,17 +459,19 @@ void mc_stop_capture(int slot) {
         wait_count++;
     }
 
-    // Reset buffer state; keep buffers allocated to avoid free races
-    pthread_mutex_lock(&inst->buffer_mutex);
-    for (int i = 0; i < 3; i++) {
-        inst->buffer_state[i] = BUFFER_FREE;
-        memset(&inst->frame_info[i], 0, sizeof(MCFrameData));
+    if (!in_use) {
+        // Reset buffer state; keep buffers allocated to avoid free races
+        pthread_mutex_lock(&inst->buffer_mutex);
+        for (int i = 0; i < 3; i++) {
+            inst->buffer_state[i] = BUFFER_FREE;
+            memset(&inst->frame_info[i], 0, sizeof(MCFrameData));
+        }
+        inst->ready_idx = -1;
+        inst->write_idx = 0;
+        inst->shutting_down = 0;
+        inst->callbacks_active = 0;
+        pthread_mutex_unlock(&inst->buffer_mutex);
     }
-    inst->ready_idx = -1;
-    inst->write_idx = 0;
-    inst->shutting_down = 0;
-    inst->callbacks_active = 0;
-    pthread_mutex_unlock(&inst->buffer_mutex);
 
     inst->active = 0;
     inst->window_id = 0;
