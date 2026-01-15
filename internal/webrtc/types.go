@@ -71,6 +71,7 @@ type PeerInfo struct {
 	PC            *pwebrtc.PeerConnection
 	Senders       map[string]*pwebrtc.RTPSender // trackID -> sender
 	Renegotiating bool                          // Whether renegotiation is in progress
+	ControlDC     *pwebrtc.DataChannel          // DataChannel for control messages
 }
 
 // TrackSlot represents a pre-allocated track slot for instant window sharing

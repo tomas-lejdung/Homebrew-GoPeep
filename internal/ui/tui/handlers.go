@@ -91,10 +91,10 @@ func (m Model) handleCaptureStarted(msg captureStartedMsg) (tea.Model, tea.Cmd) 
 	m.showStats = true
 	m.syncOverlay()
 
-	// Notify viewers that sharer has started
-	if m.appCore.GetSharer() != nil && m.appCore.GetRoomCode() != "" {
+	// Notify viewers that sharer has started (via DataChannel)
+	if m.appCore.GetPeerManager() != nil && m.appCore.GetRoomCode() != "" {
 		log.Printf("Broadcasting sharer-started to room %s", m.appCore.GetRoomCode())
-		m.appCore.GetSharer().SendToAllViewers(sig.SignalMessage{Type: "sharer-started"})
+		m.appCore.GetPeerManager().BroadcastControlMessage(sig.SignalMessage{Type: "sharer-started"})
 	}
 
 	// If in auto-share mode, start fast tick for rapid focus detection

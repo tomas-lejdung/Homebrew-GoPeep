@@ -573,7 +573,8 @@ func buildStreamsInfo(tracks []*webrtc.StreamTrackInfo) []sig.StreamInfo {
 	return streams
 }
 
-// sendOfferToViewer creates and sends an offer along with stream info to a viewer
+// sendOfferToViewer creates and sends an offer to a viewer
+// Note: streams-info is sent via DataChannel once it opens (see SetDataChannelOpenCallback)
 func sendOfferToViewer(pm *webrtc.PeerManager, sharer sig.Sharer, peerID string) {
 	offer, err := pm.CreateOffer(peerID)
 	if err != nil {
@@ -582,7 +583,12 @@ func sendOfferToViewer(pm *webrtc.PeerManager, sharer sig.Sharer, peerID string)
 	}
 
 	sharer.SendToViewer(peerID, sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID})
-	sharer.SendToViewer(peerID, sig.SignalMessage{Type: "streams-info", Streams: buildStreamsInfo(pm.GetTracks())})
+}
+
+// sendControlToAllViewers sends control messages via DataChannel to all connected peers
+// Note: Server no longer forwards control messages - they go directly via DataChannel
+func sendControlToAllViewers(pm *webrtc.PeerManager, msg sig.SignalMessage) {
+	pm.BroadcastControlMessage(msg)
 }
 
 // setupSignaling is the SINGLE entry point for all signaling logic
@@ -595,15 +601,15 @@ func setupSignaling(sharer sig.Sharer, pm *webrtc.PeerManager) {
 	})
 
 	pm.SetFocusChangeCallback(func(trackID string) {
-		sharer.SendToAllViewers(sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID})
+		sendControlToAllViewers(pm, sig.SignalMessage{Type: "focus-change", FocusedTrack: trackID})
 	})
 
 	pm.SetSizeChangeCallback(func(trackID string, width, height int) {
-		sharer.SendToAllViewers(sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height})
+		sendControlToAllViewers(pm, sig.SignalMessage{Type: "size-change", TrackID: trackID, Width: width, Height: height})
 	})
 
 	pm.SetCursorCallback(func(trackID string, x, y float64, inView bool) {
-		sharer.SendToAllViewers(sig.SignalMessage{
+		sendControlToAllViewers(pm, sig.SignalMessage{
 			Type:         "cursor-position",
 			TrackID:      trackID,
 			CursorX:      x,
@@ -615,29 +621,41 @@ func setupSignaling(sharer sig.Sharer, pm *webrtc.PeerManager) {
 	pm.SetRenegotiateCallback(func(peerID string, offer string) {
 		log.Printf("Renegotiation: sending offer to peer %s", peerID)
 		sharer.SendToViewer(peerID, sig.SignalMessage{Type: "offer", SDP: offer, PeerID: peerID})
-		sharer.SendToViewer(peerID, sig.SignalMessage{Type: "streams-info", Streams: buildStreamsInfo(pm.GetTracks())})
-		log.Printf("Renegotiation: sent streams-info with %d tracks to peer %s", len(pm.GetTracks()), peerID)
+		// Send streams-info via DataChannel (it's already open at this point)
+		streams := buildStreamsInfo(pm.GetTracks())
+		if len(streams) > 0 {
+			pm.SendControlMessage(peerID, sig.SignalMessage{Type: "streams-info", Streams: streams})
+		}
+	})
+
+	// Send streams-info via DataChannel when it opens for a peer
+	pm.SetDataChannelOpenCallback(func(peerID string) {
+		log.Printf("DataChannel opened for %s, sending streams-info", peerID)
+		streams := buildStreamsInfo(pm.GetTracks())
+		if len(streams) > 0 {
+			pm.SendControlMessage(peerID, sig.SignalMessage{Type: "streams-info", Streams: streams})
+		}
 	})
 
 	pm.SetStreamChangeCallbacks(
 		func(info sig.StreamInfo) {
 			log.Printf("Broadcasting stream-added: %s", info.TrackID)
-			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-added", StreamAdded: &info})
+			sendControlToAllViewers(pm, sig.SignalMessage{Type: "stream-added", StreamAdded: &info})
 		},
 		func(trackID string) {
 			log.Printf("Broadcasting stream-removed: %s", trackID)
-			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID})
+			sendControlToAllViewers(pm, sig.SignalMessage{Type: "stream-removed", StreamRemoved: trackID})
 		},
 	)
 
 	pm.SetStreamActivationCallbacks(
 		func(info sig.StreamInfo) {
 			log.Printf("Broadcasting stream-activated: %s (fast path)", info.TrackID)
-			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-activated", StreamActivated: &info})
+			sendControlToAllViewers(pm, sig.SignalMessage{Type: "stream-activated", StreamActivated: &info})
 		},
 		func(trackID string) {
 			log.Printf("Broadcasting stream-deactivated: %s (fast path)", trackID)
-			sharer.SendToAllViewers(sig.SignalMessage{Type: "stream-deactivated", StreamDeactivated: trackID})
+			sendControlToAllViewers(pm, sig.SignalMessage{Type: "stream-deactivated", StreamDeactivated: trackID})
 		},
 	)
 

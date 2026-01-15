@@ -42,7 +42,12 @@ func (mpm *PeerManager) InitializeTrackSlots() error {
 			Active:  false,
 			Info:    nil,
 		}
-		log.Printf("InitializeTrackSlots: Created slot %d (trackID=%s, streamID=%s)", i, trackID, streamID)
+		log.Printf(
+			"InitializeTrackSlots: Created slot %d (trackID=%s, streamID=%s)",
+			i,
+			trackID,
+			streamID,
+		)
 	}
 
 	// Set trackCounter to 4 so legacy AddTrack won't conflict with slot IDs
@@ -123,7 +128,12 @@ func (mpm *PeerManager) RecreateSlots(newCodec CodecType) ([]SlotInfo, error) {
 			Active:  false,
 			Info:    nil,
 		}
-		log.Printf("RecreateSlots: Recreated slot %d (trackID=%s, streamID=%s)", i, trackID, streamID)
+		log.Printf(
+			"RecreateSlots: Recreated slot %d (trackID=%s, streamID=%s)",
+			i,
+			trackID,
+			streamID,
+		)
 	}
 
 	// Restore active slots with their window info
@@ -150,7 +160,12 @@ func (mpm *PeerManager) RecreateSlots(newCodec CodecType) ([]SlotInfo, error) {
 			Track:      slot.Track,
 			IsFocused:  active.isFocused,
 		})
-		log.Printf("RecreateSlots: Restored active slot %d for window %d (%s)", active.slotIndex, active.windowID, active.windowName)
+		log.Printf(
+			"RecreateSlots: Restored active slot %d for window %d (%s)",
+			active.slotIndex,
+			active.windowID,
+			active.windowName,
+		)
 	}
 
 	log.Printf("RecreateSlots: Completed - %d active slots restored", len(result))
@@ -160,7 +175,11 @@ func (mpm *PeerManager) RecreateSlots(newCodec CodecType) ([]SlotInfo, error) {
 // ActivateSlot activates a pre-allocated slot for a window.
 // Returns the activated slot with its StreamTrackInfo populated.
 // This is the fast path for adding windows - no renegotiation needed.
-func (mpm *PeerManager) ActivateSlot(windowID uint32, windowName, appName string, width, height int) (*TrackSlot, error) {
+func (mpm *PeerManager) ActivateSlot(
+	windowID uint32,
+	windowName, appName string,
+	width, height int,
+) (*TrackSlot, error) {
 	mpm.mu.Lock()
 	defer mpm.mu.Unlock()
 
@@ -210,7 +229,13 @@ func (mpm *PeerManager) ActivateSlot(windowID uint32, windowName, appName string
 		IsFocused:  activeCount == 0, // First active slot is focused by default
 	}
 
-	log.Printf("ActivateSlot: Activated %s for window %d (%s - %s)", slot.TrackID, windowID, appName, windowName)
+	log.Printf(
+		"ActivateSlot: Activated %s for window %d (%s - %s)",
+		slot.TrackID,
+		windowID,
+		appName,
+		windowName,
+	)
 	return slot, nil
 }
 
@@ -262,7 +287,10 @@ func (mpm *PeerManager) GetActiveStreamsInfo() []sig.StreamInfo {
 }
 
 // SetStreamActivationCallbacks sets callbacks for stream activation/deactivation events
-func (mpm *PeerManager) SetStreamActivationCallbacks(onActivated func(info sig.StreamInfo), onDeactivated func(trackID string)) {
+func (mpm *PeerManager) SetStreamActivationCallbacks(
+	onActivated func(info sig.StreamInfo),
+	onDeactivated func(trackID string),
+) {
 	mpm.onStreamActivated = onActivated
 	mpm.onStreamDeactivated = onDeactivated
 }
@@ -306,7 +334,10 @@ func (mpm *PeerManager) GetSlot(index int) *TrackSlot {
 
 // AddTrack creates a new video track for a window.
 // This is a legacy function - use ActivateSlot for the fast path.
-func (mpm *PeerManager) AddTrack(windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
+func (mpm *PeerManager) AddTrack(
+	windowID uint32,
+	windowName, appName string,
+) (*StreamTrackInfo, error) {
 	// Delegate to ActivateSlot which uses pre-allocated slots
 	slot, err := mpm.ActivateSlot(windowID, windowName, appName, 0, 0)
 	if err != nil {
@@ -317,7 +348,11 @@ func (mpm *PeerManager) AddTrack(windowID uint32, windowName, appName string) (*
 
 // AddTrackWithID creates a track with a specific ID.
 // This is a legacy function - use ActivateSlot for the fast path.
-func (mpm *PeerManager) AddTrackWithID(trackID string, windowID uint32, windowName, appName string) (*StreamTrackInfo, error) {
+func (mpm *PeerManager) AddTrackWithID(
+	trackID string,
+	windowID uint32,
+	windowName, appName string,
+) (*StreamTrackInfo, error) {
 	// Since slots have fixed IDs, we can't create a specific ID
 	// Just delegate to ActivateSlot
 	slot, err := mpm.ActivateSlot(windowID, windowName, appName, 0, 0)
