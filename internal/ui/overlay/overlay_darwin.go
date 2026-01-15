@@ -99,6 +99,9 @@ static const CGFloat kStatusDotSpacing = 4.0;
 static const CGFloat kStatusPadding = 8.0;
 static const CGFloat kStatusCornerMargin = 20.0;
 
+static void runOnMain(void (^block)(void));
+static BOOL runOnMainBool(BOOL (^block)(void));
+
 // Fullscreen button dimensions
 static const CGFloat kFullscreenButtonHeight = 26.0;
 static const CGFloat kFullscreenButtonSpacing = 6.0;  // Gap between status row and button
@@ -275,6 +278,12 @@ static void updateStatusIndicator(int selectedCount, BOOL isSharing) {
 
 // Start animation to opposite corner (called from click handler)
 static void startCornerAnimation(BOOL toRight) {
+    if (![NSThread isMainThread]) {
+        runOnMain(^{
+            startCornerAnimation(toRight);
+        });
+        return;
+    }
     if (!g_overlayWindow || !atomic_load(&g_initialized)) return;
 
     // Get current X position
@@ -349,6 +358,12 @@ static BOOL isPointOverFullscreenButton(CGPoint cgPoint) {
 
 // Update fullscreen button appearance based on state and hover
 static void updateFullscreenButton(BOOL isFullscreen, BOOL isHovered) {
+    if (![NSThread isMainThread]) {
+        runOnMain(^{
+            updateFullscreenButton(isFullscreen, isHovered);
+        });
+        return;
+    }
     if (!g_fullscreenButtonView || !g_fullscreenLabel) return;
 
     // Update background color - clear hover effect with lighter background
@@ -395,6 +410,12 @@ static BOOL isPointOverClearButton(CGPoint cgPoint) {
 
 // Update clear button appearance based on hover state
 static void updateClearButton(BOOL isHovered) {
+    if (![NSThread isMainThread]) {
+        runOnMain(^{
+            updateClearButton(isHovered);
+        });
+        return;
+    }
     if (!g_clearButtonView || !g_clearButtonLabel) return;
 
     if (isHovered) {
@@ -677,15 +698,12 @@ static void doFrameOnMainThread(void) {
     [[NSRunLoop currentRunLoop] runUntilDate:[NSDate dateWithTimeIntervalSinceNow:0.001]];
 }
 
-// Event tap callback for mouse clicks and movement
-static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
-    if (type == kCGEventLeftMouseDown) {
-        CGPoint clickPoint = CGEventGetLocation(event);
-
+static BOOL handleMouseClickOnMain(CGPoint clickPoint) {
+    return runOnMainBool(^BOOL{
         // Check for fullscreen button click first (status window)
         if (isPointOverFullscreenButton(clickPoint)) {
             goFullscreenButtonClicked();
-            return NULL; // Consume the click
+            return YES;
         }
 
         // Check for clear all button click (status window)
@@ -693,9 +711,10 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
         if (isPointOverClearButton(clickPoint)) {
             if (goIsManualMode()) {
                 goClearButtonClicked();
-                return NULL; // Consume the click
+                return YES;
             }
             // In AUTO mode, don't consume - let it pass through
+            return NO;
         }
 
         // Check for overlay button click (window share button)
@@ -708,12 +727,17 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
                     // Toggle selection
                     goOverlayButtonClicked(g_currentWindowID);
                 }
-                return NULL; // Consume the click
+                return YES;
             }
         }
-    } else if (type == kCGEventMouseMoved) {
+
+        return NO;
+    });
+}
+
+static void handleMouseMoveOnMain(CGPoint mousePoint) {
+    runOnMain(^{
         // Track hover state for fullscreen button
-        CGPoint mousePoint = CGEventGetLocation(event);
         BOOL wasHovered = g_fullscreenButtonHovered;
         g_fullscreenButtonHovered = isPointOverFullscreenButton(mousePoint);
 
@@ -732,6 +756,19 @@ static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CG
         if (wasClearHovered != g_clearButtonHovered) {
             updateClearButton(g_clearButtonHovered);
         }
+    });
+}
+
+// Event tap callback for mouse clicks and movement
+static CGEventRef mouseEventCallback(CGEventTapProxy proxy, CGEventType type, CGEventRef event, void *refcon) {
+    if (type == kCGEventLeftMouseDown) {
+        CGPoint clickPoint = CGEventGetLocation(event);
+        if (handleMouseClickOnMain(clickPoint)) {
+            return NULL; // Consume the click
+        }
+    } else if (type == kCGEventMouseMoved) {
+        CGPoint mousePoint = CGEventGetLocation(event);
+        handleMouseMoveOnMain(mousePoint);
     } else if (type == kCGEventTapDisabledByTimeout || type == kCGEventTapDisabledByUserInput) {
         if (g_eventTap) {
             CGEventTapEnable(g_eventTap, true);
@@ -1079,6 +1116,25 @@ static void destroyOverlayOnMainThread(void) {
 
 static void setOverlayEnabled(BOOL enabled) {
     atomic_store(&g_overlayEnabled, enabled);
+}
+
+static void runOnMain(void (^block)(void)) {
+    if ([NSThread isMainThread]) {
+        block();
+        return;
+    }
+    dispatch_async(dispatch_get_main_queue(), block);
+}
+
+static BOOL runOnMainBool(BOOL (^block)(void)) {
+    if ([NSThread isMainThread]) {
+        return block();
+    }
+    __block BOOL result = NO;
+    dispatch_sync(dispatch_get_main_queue(), ^{
+        result = block();
+    });
+    return result;
 }
 
 // Main run loop support - needed because Go doesn't automatically service the main queue

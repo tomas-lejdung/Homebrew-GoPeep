@@ -12,6 +12,7 @@ package capture
 #include <CoreVideo/CoreVideo.h>
 #include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 #include <dispatch/dispatch.h>
 #include <pthread.h>
 
@@ -39,8 +40,11 @@ typedef struct {
     dispatch_semaphore_t frame_semaphore;
     pthread_mutex_t frame_mutex;
     int active;
+    int corrupted;       // Set on timeout during stop - prevents reuse
     uint32_t window_id;
     id output_delegate;  // Store delegate reference
+    int shutting_down;
+    int callbacks_active;
 
     // Triple buffer system for zero-copy frame handling
     uint8_t* frame_buffers[3];      // Pre-allocated frame data buffers
@@ -84,8 +88,30 @@ static int g_mc_initialized = 0;
 
     pthread_mutex_lock(&inst->buffer_mutex);
 
+    if (inst->shutting_down) {
+        pthread_mutex_unlock(&inst->buffer_mutex);
+        CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+        return;
+    }
+
     // Get current write buffer index
     int widx = inst->write_idx;
+    if (inst->buffer_state[widx] != BUFFER_FREE) {
+        int found = -1;
+        for (int i = 0; i < 3; i++) {
+            if (inst->buffer_state[i] == BUFFER_FREE) {
+                found = i;
+                break;
+            }
+        }
+        if (found < 0) {
+            pthread_mutex_unlock(&inst->buffer_mutex);
+            CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+            return;
+        }
+        widx = found;
+        inst->write_idx = widx;
+    }
 
     // Ensure buffer has enough capacity (realloc only if needed)
     if (inst->buffer_capacities[widx] < dataSize) {
@@ -101,6 +127,8 @@ static int g_mc_initialized = 0;
         // Mark as being written
         inst->buffer_state[widx] = BUFFER_WRITING;
 
+        inst->callbacks_active++;
+
         // Unlock during memcpy (the expensive part)
         pthread_mutex_unlock(&inst->buffer_mutex);
 
@@ -108,6 +136,13 @@ static int g_mc_initialized = 0;
         memcpy(inst->frame_buffers[widx], baseAddress, dataSize);
 
         pthread_mutex_lock(&inst->buffer_mutex);
+
+        inst->callbacks_active--;
+        if (inst->shutting_down) {
+            pthread_mutex_unlock(&inst->buffer_mutex);
+            CVPixelBufferUnlockBaseAddress(imageBuffer, kCVPixelBufferLock_ReadOnly);
+            return;
+        }
 
         // Update metadata for this buffer
         inst->frame_info[widx].data = inst->frame_buffers[widx];
@@ -179,7 +214,7 @@ void mc_init() {
 int mc_find_free_slot() {
     pthread_mutex_lock(&g_instances_mutex);
     for (int i = 0; i < MAX_CAPTURE_INSTANCES; i++) {
-        if (!g_instances[i].active) {
+        if (!g_instances[i].active && !g_instances[i].corrupted) {
             pthread_mutex_unlock(&g_instances_mutex);
             return i;
         }
@@ -198,6 +233,9 @@ int mc_start_window_capture(uint32_t window_id, int target_width, int target_hei
     }
 
     CaptureInstance* inst = &g_instances[slot];
+    inst->shutting_down = 0;
+    inst->callbacks_active = 0;
+    inst->corrupted = 0;
 
     __block SCContentFilter* filter = nil;
     __block int configWidth = target_width;
@@ -294,6 +332,9 @@ int mc_start_display_capture(int target_width, int target_height, int fps) {
     }
 
     CaptureInstance* inst = &g_instances[slot];
+    inst->shutting_down = 0;
+    inst->callbacks_active = 0;
+    inst->corrupted = 0;
 
     __block SCContentFilter* filter = nil;
     __block int configWidth = target_width;
@@ -383,6 +424,10 @@ void mc_stop_capture(int slot) {
     CaptureInstance* inst = &g_instances[slot];
     if (!inst->active) return;
 
+    pthread_mutex_lock(&inst->buffer_mutex);
+    inst->shutting_down = 1;
+    pthread_mutex_unlock(&inst->buffer_mutex);
+
     @autoreleasepool {
         if (inst->stream != nil) {
             dispatch_semaphore_t semaphore = dispatch_semaphore_create(0);
@@ -397,19 +442,45 @@ void mc_stop_capture(int slot) {
         inst->output_delegate = nil;
     }
 
-    // Clean up triple buffer system
+    int wait_count = 0;
+    int in_use = 0;
+    while (wait_count < 100) {
+        pthread_mutex_lock(&inst->buffer_mutex);
+        int active = inst->callbacks_active;
+        in_use = 0;
+        for (int i = 0; i < 3; i++) {
+            if (inst->buffer_state[i] == BUFFER_IN_USE || inst->buffer_state[i] == BUFFER_WRITING) {
+                in_use = 1;
+                break;
+            }
+        }
+        pthread_mutex_unlock(&inst->buffer_mutex);
+        if (active == 0 && !in_use) {
+            break;
+        }
+        usleep(10000);
+        wait_count++;
+    }
+
+    if (wait_count >= 100 && in_use) {
+        // Timeout with buffers still in use - mark as corrupted to prevent reuse
+        NSLog(@"mc_stop_capture: timeout waiting for buffers on slot %d, marking corrupted", slot);
+        inst->corrupted = 1;
+        inst->active = 0;
+        inst->window_id = 0;
+        return;
+    }
+
+    // Normal cleanup - reset buffer state; keep buffers allocated to avoid free races
     pthread_mutex_lock(&inst->buffer_mutex);
     for (int i = 0; i < 3; i++) {
-        if (inst->frame_buffers[i] != NULL) {
-            free(inst->frame_buffers[i]);
-            inst->frame_buffers[i] = NULL;
-        }
-        inst->buffer_capacities[i] = 0;
         inst->buffer_state[i] = BUFFER_FREE;
         memset(&inst->frame_info[i], 0, sizeof(MCFrameData));
     }
     inst->ready_idx = -1;
     inst->write_idx = 0;
+    inst->shutting_down = 0;
+    inst->callbacks_active = 0;
     pthread_mutex_unlock(&inst->buffer_mutex);
 
     inst->active = 0;
@@ -515,6 +586,7 @@ MCFrameData mc_get_latest_frame(int slot, int timeout_ms) {
 
     CaptureInstance* inst = &g_instances[slot];
     if (!inst->active || inst->frame_semaphore == nil) return result;
+    if (inst->shutting_down) return result;
 
     // Drain excess signals
     while (dispatch_semaphore_wait(inst->frame_semaphore, DISPATCH_TIME_NOW) == 0) {}
@@ -524,6 +596,10 @@ MCFrameData mc_get_latest_frame(int slot, int timeout_ms) {
     long wait_result = dispatch_semaphore_wait(inst->frame_semaphore, timeout);
 
     pthread_mutex_lock(&inst->buffer_mutex);
+    if (inst->shutting_down) {
+        pthread_mutex_unlock(&inst->buffer_mutex);
+        return result;
+    }
 
     int ridx = inst->ready_idx;
 

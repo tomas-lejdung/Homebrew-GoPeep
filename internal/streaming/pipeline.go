@@ -31,6 +31,7 @@ type StreamPipeline struct {
 	capture      *capture.CaptureInstance
 	encoder      encoding.VideoEncoder
 	running      bool
+	stopping     bool
 	stopChan     chan struct{}
 	fpsChanged   chan int // Signal to update FPS in run loop
 	fps          int
@@ -68,11 +69,16 @@ type StreamPipeline struct {
 }
 
 // Run is the main pipeline loop that captures, encodes, and sends frames
-func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, onSizeChange func(trackID string, width, height int)) {
-	p.wg.Add(1)
-	defer p.wg.Done()
-
+func (p *StreamPipeline) Run(
+	pm *webrtc.PeerManager,
+	mc *capture.MultiCapture,
+	onSizeChange func(trackID string, width, height int),
+) {
 	p.mu.Lock()
+	if p.stopping {
+		p.mu.Unlock()
+		return
+	}
 	if p.running {
 		p.mu.Unlock()
 		return
@@ -80,7 +86,10 @@ func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, o
 	p.running = true
 	p.lastStatsTime = time.Now()
 	p.lastByteCount = 0
+	p.wg.Add(1) // Track Run() itself; child goroutines use wg.Go()
 	p.mu.Unlock()
+
+	defer p.wg.Done() // For Run() completion
 
 	p.mu.Lock()
 	currentFPS := p.fps
@@ -92,10 +101,14 @@ func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, o
 	done := make(chan struct{})
 
 	// Start encoder goroutine (consumes captured frames, produces encoded frames)
-	go p.encodeLoop(done)
+	p.wg.Go(func() {
+		p.encodeLoop(done)
+	})
 
 	// Start sender goroutine (consumes encoded frames, sends to WebRTC)
-	go p.sendLoop(done)
+	p.wg.Go(func() {
+		p.sendLoop(done)
+	})
 
 	// Main capture loop
 	ticker := time.NewTicker(frameDuration)
@@ -150,7 +163,13 @@ func (p *StreamPipeline) Run(pm *webrtc.PeerManager, mc *capture.MultiCapture, o
 					if err == nil && actualW > 0 && actualH > 0 {
 						configW, configH, err := mc.GetConfigSize(cap)
 						if err == nil && (configW != actualW || configH != actualH) {
-							log.Printf("Window resized: config %dx%d -> actual %dx%d, updating stream", configW, configH, actualW, actualH)
+							log.Printf(
+								"Window resized: config %dx%d -> actual %dx%d, updating stream",
+								configW,
+								configH,
+								actualW,
+								actualH,
+							)
 							if err := mc.UpdateStreamSize(cap, actualW, actualH); err != nil {
 								log.Printf("Failed to update stream size: %v", err)
 							}
@@ -243,7 +262,12 @@ func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
 				errCount := atomic.LoadUint64(&p.encodeErrors)
 				atomic.AddUint64(&p.encodeErrors, 1)
 				if errCount < 5 {
-					log.Printf("encodeLoop: Encode failed for track %s (error #%d): %v", p.trackInfo.TrackID, errCount+1, err)
+					log.Printf(
+						"encodeLoop: Encode failed for track %s (error #%d): %v",
+						p.trackInfo.TrackID,
+						errCount+1,
+						err,
+					)
 				}
 				continue
 			}
@@ -264,13 +288,27 @@ func (p *StreamPipeline) encodeLoop(done <-chan struct{}) {
 	}
 }
 
+// drainCapturedFrames releases any remaining frames in the capturedFrames buffer.
+func (p *StreamPipeline) drainCapturedFrames() {
+	for {
+		select {
+		case cf, ok := <-p.capturedFrames:
+			if !ok {
+				return
+			}
+			if cf.frame != nil {
+				cf.frame.Release()
+			}
+		default:
+			return
+		}
+	}
+}
+
 // sendLoop runs in a separate goroutine, sending encoded frames to WebRTC
 func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 	frameCount := 0
-	// Track presentation timestamp to prevent drift
-	// Without explicit PTS, WebRTC uses arrival time which causes lag accumulation
-	startTime := time.Now()
-	var ptsOffset time.Duration = 0
+	lastSendTime := time.Now()
 
 	for {
 		select {
@@ -281,23 +319,66 @@ func (p *StreamPipeline) sendLoop(done <-chan struct{}) {
 				return
 			}
 
-			// Write directly to track with explicit timestamp
+			// Drain channel to get newest frame, dropping stale ones
+			// This prevents accumulating latency when encoder falls behind
+			newest := ef
+			dropped := uint16(0)
+		drainLoop:
+			for {
+				select {
+				case newer, ok := <-p.encodedFrames:
+					if !ok {
+						break drainLoop
+					}
+					newest = newer
+					dropped++
+				default:
+					break drainLoop
+				}
+			}
+
 			if p.trackInfo.Track != nil {
-				// Calculate expected presentation time based on frame number
-				// This ensures consistent timing even if encoding delays vary
-				expectedTime := startTime.Add(ptsOffset)
+				// Get current FPS for clamp bounds (may change at runtime via SetFPS)
+				p.mu.Lock()
+				currentFPS := p.fps
+				p.mu.Unlock()
+				targetDuration := time.Second / time.Duration(currentFPS)
+				minDuration := targetDuration / 2
+				maxDuration := targetDuration * 5
+
+				// Use real elapsed time as Duration (pion uses this for RTP timestamps)
+				// This keeps RTP timeline aligned with wall clock
+				elapsed := time.Since(lastSendTime)
+
+				// Clamp to reasonable bounds to avoid jitter issues
+				sampleDuration := elapsed
+				if sampleDuration < minDuration {
+					sampleDuration = minDuration
+				}
+				if sampleDuration > maxDuration {
+					sampleDuration = maxDuration
+				}
 
 				p.trackInfo.Track.WriteSample(media.Sample{
-					Data:      ef.data,
-					Duration:  ef.frameDuration,
-					Timestamp: expectedTime, // Explicit PTS prevents timestamp drift
+					Data:               newest.data,
+					Duration:           sampleDuration,
+					PrevDroppedPackets: dropped,
 				})
-				ptsOffset += ef.frameDuration // Advance PTS by frame duration
+
+				lastSendTime = time.Now()
 				frameCount++
+
 				// Log every 100 frames to confirm which track is receiving data
 				if frameCount%100 == 1 {
-					log.Printf("sendLoop: Writing frame %d to track %s (windowID=%d, streamID=%s)",
-						frameCount, p.trackInfo.TrackID, p.trackInfo.WindowID, p.trackInfo.Track.StreamID())
+					log.Printf(
+						"sendLoop: Writing frame %d to track %s (windowID=%d, streamID=%s, duration=%v, dropped=%d)",
+						frameCount,
+						p.trackInfo.TrackID,
+						p.trackInfo.WindowID,
+						p.trackInfo.Track.StreamID(),
+						sampleDuration,
+						dropped,
+					)
 				}
 			}
 		}
@@ -325,37 +406,46 @@ func (p *StreamPipeline) GetStats() webrtc.StreamPipelineStats {
 }
 
 // Stop stops the pipeline completely (encoder and capture)
+// It waits for all goroutines to exit before returning.
 func (p *StreamPipeline) Stop() {
 	p.mu.Lock()
-	defer p.mu.Unlock()
+	alreadyStopping := p.stopping
+	if !p.stopping {
+		p.stopping = true
+		close(p.stopChan)
+	}
+	p.running = false
+	encoder := p.encoder
+	p.mu.Unlock()
 
-	if !p.running {
-		return
+	if !alreadyStopping && encoder != nil {
+		encoder.Stop()
 	}
 
-	p.running = false
-	close(p.stopChan)
-	p.encoder.Stop()
+	p.wg.Wait()
+	p.drainCapturedFrames()
 }
 
-// StopEncoderOnly stops the encoder and run loop but keeps capture alive for reuse
-// It waits for the run loop to fully exit before returning
+// StopEncoderOnly stops the encoder and run loop but keeps capture alive for reuse.
+// It waits for the run loop and goroutines to fully exit before returning.
 func (p *StreamPipeline) StopEncoderOnly() {
 	p.mu.Lock()
-	if !p.running {
-		p.mu.Unlock()
-		return
+	alreadyStopping := p.stopping
+	if !p.stopping {
+		p.stopping = true
+		close(p.stopChan)
 	}
-
 	p.running = false
-	close(p.stopChan)
-	if p.encoder != nil {
-		p.encoder.Stop()
-	}
+	encoder := p.encoder
 	p.mu.Unlock()
+
+	if !alreadyStopping && encoder != nil {
+		encoder.Stop()
+	}
 
 	// Wait for run loop to exit (outside mutex to avoid deadlock)
 	p.wg.Wait()
+	p.drainCapturedFrames()
 	// Note: capture is NOT stopped - it will be reused
 }
 
@@ -414,7 +504,11 @@ func (p *StreamPipeline) SetBitrate(focusBitrate, bgBitrate int) {
 }
 
 // SetFPS updates the FPS for this pipeline (requires capture restart)
-func (p *StreamPipeline) SetFPS(newFPS int, mc *capture.MultiCapture, codecType encoding.CodecType) error {
+func (p *StreamPipeline) SetFPS(
+	newFPS int,
+	mc *capture.MultiCapture,
+	codecType encoding.CodecType,
+) error {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
