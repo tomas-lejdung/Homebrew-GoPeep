@@ -40,6 +40,7 @@ typedef struct {
     dispatch_semaphore_t frame_semaphore;
     pthread_mutex_t frame_mutex;
     int active;
+    int corrupted;       // Set on timeout during stop - prevents reuse
     uint32_t window_id;
     id output_delegate;  // Store delegate reference
     int shutting_down;
@@ -213,7 +214,7 @@ void mc_init() {
 int mc_find_free_slot() {
     pthread_mutex_lock(&g_instances_mutex);
     for (int i = 0; i < MAX_CAPTURE_INSTANCES; i++) {
-        if (!g_instances[i].active) {
+        if (!g_instances[i].active && !g_instances[i].corrupted) {
             pthread_mutex_unlock(&g_instances_mutex);
             return i;
         }
@@ -234,6 +235,7 @@ int mc_start_window_capture(uint32_t window_id, int target_width, int target_hei
     CaptureInstance* inst = &g_instances[slot];
     inst->shutting_down = 0;
     inst->callbacks_active = 0;
+    inst->corrupted = 0;
 
     __block SCContentFilter* filter = nil;
     __block int configWidth = target_width;
@@ -332,6 +334,7 @@ int mc_start_display_capture(int target_width, int target_height, int fps) {
     CaptureInstance* inst = &g_instances[slot];
     inst->shutting_down = 0;
     inst->callbacks_active = 0;
+    inst->corrupted = 0;
 
     __block SCContentFilter* filter = nil;
     __block int configWidth = target_width;
@@ -459,19 +462,26 @@ void mc_stop_capture(int slot) {
         wait_count++;
     }
 
-    if (!in_use) {
-        // Reset buffer state; keep buffers allocated to avoid free races
-        pthread_mutex_lock(&inst->buffer_mutex);
-        for (int i = 0; i < 3; i++) {
-            inst->buffer_state[i] = BUFFER_FREE;
-            memset(&inst->frame_info[i], 0, sizeof(MCFrameData));
-        }
-        inst->ready_idx = -1;
-        inst->write_idx = 0;
-        inst->shutting_down = 0;
-        inst->callbacks_active = 0;
-        pthread_mutex_unlock(&inst->buffer_mutex);
+    if (wait_count >= 100 && in_use) {
+        // Timeout with buffers still in use - mark as corrupted to prevent reuse
+        NSLog(@"mc_stop_capture: timeout waiting for buffers on slot %d, marking corrupted", slot);
+        inst->corrupted = 1;
+        inst->active = 0;
+        inst->window_id = 0;
+        return;
     }
+
+    // Normal cleanup - reset buffer state; keep buffers allocated to avoid free races
+    pthread_mutex_lock(&inst->buffer_mutex);
+    for (int i = 0; i < 3; i++) {
+        inst->buffer_state[i] = BUFFER_FREE;
+        memset(&inst->frame_info[i], 0, sizeof(MCFrameData));
+    }
+    inst->ready_idx = -1;
+    inst->write_idx = 0;
+    inst->shutting_down = 0;
+    inst->callbacks_active = 0;
+    pthread_mutex_unlock(&inst->buffer_mutex);
 
     inst->active = 0;
     inst->window_id = 0;
