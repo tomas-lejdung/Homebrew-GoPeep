@@ -1,68 +1,144 @@
-2026/01/12 23:36:48 === GoPeep started at 2026-01-12T23:36:48+01:00 ===
-2026/01/12 23:36:48 Received room code from server: LOUD-CAVE-434
-2026/01/12 23:36:48 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
-2026/01/12 23:36:48 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
-2026/01/12 23:36:48 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
-2026/01/12 23:36:48 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
-2026/01/12 23:36:48 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
-2026/01/12 23:36:48 InitializeTrackSlots: All 4 track slots ready
-2026/01/12 23:36:49 CreateOffer: Using pre-allocated slots (4 tracks)
-2026/01/12 23:36:49 Peer viewer-1 connection state: connecting
-2026/01/12 23:36:50 Peer viewer-1 connection state: connected
-2026/01/12 23:36:51 Overlay: Dynamically adding window 249101 (Spotify - Spotify Premium) to sources
-2026/01/12 23:36:51 Quick Share: Starting with 1 windows, fullscreen=false
-2026/01/12 23:36:51 ActivateSlot: Activated video0 for window 249101 (Spotify - Spotify Premium)
-2026/01/12 23:36:52 Overlay: Dynamically adding window 312846 (Arc - UI) to sources
-2026/01/12 23:36:52 Quick Share: Starting with 2 windows, fullscreen=false
-2026/01/12 23:36:52 Broadcasting sharer-started to room LOUD-CAVE-434
-2026/01/12 23:36:52 Renegotiating with 1 peers
-2026/01/12 23:36:52 Renegotiation: peer viewer-1 signaling state: stable
-2026/01/12 23:36:52 Renegotiation: peer viewer-1 connection state: connected
-2026/01/12 23:36:52 Renegotiation: ICE gathering complete for viewer-1
-2026/01/12 23:36:52 Renegotiation: sending offer to peer viewer-1 (SDP length: 16888)
-2026/01/12 23:36:52 Renegotiation: sending offer to peer viewer-1
-2026/01/12 23:36:52 Renegotiation: sent streams-info with 1 tracks to peer viewer-1
-2026/01/12 23:36:52 Renegotiation: received answer from peer viewer-1, setting remote description
-2026/01/12 23:36:52 Renegotiation: complete for peer viewer-1, signaling state: stable, connection state: connected
-2026/01/12 23:36:53 sendLoop: Writing frame 1 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:36:54 sendLoop: Writing frame 101 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:36:56 sendLoop: Writing frame 201 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:36:58 sendLoop: Writing frame 301 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:00 sendLoop: Writing frame 401 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:01 TUI: Adding window dynamically: 312846 (UI)
-2026/01/12 23:37:01 AddWindowDynamic: Using fast path (pre-allocated slots)
-2026/01/12 23:37:01 ActivateSlot: Activated video1 for window 312846 (Arc - UI)
-2026/01/12 23:37:02 sendLoop: Writing frame 501 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:02 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
-2026/01/12 23:37:02 Broadcasting stream-activated: video1 (fast path)
-2026/01/12 23:37:02 Added window dynamically: video1 (windowID=312846, fastPath=true)
-2026/01/12 23:37:02 sendLoop: Writing frame 1 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:04 sendLoop: Writing frame 601 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:04 sendLoop: Writing frame 101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:06 sendLoop: Writing frame 701 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:06 sendLoop: Writing frame 201 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:07 sendLoop: Writing frame 801 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:08 sendLoop: Writing frame 301 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:09 sendLoop: Writing frame 901 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:10 sendLoop: Writing frame 401 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:11 sendLoop: Writing frame 1001 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:12 sendLoop: Writing frame 501 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:13 sendLoop: Writing frame 1101 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:14 sendLoop: Writing frame 601 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:15 sendLoop: Writing frame 1201 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:16 sendLoop: Writing frame 701 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:17 sendLoop: Writing frame 1301 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:17 sendLoop: Writing frame 801 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:19 sendLoop: Writing frame 1401 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:19 sendLoop: Writing frame 901 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:20 sendLoop: Writing frame 1501 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:21 sendLoop: Writing frame 1001 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:23 sendLoop: Writing frame 1601 to track video0 (windowID=249101, streamID=gopeep-stream-0)
-2026/01/12 23:37:23 sendLoop: Writing frame 1101 to track video1 (windowID=312846, streamID=gopeep-stream-1)
-2026/01/12 23:37:25 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
-2026/01/12 23:37:25 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
-2026/01/12 23:37:25 Broadcasting stream-removed: video0
-2026/01/12 23:37:25 Broadcasting stream-removed: video1
-2026/01/12 23:37:25 Peer viewer-1 connection state: closed
-2026/01/12 23:37:25 WebSocket read error: read tcp [::1]:58052->[::1]:8080: use of closed network connection
-2026/01/12 23:37:25 Signaling connection closed
+2026/01/15 14:19:33 === GoPeep started at 2026-01-15T14:19:33+01:00 ===
+2026/01/15 14:19:33 Received room code from server: EAGER-JUNGLE-761
+2026/01/15 14:19:33 InitializeTrackSlots: Creating 4 pre-allocated track slots with codec video/VP8
+2026/01/15 14:19:33 InitializeTrackSlots: Created slot 0 (trackID=video0, streamID=gopeep-stream-0)
+2026/01/15 14:19:33 InitializeTrackSlots: Created slot 1 (trackID=video1, streamID=gopeep-stream-1)
+2026/01/15 14:19:33 InitializeTrackSlots: Created slot 2 (trackID=video2, streamID=gopeep-stream-2)
+2026/01/15 14:19:33 InitializeTrackSlots: Created slot 3 (trackID=video3, streamID=gopeep-stream-3)
+2026/01/15 14:19:33 InitializeTrackSlots: All 4 track slots ready
+2026/01/15 14:19:36 Overlay: Dynamically adding window 97 (Spotify - Spotify Premium) to sources
+2026/01/15 14:19:36 Quick Share: Starting with 1 windows, fullscreen=false
+2026/01/15 14:19:36 ActivateSlot: Activated video0 for window 97 (Spotify - Spotify Premium)
+2026/01/15 14:19:36 Broadcasting sharer-started to room EAGER-JUNGLE-761
+2026/01/15 14:19:36 Renegotiating with 0 peers
+2026/01/15 14:19:36 sendLoop: Writing frame 1 to track video0 (windowID=97, streamID=gopeep-stream-0, duration=91.50775ms, dropped=0)
+2026/01/15 14:19:38 TUI: Adding window dynamically: 1246 (Alex/vbs 457 email same reply to as sender)
+2026/01/15 14:19:38 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/15 14:19:38 ActivateSlot: Activated video1 for window 1246 (Arc - Alex/vbs 457 email same reply to as sender)
+2026/01/15 14:19:38 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/15 14:19:38 Broadcasting stream-activated: video1 (fast path)
+2026/01/15 14:19:38 Added window dynamically: video1 (windowID=1246, fastPath=true)
+2026/01/15 14:19:38 sendLoop: Writing frame 1 to track video1 (windowID=1246, streamID=gopeep-stream-1, duration=115.490333ms, dropped=0)
+2026/01/15 14:19:39 TUI: Adding window dynamically: 3061 (Docker DB : vbs - MySQL 8.0.35)
+2026/01/15 14:19:39 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/15 14:19:39 ActivateSlot: Activated video2 for window 3061 (TablePlus - Docker DB : vbs - MySQL 8.0.35)
+2026/01/15 14:19:39 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/15 14:19:39 Broadcasting stream-activated: video2 (fast path)
+2026/01/15 14:19:39 Added window dynamically: video2 (windowID=3061, fastPath=true)
+2026/01/15 14:19:39 sendLoop: Writing frame 1 to track video2 (windowID=3061, streamID=gopeep-stream-2, duration=89.801208ms, dropped=0)
+2026/01/15 14:19:40 sendLoop: Writing frame 101 to track video0 (windowID=97, streamID=gopeep-stream-0, duration=34.7955ms, dropped=0)
+2026/01/15 14:19:41 TUI: Removing window 97 (no sources selected)
+2026/01/15 14:19:41 Removing window dynamically: video0 (windowID=97, fastPath=true)
+2026/01/15 14:19:41 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/15 14:19:41 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/15 14:19:41 encodeLoop: Encode failed for track video0 (error #3): encoder not initialized
+2026/01/15 14:19:41 DeactivateSlot: Deactivated video0
+2026/01/15 14:19:41 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/15 14:19:41 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/15 14:19:41 TUI: Removing window 1246 (no sources selected)
+2026/01/15 14:19:41 Removing window dynamically: video1 (windowID=1246, fastPath=true)
+2026/01/15 14:19:41 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/15 14:19:41 encodeLoop: Encode failed for track video1 (error #2): encoder not initialized
+2026/01/15 14:19:41 DeactivateSlot: Deactivated video1
+2026/01/15 14:19:41 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/15 14:19:41 Broadcasting stream-deactivated: video1 (fast path)
+2026/01/15 14:19:41 TUI: Removing window 3061 (no sources selected)
+2026/01/15 14:19:41 Removing window dynamically: video2 (windowID=3061, fastPath=true)
+2026/01/15 14:19:41 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/15 14:19:41 DeactivateSlot: Deactivated video2
+2026/01/15 14:19:41 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/15 14:19:41 Broadcasting stream-deactivated: video2 (fast path)
+2026/01/15 14:19:45 CreateOffer: Using pre-allocated slots (4 tracks)
+2026/01/15 14:19:45 Peer viewer-1 connection state: connecting
+2026/01/15 14:19:46 Peer viewer-1 connection state: connected
+2026/01/15 14:19:46 DataChannel opened for peer viewer-1
+2026/01/15 14:19:46 DataChannel opened for viewer-1, sending streams-info
+2026/01/15 14:19:48 TUI: Adding window dynamically: 1246 (Alex/vbs 457 email same reply to as sender)
+2026/01/15 14:19:48 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/15 14:19:48 ActivateSlot: Activated video0 for window 1246 (Arc - Alex/vbs 457 email same reply to as sender)
+2026/01/15 14:19:48 AddWindowDynamic: Notifying stream activated video0 (NO renegotiation)
+2026/01/15 14:19:48 Broadcasting stream-activated: video0 (fast path)
+2026/01/15 14:19:48 Added window dynamically: video0 (windowID=1246, fastPath=true)
+2026/01/15 14:19:48 sendLoop: Writing frame 1 to track video0 (windowID=1246, streamID=gopeep-stream-0, duration=113.067625ms, dropped=0)
+2026/01/15 14:19:51 TUI: Adding window dynamically: 97 (Spotify Premium)
+2026/01/15 14:19:51 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/15 14:19:51 ActivateSlot: Activated video1 for window 97 (Spotify - Spotify Premium)
+2026/01/15 14:19:51 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/15 14:19:51 Broadcasting stream-activated: video1 (fast path)
+2026/01/15 14:19:51 Added window dynamically: video1 (windowID=97, fastPath=true)
+2026/01/15 14:19:51 sendLoop: Writing frame 1 to track video1 (windowID=97, streamID=gopeep-stream-1, duration=90.528875ms, dropped=0)
+2026/01/15 14:19:52 sendLoop: Writing frame 101 to track video0 (windowID=1246, streamID=gopeep-stream-0, duration=166.666665ms, dropped=0)
+2026/01/15 14:19:56 sendLoop: Writing frame 101 to track video1 (windowID=97, streamID=gopeep-stream-1, duration=32.497416ms, dropped=0)
+2026/01/15 14:19:56 sendLoop: Writing frame 201 to track video0 (windowID=1246, streamID=gopeep-stream-0, duration=30.581458ms, dropped=0)
+2026/01/15 14:19:58 TUI: Removing window dynamically: 97
+2026/01/15 14:19:58 Removing window dynamically: video1 (windowID=97, fastPath=true)
+2026/01/15 14:19:58 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/15 14:19:58 encodeLoop: Encode failed for track video1 (error #2): encoder not initialized
+2026/01/15 14:19:58 encodeLoop: Encode failed for track video1 (error #3): encoder not initialized
+2026/01/15 14:19:58 encodeLoop: Encode failed for track video1 (error #4): encoder not initialized
+2026/01/15 14:19:58 DeactivateSlot: Deactivated video1
+2026/01/15 14:19:58 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/15 14:19:58 Broadcasting stream-deactivated: video1 (fast path)
+2026/01/15 14:19:59 TUI: Adding window dynamically: 97 (Spotify Premium)
+2026/01/15 14:19:59 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/15 14:19:59 ActivateSlot: Activated video1 for window 97 (Spotify - Spotify Premium)
+2026/01/15 14:19:59 AddWindowDynamic: Notifying stream activated video1 (NO renegotiation)
+2026/01/15 14:19:59 Broadcasting stream-activated: video1 (fast path)
+2026/01/15 14:19:59 Added window dynamically: video1 (windowID=97, fastPath=true)
+2026/01/15 14:19:59 sendLoop: Writing frame 1 to track video1 (windowID=97, streamID=gopeep-stream-1, duration=88.074792ms, dropped=0)
+2026/01/15 14:20:00 sendLoop: Writing frame 301 to track video0 (windowID=1246, streamID=gopeep-stream-0, duration=59.565792ms, dropped=0)
+2026/01/15 14:20:02 sendLoop: Writing frame 101 to track video1 (windowID=97, streamID=gopeep-stream-1, duration=34.187125ms, dropped=0)
+2026/01/15 14:20:03 sendLoop: Writing frame 401 to track video0 (windowID=1246, streamID=gopeep-stream-0, duration=36.559917ms, dropped=0)
+2026/01/15 14:20:05 TUI: Adding window dynamically: 58 (vbs-mys (Channel) - Vårdbemanning Sverige - Slack)
+2026/01/15 14:20:05 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/15 14:20:05 ActivateSlot: Activated video2 for window 58 (Slack - vbs-mys (Channel) - Vårdbemanning Sverige - Slack)
+2026/01/15 14:20:05 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/15 14:20:05 Broadcasting stream-activated: video2 (fast path)
+2026/01/15 14:20:05 Added window dynamically: video2 (windowID=58, fastPath=true)
+2026/01/15 14:20:05 sendLoop: Writing frame 1 to track video2 (windowID=58, streamID=gopeep-stream-2, duration=77.311333ms, dropped=0)
+2026/01/15 14:20:06 sendLoop: Writing frame 201 to track video1 (windowID=97, streamID=gopeep-stream-1, duration=166.666665ms, dropped=0)
+2026/01/15 14:20:07 sendLoop: Writing frame 501 to track video0 (windowID=1246, streamID=gopeep-stream-0, duration=34.504125ms, dropped=0)
+2026/01/15 14:20:09 TUI: Removing window dynamically: 58
+2026/01/15 14:20:09 Removing window dynamically: video2 (windowID=58, fastPath=true)
+2026/01/15 14:20:09 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/15 14:20:09 encodeLoop: Encode failed for track video2 (error #2): encoder not initialized
+2026/01/15 14:20:09 encodeLoop: Encode failed for track video2 (error #3): encoder not initialized
+2026/01/15 14:20:09 encodeLoop: Encode failed for track video2 (error #4): encoder not initialized
+2026/01/15 14:20:09 DeactivateSlot: Deactivated video2
+2026/01/15 14:20:09 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/15 14:20:09 Broadcasting stream-deactivated: video2 (fast path)
+2026/01/15 14:20:10 sendLoop: Writing frame 301 to track video1 (windowID=97, streamID=gopeep-stream-1, duration=52.964125ms, dropped=0)
+2026/01/15 14:20:10 TUI: Adding window dynamically: 58 (vbs-mys (Channel) - Vårdbemanning Sverige - Slack)
+2026/01/15 14:20:10 AddWindowDynamic: Using fast path (pre-allocated slots)
+2026/01/15 14:20:10 ActivateSlot: Activated video2 for window 58 (Slack - vbs-mys (Channel) - Vårdbemanning Sverige - Slack)
+2026/01/15 14:20:10 AddWindowDynamic: Notifying stream activated video2 (NO renegotiation)
+2026/01/15 14:20:10 Broadcasting stream-activated: video2 (fast path)
+2026/01/15 14:20:10 Added window dynamically: video2 (windowID=58, fastPath=true)
+2026/01/15 14:20:10 sendLoop: Writing frame 1 to track video2 (windowID=58, streamID=gopeep-stream-2, duration=78.661875ms, dropped=0)
+2026/01/15 14:20:11 sendLoop: Writing frame 601 to track video0 (windowID=1246, streamID=gopeep-stream-0, duration=61.972ms, dropped=0)
+2026/01/15 14:20:11 TUI: Removing window dynamically: 58
+2026/01/15 14:20:11 Removing window dynamically: video2 (windowID=58, fastPath=true)
+2026/01/15 14:20:11 encodeLoop: Encode failed for track video2 (error #1): encoder not initialized
+2026/01/15 14:20:11 DeactivateSlot: Deactivated video2
+2026/01/15 14:20:11 RemoveWindowDynamic: Notifying stream deactivated video2 (NO renegotiation)
+2026/01/15 14:20:11 Broadcasting stream-deactivated: video2 (fast path)
+2026/01/15 14:20:13 sendLoop: Writing frame 401 to track video1 (windowID=97, streamID=gopeep-stream-1, duration=36.253583ms, dropped=0)
+2026/01/15 14:20:14 sendLoop: Writing frame 701 to track video0 (windowID=1246, streamID=gopeep-stream-0, duration=32.614667ms, dropped=0)
+2026/01/15 14:20:16 TUI: Removing window 97 (no sources selected)
+2026/01/15 14:20:16 Removing window dynamically: video1 (windowID=97, fastPath=true)
+2026/01/15 14:20:16 encodeLoop: Encode failed for track video1 (error #1): encoder not initialized
+2026/01/15 14:20:16 DeactivateSlot: Deactivated video1
+2026/01/15 14:20:16 RemoveWindowDynamic: Notifying stream deactivated video1 (NO renegotiation)
+2026/01/15 14:20:16 Broadcasting stream-deactivated: video1 (fast path)
+2026/01/15 14:20:16 TUI: Removing window 1246 (no sources selected)
+2026/01/15 14:20:16 Removing window dynamically: video0 (windowID=1246, fastPath=true)
+2026/01/15 14:20:16 encodeLoop: Encode failed for track video0 (error #1): encoder not initialized
+2026/01/15 14:20:16 encodeLoop: Encode failed for track video0 (error #2): encoder not initialized
+2026/01/15 14:20:16 DeactivateSlot: Deactivated video0
+2026/01/15 14:20:16 RemoveWindowDynamic: Notifying stream deactivated video0 (NO renegotiation)
+2026/01/15 14:20:16 Broadcasting stream-deactivated: video0 (fast path)
+2026/01/15 14:20:22 DataChannel closed for peer viewer-1
+2026/01/15 14:20:22 DataChannel error for peer viewer-1: sending reset packet in non-established state: state=Closed
+2026/01/15 14:20:22 Peer viewer-1 connection state: closed
+2026/01/15 14:20:22 WebSocket read error: read tcp [::1]:52353->[::1]:8080: use of closed network connection
+2026/01/15 14:20:22 Signaling connection closed
