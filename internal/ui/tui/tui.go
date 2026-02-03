@@ -938,17 +938,20 @@ func (m Model) renderToggle(key, label string, active bool) string {
 
 // RunTUI starts the TUI application
 func RunTUI(cfg config.Config) error {
-	// Write logs to file instead of corrupting TUI display
-	logFile, err := os.Create("gopeep-debug.log")
-	if err != nil {
-		log.SetOutput(io.Discard)
+	// Write logs to file only when debug mode is enabled
+	if cfg.Debug {
+		logFile, err := os.Create("gopeep-debug.log")
+		if err != nil {
+			log.SetOutput(io.Discard)
+		} else {
+			log.SetOutput(logFile)
+			log.Printf("=== GoPeep started at %s ===", time.Now().Format(time.RFC3339))
+			defer logFile.Close()
+		}
+		defer log.SetOutput(os.Stderr)
 	} else {
-		log.SetOutput(logFile)
-		log.Printf("=== GoPeep started at %s ===", time.Now().Format(time.RFC3339))
-		defer logFile.Close()
+		log.SetOutput(io.Discard)
 	}
-
-	defer log.SetOutput(os.Stderr)
 
 	// Create AppCore - the shared state owner
 	appCore := app.NewAppCore(cfg)

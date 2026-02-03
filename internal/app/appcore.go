@@ -6,9 +6,9 @@ import (
 
 	"github.com/gorilla/websocket"
 	"github.com/tomaslejdung/gopeep/internal/config"
+	sig "github.com/tomaslejdung/gopeep/internal/signal"
 	"github.com/tomaslejdung/gopeep/internal/streaming"
 	"github.com/tomaslejdung/gopeep/internal/webrtc"
-	sig "github.com/tomaslejdung/gopeep/internal/signal"
 )
 
 // AppCore owns the shared application state that both TUI and Overlay need.

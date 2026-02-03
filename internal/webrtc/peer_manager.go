@@ -13,17 +13,17 @@ import (
 
 // PeerManager manages WebRTC connections with multiple video tracks
 type PeerManager struct {
-	config       pwebrtc.Configuration
-	iceConfig    ICEConfig
-	codecType    CodecType
-	connections  map[string]*PeerInfo   // peerID -> peer info with senders
-	viewerStates map[string]*ViewerInfo
-	trackCounter int // Monotonically increasing track counter (for legacy AddTrack only)
-	mu           sync.RWMutex
-	renegMu      sync.Mutex // Mutex to serialize renegotiations
-	onICE        func(peerID string, candidate string)
-	onConnected  func(peerID string)
-	onDisconnect func(peerID string)
+	config         pwebrtc.Configuration
+	iceConfig      ICEConfig
+	codecType      CodecType
+	connections    map[string]*PeerInfo // peerID -> peer info with senders
+	viewerStates   map[string]*ViewerInfo
+	trackCounter   int // Monotonically increasing track counter (for legacy AddTrack only)
+	mu             sync.RWMutex
+	renegMu        sync.Mutex // Mutex to serialize renegotiations
+	onICE          func(peerID string, candidate string)
+	onConnected    func(peerID string)
+	onDisconnect   func(peerID string)
 	onFocusChange  func(trackID string)                            // Called when focus changes to a new track
 	onSizeChange   func(trackID string, width, height int)         // Called when focused track dimensions change
 	onCursorUpdate func(trackID string, x, y float64, inView bool) // Called with cursor position updates

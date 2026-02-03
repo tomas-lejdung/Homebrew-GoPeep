@@ -9,6 +9,7 @@ type Config struct {
 	Quality     string
 	SignalURL   string
 	Help        bool
+	Debug       bool
 
 	// TURN server configuration
 	TURNServer string

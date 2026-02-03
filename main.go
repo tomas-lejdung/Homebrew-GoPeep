@@ -61,6 +61,8 @@ func parseFlags() Config {
 	flag.BoolVar(&cfg.Help, "help", false, "Show help")
 	flag.BoolVar(&cfg.Help, "h", false, "Show help (shorthand)")
 
+	flag.BoolVar(&cfg.Debug, "debug", false, "Enable debug logging to file")
+
 	flag.Parse()
 
 	// --local sets SignalURL to local server

@@ -8,8 +8,8 @@ import (
 
 	"github.com/tomaslejdung/gopeep/internal/capture"
 	"github.com/tomaslejdung/gopeep/internal/encoding"
-	"github.com/tomaslejdung/gopeep/internal/webrtc"
 	sig "github.com/tomaslejdung/gopeep/internal/signal"
+	"github.com/tomaslejdung/gopeep/internal/webrtc"
 )
 
 // Streamer manages multiple stream pipelines
